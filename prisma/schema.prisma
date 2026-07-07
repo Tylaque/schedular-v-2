@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProjectStatus {
+  draft
+  active
+  paused
+  closed
+  archived
+}
+
+enum ParticipantStatus {
+  invited
+  link_sent
+  booked
+  reminded
+  completed
+  no_show
+  cancelled
+}
+
+enum BookingStatus {
+  confirmed
+  cancelled
+  rescheduled
+}
+
+model Admin {
+  id                 String              @id @default(cuid())
+  name               String
+  initials           String
+  email              String              @unique
+  projectAssignments ProjectAdmin[]
+  availabilityEntries AdminAvailability[]
+  bookings           Booking[]
+  createdAt          DateTime            @default(now())
+}
+
+model Project {
+  id                        String         @id @default(cuid())
+  slug                      String         @unique
+  name                      String
+  company                   String
+  description               String
+  durationMinutes           Int
+  availabilityPeriodDays    Int
+  dailyStart                String
+  dailyEnd                  String
+  includeWeekends           Boolean        @default(false)
+  minNoticeHours            Int
+  timezone                  String
+  bookingDeadlineDays       Int
+  bufferMinutes             Int
+  maxSessionsPerAdminPerDay Int
+  sessionCapacity           Int            @default(1)
+  status                    ProjectStatus  @default(draft)
+  availabilityLockDate      DateTime
+  brandingLogoInitial       String
+  brandingPrimaryColor      String
+  brandingSenderName        String
+  admins                    ProjectAdmin[]
+  availabilityEntries       AdminAvailability[]
+  participants              Participant[]
+  bookings                  Booking[]
+  createdAt                 DateTime       @default(now())
+  updatedAt                 DateTime       @updatedAt
+}
+
+model ProjectAdmin {
+  id        String   @id @default(cuid())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  adminId   String
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, adminId])
+}
+
+model AdminAvailability {
+  id        String   @id @default(cuid())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  adminId   String
+  dateKey   String
+  time      String
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, adminId, dateKey, time])
+  @@index([projectId, dateKey])
+}
+
+model Participant {
+  id           String            @id @default(cuid())
+  project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId    String
+  name         String
+  email        String
+  customFields Json?
+  status       ParticipantStatus @default(invited)
+  createdAt    DateTime          @default(now())
+
+  @@unique([projectId, email])
+}
+
+model Booking {
+  id               String        @id @default(cuid())
+  project          Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId        String
+  admin            Admin         @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  adminId          String
+  participantName  String
+  participantEmail String
+  dateKey          String
+  time             String
+  status           BookingStatus @default(confirmed)
+  teamsMeetingId   String?
+  calendarEventId  String?
+  createdAt        DateTime      @default(now())
+
+  @@unique([projectId, dateKey, time, status])
+}

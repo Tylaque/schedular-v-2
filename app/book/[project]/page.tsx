@@ -1,13 +1,19 @@
 import { notFound } from "next/navigation";
-import { PROJECTS } from "@/lib/mockData";
+import { getProjectBySlug } from "@/lib/data/projects";
+import { getConsolidatedAvailability } from "@/lib/data/availability";
 import BookingFlow from "@/components/BookingFlow";
 
-export default function BookPage({ params }: { params: { project: string } }) {
-  const project = PROJECTS[params.project];
-  if (!project) return notFound();
-  return <BookingFlow project={project} />;
-}
+export const dynamic = "force-dynamic";
 
-export function generateStaticParams() {
-  return Object.keys(PROJECTS).map((slug) => ({ project: slug }));
+export default async function BookPage({
+  params,
+}: {
+  params: { project: string };
+}) {
+  const project = await getProjectBySlug(params.project);
+  if (!project) return notFound();
+
+  const availability = await getConsolidatedAvailability(project.id);
+
+  return <BookingFlow project={project} availability={availability} />;
 }

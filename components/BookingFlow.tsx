@@ -12,7 +12,7 @@ import {
   ChevronRight,
   CalendarDays,
 } from "lucide-react";
-import { Project, TIMEZONES, buildSlotsForDate, assignAdmin } from "@/lib/mockData";
+import { Project, TIMEZONES, assignAdmin } from "@/lib/slotHelpers";
 
 type Step = "calendar" | "details" | "confirmed";
 
@@ -34,7 +34,13 @@ const MONTH_NAMES = [
 ];
 const DOW = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-export default function BookingFlow({ project }: { project: Project }) {
+export default function BookingFlow({
+  project,
+  availability,
+}: {
+  project: Project;
+  availability: Record<string, string[]>;
+}) {
   const today = useMemo(() => new Date(), []);
   const [monthCursor, setMonthCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
@@ -43,15 +49,6 @@ export default function BookingFlow({ project }: { project: Project }) {
   const [tz, setTz] = useState(TIMEZONES[0]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-
-  const availability = useMemo(() => {
-    const map: Record<string, string[]> = {};
-    for (let i = 0; i < 45; i++) {
-      const d = addDays(today, i);
-      map[dateKey(d)] = buildSlotsForDate(d, project, i);
-    }
-    return map;
-  }, [today, project]);
 
   const daysInMonth = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0).getDate();
   const firstDow = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1).getDay();
