@@ -124,5 +124,8 @@ model Booking {
   calendarEventId  String?
   createdAt        DateTime      @default(now())
 
-  @@unique([projectId, dateKey, time, status])
+  // No @@unique here — see migration for partial unique index on confirmed bookings only
+  // @@unique([projectId, dateKey, time]) would be WRONG: it caps every slot at 1 regardless of sessionCapacity.
+  // The partial unique index guards capacity=1 at the DB level; application logic in createBooking()
+  // enforces capacity >1 by counting before insert inside a serializable transaction.
 }

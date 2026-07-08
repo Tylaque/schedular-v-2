@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Clock,
   Globe,
@@ -11,10 +12,16 @@ import {
   ChevronLeft,
   ChevronRight,
   CalendarDays,
+  Loader2,
 } from "lucide-react";
-import { Project, TIMEZONES, assignAdmin } from "@/lib/slotHelpers";
+import { Project, TIMEZONES } from "@/lib/slotHelpers";
+import { confirmBookingAction } from "@/lib/actions";
 
 type Step = "calendar" | "details" | "confirmed";
+type BookingState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error"; reason: "slot_full" | "no_admin_available" };
 
 function pad(n: number) {
   return n < 10 ? `0${n}` : `${n}`;
@@ -38,9 +45,10 @@ export default function BookingFlow({
   project,
   availability,
 }: {
-  project: Project;
+  project: Project & { id: string };
   availability: Record<string, string[]>;
 }) {
+  const router = useRouter();
   const today = useMemo(() => new Date(), []);
   const [monthCursor, setMonthCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
@@ -49,6 +57,8 @@ export default function BookingFlow({
   const [tz, setTz] = useState(TIMEZONES[0]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [bookingState, setBookingState] = useState<BookingState>({ status: "idle" });
+  const [confirmedAdminName, setConfirmedAdminName] = useState<string | null>(null);
 
   const daysInMonth = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0).getDate();
   const firstDow = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1).getDay();
@@ -58,10 +68,6 @@ export default function BookingFlow({
 
   const selectedSlots = selectedDateKey ? availability[selectedDateKey] || [] : [];
   const selectedDateObj = selectedDateKey ? new Date(selectedDateKey) : null;
-  const assignedAdmin = useMemo(() => {
-    if (!selectedDateKey || !selectedTime) return null;
-    return assignAdmin(project, selectedDateKey, selectedTime);
-  }, [project, selectedDateKey, selectedTime]);
 
   function isPast(d: Date) {
     const cutoff = new Date(today);
@@ -71,17 +77,59 @@ export default function BookingFlow({
     return endOfDay < cutoff;
   }
 
+  const handleConfirm = useCallback(async () => {
+    if (!selectedDateKey || !selectedTime || !name || !email) return;
+    setBookingState({ status: "loading" });
+    const result = await confirmBookingAction({
+      projectId: project.id,
+      dateKey: selectedDateKey,
+      time: selectedTime,
+      participantName: name,
+      participantEmail: email,
+    });
+    if (result.ok) {
+      setConfirmedAdminName(result.adminName);
+      setStep("confirmed");
+      setBookingState({ status: "idle" });
+    } else {
+      setBookingState({ status: "error", reason: result.reason });
+      setTimeout(() => {
+        router.refresh();
+        setStep("calendar");
+        setSelectedDateKey(null);
+        setSelectedTime(null);
+        setName("");
+        setEmail("");
+        setBookingState({ status: "idle" });
+      }, 2500);
+    }
+  }, [selectedDateKey, selectedTime, name, email, project.id, router]);
+
   function resetAll() {
     setStep("calendar");
     setSelectedDateKey(null);
     setSelectedTime(null);
     setName("");
     setEmail("");
+    setConfirmedAdminName(null);
+    setBookingState({ status: "idle" });
   }
+
+  const errorMessage =
+    bookingState.status === "error"
+      ? bookingState.reason === "slot_full"
+        ? "That slot was just booked by someone else — please pick another time."
+        : "No interviewer is available for that exact time — please pick another slot."
+      : null;
 
   return (
     <div className="min-h-screen w-full bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        {bookingState.status === "error" && errorMessage && (
+          <div className="mx-6 mt-4 bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
+            {errorMessage}
+          </div>
+        )}
         {step !== "confirmed" ? (
           <div className="grid grid-cols-1 md:grid-cols-[280px_1fr]">
             <div className="border-b md:border-b-0 md:border-r border-gray-200 p-6 flex flex-col gap-4">
@@ -245,11 +293,15 @@ export default function BookingFlow({
                       />
                     </div>
                     <button
-                      disabled={!name || !email}
-                      onClick={() => setStep("confirmed")}
-                      className="mt-2 w-full bg-brand-500 disabled:bg-gray-300 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg py-2.5"
+                      disabled={!name || !email || bookingState.status === "loading"}
+                      onClick={handleConfirm}
+                      className="mt-2 w-full bg-brand-500 disabled:bg-gray-300 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg py-2.5 flex items-center justify-center gap-2"
                     >
-                      Confirm booking
+                      {bookingState.status === "loading" ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Confirming...</>
+                      ) : (
+                        "Confirm booking"
+                      )}
                     </button>
                   </div>
                 </div>
@@ -280,7 +332,7 @@ export default function BookingFlow({
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-700 mb-1.5">
                   <Users className="w-4 h-4 text-gray-400" />
-                  with {assignedAdmin?.name}
+                  with {confirmedAdminName}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-brand-600 font-medium mt-3 pt-3 border-t border-brand-100">
                   <Video className="w-4 h-4" />

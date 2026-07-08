@@ -7,6 +7,7 @@ import {
   updateProject as dataUpdateProject,
 } from "@/lib/data/projects";
 import { setAdminAvailabilityBulk } from "@/lib/data/availability";
+import { createBooking } from "@/lib/data/bookings";
 
 export async function saveAvailabilityAction(
   projectId: string,
@@ -39,6 +40,24 @@ export async function createProjectAction(formData: {
   await dataCreateProject(formData);
   revalidatePath("/admin/projects");
   redirect("/admin/projects");
+}
+
+export async function confirmBookingAction(input: {
+  projectId: string;
+  dateKey: string;
+  time: string;
+  participantName: string;
+  participantEmail: string;
+}): Promise<
+  | { ok: true; adminName: string }
+  | { ok: false; reason: "slot_full" | "no_admin_available" }
+> {
+  const result = await createBooking(input);
+  if (result.ok) {
+    revalidatePath("/book/[project]");
+    return { ok: true, adminName: result.admin.name };
+  }
+  return result;
 }
 
 export async function updateProjectAction(

@@ -53,14 +53,34 @@ export async function setAdminAvailabilityBulk(
 export async function getConsolidatedAvailability(
   projectId: string
 ): Promise<Record<string, string[]>> {
+  const project = await db.project.findUnique({
+    where: { id: projectId },
+    select: { sessionCapacity: true },
+  });
+  if (!project) return {};
+
   const rows = await db.adminAvailability.findMany({
     where: { projectId },
     select: { dateKey: true, time: true },
     distinct: ["dateKey", "time"],
   });
 
+  const bookingCounts = await db.booking.groupBy({
+    by: ["dateKey", "time"],
+    where: { projectId, status: "confirmed" },
+    _count: { id: true },
+  });
+
+  const fullMap: Record<string, number> = {};
+  for (const bc of bookingCounts) {
+    fullMap[`${bc.dateKey}|${bc.time}`] = bc._count.id;
+  }
+
   const map: Record<string, string[]> = {};
   for (const row of rows) {
+    const key = `${row.dateKey}|${row.time}`;
+    const count = fullMap[key] ?? 0;
+    if (count >= project.sessionCapacity) continue;
     if (!map[row.dateKey]) map[row.dateKey] = [];
     map[row.dateKey].push(row.time);
   }
