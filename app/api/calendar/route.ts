@@ -1,0 +1,21 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getCalendarEvents } from "@/lib/data/dashboard";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(request: NextRequest) {
+  const params = request.nextUrl.searchParams;
+  const from = params.get("from");
+  const to = params.get("to");
+  if (!from || !to) {
+    return NextResponse.json({ error: "from and to query params are required (ISO date strings)" }, { status: 400 });
+  }
+  const events = await getCalendarEvents({
+    from: new Date(from),
+    to: new Date(to),
+    projectId: params.get("projectId") ?? undefined,
+    adminId: params.get("adminId") ?? undefined,
+    participantSearch: params.get("participantSearch") ?? undefined,
+  });
+  return NextResponse.json(events);
+}

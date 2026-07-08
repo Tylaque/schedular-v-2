@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listProjects } from "@/lib/data/projects";
 import type { ProjectWithAdmins } from "@/lib/data/projects";
+import AdminNav from "@/components/AdminNav";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,8 @@ export default async function AdminProjectsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto p-6">
+        <AdminNav current="/admin/projects" />
+
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>

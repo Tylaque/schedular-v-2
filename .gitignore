@@ -29,6 +29,10 @@ scheduler_pgdata/
 # vercel
 .vercel
 
+# ad-hoc scripts
+scripts/seed-test-data.mjs
+scripts/verify-dashboard.mjs
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

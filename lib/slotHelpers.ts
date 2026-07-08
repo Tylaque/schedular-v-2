@@ -106,3 +106,28 @@ export function generateSystemSlotGrid(project: Project, days: number): SlotGrid
 function dateKey(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
+
+/**
+ * Extracts the GMT offset (e.g. "+3" or "-4") from a combined display string.
+ * E.g. "Africa/Nairobi (GMT+3)" → "+03:00", "America/New_York (GMT-4)" → "-04:00"
+ * Falls back to "Z" (UTC) if not found.
+ */
+export function extractGmtOffset(displayTz: string): string {
+  const match = displayTz.match(/GMT([+-]\d{1,2})(?::\d{2})?/);
+  if (!match) return "Z";
+  const offset = match[1];
+  const abs = Math.abs(parseInt(offset));
+  const sign = offset.startsWith("-") ? "-" : "+";
+  return `${sign}${String(abs).padStart(2, "0")}:00`;
+}
+
+/**
+ * Returns true if a session with the given dateKey + time is in the past,
+ * evaluated in the project's timezone. dateKey format: "YYYY-MM-DD", time: "HH:MM".
+ */
+export function isSessionInPast(dateKey: string, time: string, projectTimezone: string): boolean {
+  const offset = extractGmtOffset(projectTimezone);
+  const dateStr = `${dateKey}T${time}:00${offset}`;
+  const sessionDate = new Date(dateStr);
+  return sessionDate < new Date();
+}

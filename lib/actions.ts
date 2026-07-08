@@ -8,6 +8,8 @@ import {
 } from "@/lib/data/projects";
 import { setAdminAvailabilityBulk } from "@/lib/data/availability";
 import { createBooking } from "@/lib/data/bookings";
+import { createTemplateVersion } from "@/lib/data/templates";
+import { sendTestEmail } from "@/lib/data/notifications";
 
 export async function saveAvailabilityAction(
   projectId: string,
@@ -86,4 +88,21 @@ export async function updateProjectAction(
   await dataUpdateProject(slug, formData);
   revalidatePath("/admin/projects");
   redirect("/admin/projects");
+}
+
+export async function saveTemplateAction(formData: {
+  category: "admin_invitation" | "availability_request" | "participant_invitation" | "booking_confirmation" | "reminder_24h" | "reminder_1h" | "reschedule_notice" | "cancellation_notice" | "waitlist_offer";
+  audience: "admin" | "participant" | "super_admin";
+  projectId: string | null;
+  subject: string;
+  bodyHtml: string;
+}) {
+  await createTemplateVersion(formData);
+  revalidatePath("/admin/templates");
+  revalidatePath("/admin/templates/[id]/edit");
+}
+
+export async function sendTestAction(templateId: string, recipientEmail: string) {
+  await sendTestEmail(templateId, recipientEmail);
+  revalidatePath("/admin/templates/[id]/edit");
 }

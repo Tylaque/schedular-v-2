@@ -178,6 +178,154 @@ async function main() {
   }
   console.log(`  Seeded ${seeded.length} availability entries for Priya`);
 
+  // Seed global default email templates for all 9 categories
+  const TEMPLATES: {
+    category: string;
+    audience: string;
+    subject: string;
+    bodyHtml: string;
+  }[] = [
+    {
+      category: "admin_invitation",
+      audience: "admin",
+      subject: "You've been added as an interviewer for {{project_name}}",
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+<p>Hi {{admin_name}},</p>
+<p>You have been added as an interviewer for <strong>{{project_name}}</strong> at {{company_name}}.</p>
+<p>Please submit your availability for the coming days so candidates can start booking sessions.</p>
+<p style="margin:24px 0;"><a href="{{booking_link}}" style="background:#4338CA;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Submit availability</a></p>
+<p>If you have any questions, please reach out to your scheduling coordinator.</p>
+<p>Thanks,<br/>{{company_name}}</p>
+</div>`,
+    },
+    {
+      category: "availability_request",
+      audience: "admin",
+      subject: "Availability requested for {{project_name}}",
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+<p>Hi {{admin_name}},</p>
+<p>We need your availability for <strong>{{project_name}}</strong>. Please use the link below to mark the times you're available over the next {{availability_period}} days.</p>
+<p style="margin:24px 0;"><a href="{{booking_link}}" style="background:#4338CA;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Set availability</a></p>
+<p>Thank you for helping us schedule these interviews.</p>
+<p>Best,<br/>{{company_name}}</p>
+</div>`,
+    },
+    {
+      category: "participant_invitation",
+      audience: "participant",
+      subject: "You're invited to book a session — {{project_name}}",
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+<p>Hi {{participant_name}},</p>
+<p>You are invited to schedule a <strong>{{project_name}}</strong> session with {{company_name}}.</p>
+<p>Please choose a time that works for you using the link below.</p>
+<p style="margin:24px 0;"><a href="{{booking_link}}" style="background:#4338CA;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Book a time</a></p>
+<p>If none of the available times work, you can join the waitlist for additional slots.</p>
+<p>We look forward to meeting you.</p>
+<p>Best regards,<br/>{{company_name}}</p>
+</div>`,
+    },
+    {
+      category: "booking_confirmation",
+      audience: "participant",
+      subject: "Confirmed: {{project_name}} on {{session_date}}",
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+<p>Hi {{participant_name}},</p>
+<p>Your session is confirmed.</p>
+<div style="border:2px dashed #DCE1FB;border-radius:12px;padding:20px;margin:20px 0;background:#EEF1FD;">
+<p style="margin:0 0 8px;"><strong>{{project_name}}</strong></p>
+<p style="margin:0 0 4px;">{{session_date}} · {{session_time}}</p>
+<p style="margin:0 0 4px;">{{time_zone}}</p>
+<p style="margin:0 0 4px;">Interviewer: {{admin_name}}</p>
+<p style="margin:12px 0 0;"><a href="{{meeting_link}}" style="color:#4338CA;font-weight:600;">Join Microsoft Teams meeting</a></p>
+</div>
+<p>The meeting link will also appear on your calendar invitation shortly.</p>
+<p>Thanks,<br/>{{company_name}}</p>
+</div>`,
+    },
+    {
+      category: "reminder_24h",
+      audience: "participant",
+      subject: "Reminder: {{project_name}} tomorrow at {{session_time}}",
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+<p>Hi {{participant_name}},</p>
+<p>This is a reminder that your <strong>{{project_name}}</strong> session is tomorrow.</p>
+<div style="border:2px dashed #DCE1FB;border-radius:12px;padding:20px;margin:20px 0;background:#EEF1FD;">
+<p style="margin:0 0 8px;"><strong>{{project_name}}</strong></p>
+<p style="margin:0 0 4px;">{{session_date}} · {{session_time}}</p>
+<p style="margin:0 0 4px;">{{time_zone}}</p>
+<p style="margin:0;">Interviewer: {{admin_name}}</p>
+</div>
+<p style="margin:24px 0;"><a href="{{meeting_link}}" style="background:#4338CA;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Join meeting</a></p>
+<p>Best,<br/>{{company_name}}</p>
+</div>`,
+    },
+    {
+      category: "reminder_1h",
+      audience: "participant",
+      subject: "Starting soon: {{project_name}} at {{session_time}}",
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+<p>Hi {{participant_name}},</p>
+<p>Your <strong>{{project_name}}</strong> session starts in about one hour.</p>
+<p style="margin:24px 0;"><a href="{{meeting_link}}" style="background:#4338CA;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Join meeting</a></p>
+<p>Please ensure you have a quiet space and a working camera/microphone.</p>
+<p>Good luck!<br/>{{company_name}}</p>
+</div>`,
+    },
+    {
+      category: "reschedule_notice",
+      audience: "participant",
+      subject: "Rescheduled: {{project_name}} on {{session_date}}",
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+<p>Hi {{participant_name}},</p>
+<p>Your <strong>{{project_name}}</strong> session has been rescheduled.</p>
+<p>Please click below to view the new time and confirm your attendance.</p>
+<p style="margin:24px 0;"><a href="{{booking_link}}" style="background:#4338CA;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">View new time</a></p>
+<p>We apologise for any inconvenience.</p>
+<p>Best,<br/>{{company_name}}</p>
+</div>`,
+    },
+    {
+      category: "cancellation_notice",
+      audience: "participant",
+      subject: "Cancelled: {{project_name}} on {{session_date}}",
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+<p>Hi {{participant_name}},</p>
+<p>Your <strong>{{project_name}}</strong> session scheduled for {{session_date}} at {{session_time}} has been cancelled.</p>
+<p>If you would like to reschedule, please visit the link below to book a new time.</p>
+<p style="margin:24px 0;"><a href="{{booking_link}}" style="background:#4338CA;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Book a new time</a></p>
+<p>We apologise for the inconvenience.</p>
+<p>Best regards,<br/>{{company_name}}</p>
+</div>`,
+    },
+    {
+      category: "waitlist_offer",
+      audience: "participant",
+      subject: "A slot just opened up — {{project_name}}",
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+<p>Hi {{participant_name}},</p>
+<p>A new slot has opened up for <strong>{{project_name}}</strong> at {{company_name}}.</p>
+<p>Availability is limited, so grab it before it's taken.</p>
+<p style="margin:24px 0;"><a href="{{booking_link}}" style="background:#4338CA;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Book now</a></p>
+<p>Best,<br/>{{company_name}}</p>
+</div>`,
+    },
+  ];
+
+  for (const t of TEMPLATES) {
+    await db.emailTemplate.create({
+      data: {
+        category: t.category as any,
+        audience: t.audience as any,
+        projectId: null,
+        subject: t.subject,
+        bodyHtml: t.bodyHtml,
+        version: 1,
+        isActive: true,
+      },
+    });
+  }
+  console.log(`  Created ${TEMPLATES.length} global email templates`);
+
   console.log("Done.");
 }
 

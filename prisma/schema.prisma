@@ -30,6 +30,30 @@ enum BookingStatus {
   rescheduled
 }
 
+enum EmailCategory {
+  admin_invitation
+  availability_request
+  participant_invitation
+  booking_confirmation
+  reminder_24h
+  reminder_1h
+  reschedule_notice
+  cancellation_notice
+  waitlist_offer
+}
+
+enum EmailAudience {
+  admin
+  participant
+  super_admin
+}
+
+enum NotificationStatus {
+  sent
+  failed
+  test
+}
+
 model Admin {
   id                 String              @id @default(cuid())
   name               String
@@ -67,6 +91,8 @@ model Project {
   availabilityEntries       AdminAvailability[]
   participants              Participant[]
   bookings                  Booking[]
+  emailTemplates            EmailTemplate[]
+  notificationLogs          NotificationLog[]
   createdAt                 DateTime       @default(now())
   updatedAt                 DateTime       @updatedAt
 }
@@ -128,4 +154,36 @@ model Booking {
   // @@unique([projectId, dateKey, time]) would be WRONG: it caps every slot at 1 regardless of sessionCapacity.
   // The partial unique index guards capacity=1 at the DB level; application logic in createBooking()
   // enforces capacity >1 by counting before insert inside a serializable transaction.
+}
+
+model EmailTemplate {
+  id               String            @id @default(cuid())
+  category         EmailCategory
+  audience         EmailAudience
+  project          Project?          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId        String?
+  subject          String
+  bodyHtml         String
+  version          Int               @default(1)
+  isActive         Boolean           @default(true)
+  notificationLogs NotificationLog[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([category, projectId, isActive])
+}
+
+model NotificationLog {
+  id             String              @id @default(cuid())
+  template       EmailTemplate?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  templateId     String?
+  category       EmailCategory
+  project        Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId      String?
+  recipientEmail String
+  recipientRole  EmailAudience
+  subject        String
+  renderedBody   String
+  status         NotificationStatus
+  createdAt      DateTime            @default(now())
 }
