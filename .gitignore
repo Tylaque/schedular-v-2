@@ -32,6 +32,10 @@ scheduler_pgdata/
 # ad-hoc scripts
 scripts/seed-test-data.mjs
 scripts/verify-dashboard.mjs
+scripts/verify-task10.ts
+
+# dev server logs
+dev-server*.log
 
 # typescript
 *.tsbuildinfo
