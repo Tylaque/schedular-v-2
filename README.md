@@ -55,6 +55,60 @@ Then open:
 
 > **Port note**: This development environment runs native PostgreSQL 18 on port **5433** (Docker Desktop's Hyper-V/WSL2 dependency is unavailable). If your Docker or native instance uses a different port, update `DATABASE_URL` in `.env` accordingly.
 
+## Deploying
+
+### 1. Provision a PostgreSQL instance
+
+Create a managed PostgreSQL database on your hosting provider (Render, Railway, Fly.io, etc.). Note the connection string — it will look like:
+
+```
+postgresql://user:password@host:5432/database?schema=public
+```
+
+### 2. Set environment variables
+
+On your hosting provider, set:
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | The full connection string from step 1 |
+| `NODE_ENV` | `production` |
+
+Do **not** put your production DATABASE_URL in `.env` — that file is for local development only. Set it in your hosting provider's dashboard or CLI.
+
+### 3. Run database migrations
+
+Before or during the first deploy, apply the existing migrations against the production database:
+
+```bash
+npx prisma migrate deploy
+```
+
+This runs all pending migrations safely (`migrate deploy` is idempotent — it only applies migrations that haven't been recorded in the `_prisma_migrations` table). Do **not** use `migrate dev` against production.
+
+### 4. Deploy
+
+Push your code to the repository branch that your hosting provider watches, or trigger a manual deploy. During the build:
+
+- `scripts/check-env.js` (the `prebuild` script) verifies `DATABASE_URL` is set and does not point to localhost — if it does, the build fails with a clear message.
+- `scripts/postinstall.js` runs `prisma generate` to build the Prisma client (safe to run during build even though the production database isn't reachable from the build environment).
+
+### 5. Verify the deployment
+
+After the deploy succeeds, check the health endpoint:
+
+```bash
+curl https://your-app.onrender.com/api/health
+```
+
+Expected response:
+
+```json
+{"status":"ok","database":"connected"}
+```
+
+If the database is unreachable, you'll get a `503` with `{"status":"error","database":"unreachable","message":"..."}` instead — check your `DATABASE_URL` and network rules (e.g. allowlists on the database host).
+
 ## Tech stack
 
 - **Framework**: Next.js 14 (App Router)
