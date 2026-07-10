@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { recordAudit } from "@/lib/data/audit";
 import type { Prisma } from "@prisma/client";
 
 function parseMinutes(t: string): number {
@@ -196,6 +197,24 @@ export async function createBooking(input: {
         timeout: 10000,
       }
     );
+
+    if (result.ok) {
+      recordAudit({
+        action: "booking_created",
+        actorType: "participant",
+        actorId: result.booking.adminId,
+        actorLabel: input.participantName,
+        entityType: "Booking",
+        entityId: result.booking.id,
+        projectId: input.projectId,
+        afterState: {
+          dateKey: input.dateKey, time: input.time,
+          participantName: input.participantName,
+          participantEmail: input.participantEmail,
+          adminId: result.booking.adminId,
+        },
+      }).catch(() => {});
+    }
 
     return result;
   } catch (err: any) {

@@ -80,7 +80,16 @@ export async function getAdminUtilization() {
   return result;
 }
 
-export async function getProjectProgress() {
+export type ProjectProgressItem = {
+  projectId: string;
+  projectSlug: string;
+  projectName: string;
+  status: ProjectStatus;
+  periodElapsedPercent: number;
+  participantsScheduledPercent: number;
+};
+
+export async function getProjectProgress(): Promise<ProjectProgressItem[]> {
   const projects = await db.project.findMany({
     select: {
       id: true,

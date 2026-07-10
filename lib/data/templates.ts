@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { recordAudit } from "@/lib/data/audit";
 import type { EmailCategory, EmailAudience, Prisma } from "@prisma/client";
 import type { EmailTemplateWithDefault } from "@/lib/template-utils";
 
@@ -99,7 +100,7 @@ export async function createTemplateVersion(input: {
   subject: string;
   bodyHtml: string;
 }): Promise<Prisma.EmailTemplateGetPayload<{}>> {
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     const currentActive = await tx.emailTemplate.findFirst({
       where: {
         category: input.category,
@@ -118,7 +119,7 @@ export async function createTemplateVersion(input: {
       });
     }
 
-    return tx.emailTemplate.create({
+    const created = await tx.emailTemplate.create({
       data: {
         category: input.category,
         audience: input.audience,
@@ -129,5 +130,21 @@ export async function createTemplateVersion(input: {
         isActive: true,
       },
     });
+
+    return created;
   });
+
+  // Audit: non-blocking, outside transaction
+  recordAudit({
+    action: result.version === 1 ? "template_created" : "template_updated",
+    actorType: "super_admin",
+    actorLabel: "Unknown (auth not yet wired)", // TODO: replace with session.user once auth lands
+    entityType: "EmailTemplate",
+    entityId: result.id,
+    projectId: result.projectId ?? undefined,
+    beforeState: result.version === 1 ? undefined : { previousVersion: result.version - 1 },
+    afterState: { category: result.category, audience: result.audience, subject: result.subject, version: result.version },
+  }).catch(() => {});
+
+  return result;
 }

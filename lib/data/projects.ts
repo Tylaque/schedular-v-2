@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { recordAudit } from "@/lib/data/audit";
 
 export type ProjectWithAdmins = {
   id: string;
@@ -163,6 +164,17 @@ export async function createProject(input: {
     include: { admins: { include: { admin: true } } },
   });
 
+  // Audit: non-blocking, outside transaction — failure won't affect the create
+  recordAudit({
+    action: "project_created",
+    actorType: "super_admin",
+    actorLabel: "Unknown (auth not yet wired)", // TODO: replace with session.user once auth lands
+    entityType: "Project",
+    entityId: row.id,
+    projectId: row.id,
+    afterState: { ...row, admins: row.admins.length },
+  }).catch(() => {});
+
   return toProjectWithAdmins(row);
 }
 
@@ -191,6 +203,20 @@ export async function updateProject(
 ): Promise<ProjectWithAdmins> {
   const existing = await db.project.findUnique({ where: { slug } });
   if (!existing) throw new Error(`Project "${slug}" not found`);
+
+  const beforeSnapshot = {
+    name: existing.name, company: existing.company, status: existing.status,
+    description: existing.description, durationMinutes: existing.durationMinutes,
+    dailyStart: existing.dailyStart, dailyEnd: existing.dailyEnd,
+    timezone: existing.timezone, sessionCapacity: existing.sessionCapacity,
+    maxSessionsPerAdminPerDay: existing.maxSessionsPerAdminPerDay,
+    bufferMinutes: existing.bufferMinutes, minNoticeHours: existing.minNoticeHours,
+    bookingDeadlineDays: existing.bookingDeadlineDays,
+    availabilityPeriodDays: existing.availabilityPeriodDays,
+    includeWeekends: existing.includeWeekends,
+    availabilityLockDate: existing.availabilityLockDate,
+    branding: { logoInitial: existing.brandingLogoInitial, primaryColor: existing.brandingPrimaryColor, senderName: existing.brandingSenderName },
+  };
 
   const row = await db.$transaction(async (tx) => {
     // Reconcile admin assignments
@@ -230,6 +256,30 @@ export async function updateProject(
       include: { admins: { include: { admin: true } } },
     });
   });
+
+  // Audit: non-blocking, outside transaction
+  recordAudit({
+    action: "project_updated",
+    actorType: "super_admin",
+    actorLabel: "Unknown (auth not yet wired)", // TODO: replace with session.user once auth lands
+    entityType: "Project",
+    entityId: row.id,
+    projectId: row.id,
+    beforeState: beforeSnapshot,
+    afterState: {
+      name: row.name, company: row.company, status: row.status,
+      description: row.description, durationMinutes: row.durationMinutes,
+      dailyStart: row.dailyStart, dailyEnd: row.dailyEnd,
+      timezone: row.timezone, sessionCapacity: row.sessionCapacity,
+      maxSessionsPerAdminPerDay: row.maxSessionsPerAdminPerDay,
+      bufferMinutes: row.bufferMinutes, minNoticeHours: row.minNoticeHours,
+      bookingDeadlineDays: row.bookingDeadlineDays,
+      availabilityPeriodDays: row.availabilityPeriodDays,
+      includeWeekends: row.includeWeekends,
+      availabilityLockDate: row.availabilityLockDate,
+      branding: { logoInitial: row.brandingLogoInitial, primaryColor: row.brandingPrimaryColor, senderName: row.brandingSenderName },
+    },
+  }).catch(() => {});
 
   return toProjectWithAdmins(row);
 }

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { recordAudit } from "@/lib/data/audit";
 
 export async function getAdminAvailability(
   projectId: string,
@@ -48,6 +49,19 @@ export async function setAdminAvailabilityBulk(
       }
     }
   });
+
+  // Audit: non-blocking, outside transaction
+  const selectedCount = entries.filter((e) => e.selected).length;
+  recordAudit({
+    action: "admin_availability_submitted",
+    actorType: "admin",
+    actorId: adminId,
+    actorLabel: "System Admin", // TODO: replace with admin.name once wired
+    entityType: "AdminAvailability",
+    entityId: `${projectId}|${adminId}`,
+    projectId,
+    afterState: { entriesCount: entries.length, selectedCount },
+  }).catch(() => {});
 }
 
 export async function getConsolidatedAvailability(

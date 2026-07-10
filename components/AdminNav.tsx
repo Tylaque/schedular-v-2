@@ -7,6 +7,8 @@ const TABS = [
   { href: "/admin/projects", label: "Projects" },
   { href: "/admin/templates", label: "Templates" },
   { href: "/admin/templates/logs", label: "Notification Logs" },
+  { href: "/admin/audit", label: "Audit Log" },
+  { href: "/admin/reports", label: "Reports" },
 ];
 
 export default function AdminNav({ current }: { current: string }) {

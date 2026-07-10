@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { recordAudit } from "@/lib/data/audit";
 import type { EmailCategory, EmailAudience, NotificationStatus } from "@prisma/client";
 import { getActiveTemplate, renderTemplate, MOCK_PREVIEW_CONTEXT } from "@/lib/data/templates";
 import { ALL_CATEGORIES } from "@/lib/template-utils";
@@ -51,7 +52,7 @@ export async function sendTestEmail(
 
   const rendered = renderTemplate(template, MOCK_PREVIEW_CONTEXT);
 
-  return logNotification({
+  const log = await logNotification({
     templateId: template.id,
     category: template.category,
     projectId: template.projectId ?? undefined,
@@ -61,4 +62,17 @@ export async function sendTestEmail(
     renderedBody: rendered.bodyHtml,
     status: "test",
   });
+
+  // Audit: non-blocking, best-effort
+  recordAudit({
+    action: "notification_sent",
+    actorType: "super_admin",
+    actorLabel: "Unknown (auth not yet wired)", // TODO: replace with session.user once auth lands
+    entityType: "NotificationLog",
+    entityId: log.id,
+    projectId: template.projectId ?? undefined,
+    afterState: { category: template.category, recipientEmail, subject: rendered.subject },
+  }).catch(() => {});
+
+  return log;
 }

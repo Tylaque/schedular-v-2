@@ -108,26 +108,40 @@ function dateKey(d: Date) {
 }
 
 /**
- * Extracts the GMT offset (e.g. "+3" or "-4") from a combined display string.
- * E.g. "Africa/Nairobi (GMT+3)" → "+03:00", "America/New_York (GMT-4)" → "-04:00"
- * Falls back to "Z" (UTC) if not found.
+ * Returns the UTC offset in minutes for a given IANA timezone on a specific date.
+ * Uses Intl.DateTimeFormat with shortOffset which correctly handles DST transitions.
+ * Falls back to 0 (UTC) if resolution fails.
  */
-export function extractGmtOffset(displayTz: string): string {
-  const match = displayTz.match(/GMT([+-]\d{1,2})(?::\d{2})?/);
-  if (!match) return "Z";
-  const offset = match[1];
-  const abs = Math.abs(parseInt(offset));
-  const sign = offset.startsWith("-") ? "-" : "+";
-  return `${sign}${String(abs).padStart(2, "0")}:00`;
+function getOffsetMinutesForDate(dateKey: string, timezone: string): number {
+  try {
+    const [y, m, d] = dateKey.split("-").map(Number);
+    const utcDate = new Date(Date.UTC(y, m - 1, d, 12, 0));
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      timeZoneName: "shortOffset",
+    }).formatToParts(utcDate);
+    const tzPart = parts.find((p) => p.type === "timeZoneName");
+    if (tzPart && tzPart.value !== "GMT") {
+      const match = tzPart.value.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+      if (match) {
+        const sign = match[1] === "-" ? -1 : 1;
+        return sign * (parseInt(match[2]) * 60 + parseInt(match[3] ?? "0"));
+      }
+    }
+  } catch { /* fall through to 0 */ }
+  return 0;
 }
 
 /**
  * Returns true if a session with the given dateKey + time is in the past,
- * evaluated in the project's timezone. dateKey format: "YYYY-MM-DD", time: "HH:MM".
+ * evaluated in the project's IANA timezone. Uses Intl.DateTimeFormat to
+ * resolve the correct UTC offset for the specific date (handling DST).
+ * dateKey format: "YYYY-MM-DD", time: "HH:MM".
  */
 export function isSessionInPast(dateKey: string, time: string, projectTimezone: string): boolean {
-  const offset = extractGmtOffset(projectTimezone);
-  const dateStr = `${dateKey}T${time}:00${offset}`;
-  const sessionDate = new Date(dateStr);
-  return sessionDate < new Date();
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const [h, min] = time.split(":").map(Number);
+  const utcCandidate = Date.UTC(y, m - 1, d, h, min);
+  const offsetMinutes = getOffsetMinutesForDate(dateKey, projectTimezone);
+  return utcCandidate - offsetMinutes * 60000 < Date.now();
 }
