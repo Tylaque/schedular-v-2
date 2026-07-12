@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Scheduler — Multi-project scheduling platform",
   description:
-    "A Doodle-style scheduling platform. Super Admins configure projects, Admins submit their availability, and participants book from consolidated slots.",
+    "Centralize project scheduling by managing administrator availability, participant bookings, and automated meeting coordination from a single platform.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

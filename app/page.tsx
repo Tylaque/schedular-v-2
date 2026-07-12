@@ -1,3 +1,8 @@
+// Auth is intentionally disabled during development.
+// See app/auth/signin + app/auth/signup for a prior placeholder attempt (inert UI only, no backend).
+// These are preserved for reference but not wired to anything.
+// Real Microsoft Entra ID auth will be a separate task when credentials are available.
+
 import Link from "next/link";
 import {
   Calendar,
@@ -19,14 +24,11 @@ export default function LandingPage() {
             <span className="font-bold text-gray-900">Scheduler</span>
           </div>
           <nav className="flex items-center gap-4">
-            <Link href="/auth/signin" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-              Sign in
-            </Link>
             <Link
-              href="/auth/signup"
+              href="/admin/projects"
               className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg px-4 py-2"
             >
-              Sign up
+              Admin
             </Link>
           </nav>
         </div>
@@ -42,7 +44,7 @@ export default function LandingPage() {
         </p>
         <div className="flex items-center justify-center gap-3 mt-8">
           <Link
-            href="/auth/signup"
+            href="/admin/projects"
             className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg px-6 py-3"
           >
             Get started

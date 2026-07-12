@@ -109,6 +109,16 @@ Expected response:
 
 If the database is unreachable, you'll get a `503` with `{"status":"error","database":"unreachable","message":"..."}` instead — check your `DATABASE_URL` and network rules (e.g. allowlists on the database host).
 
+## Auth status
+
+Authentication is intentionally disabled during development. The `/admin/**` routes are freely accessible with no sign-in required.
+
+Two placeholder auth pages exist at `app/auth/signin/page.tsx` and `app/auth/signup/page.tsx` — these are **inert UI only** with no backend, no session handling, and no middleware gating routes behind them. They are preserved in the repo as a reference for when real Microsoft Entra ID auth is implemented (a dedicated task deferred until Azure app-registration credentials are available).
+
+- No middleware.ts exists to gate routes
+- No auth dependencies are installed (no next-auth, bcrypt, jose, etc.)
+- No auth-related Prisma models exist (no User, Account, Session, VerificationToken)
+
 ## Tech stack
 
 - **Framework**: Next.js 14 (App Router)
