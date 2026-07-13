@@ -159,6 +159,9 @@ model Booking {
   status           BookingStatus @default(confirmed)
   teamsMeetingId   String?
   calendarEventId  String?
+  rescheduledFrom  Booking?      @relation("BookingReschedule", fields: [rescheduledFromId], references: [id])
+  rescheduledFromId String?      @unique
+  rescheduledTo    Booking?      @relation("BookingReschedule")
   createdAt        DateTime      @default(now())
 
   // No @@unique here — see migration for partial unique index on confirmed bookings only

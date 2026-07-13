@@ -129,6 +129,30 @@ export async function claimWaitlistOfferAction(entryId: string) {
   return result;
 }
 
+import { previewAdminUnavailable, commitAdminUnavailable, previewDateShift, commitDateShift } from "@/lib/data/bulk-reschedule";
+
+export async function previewAdminUnavailableAction(adminId: string, fromDate: string, toDate: string) {
+  return previewAdminUnavailable(adminId, fromDate, toDate);
+}
+
+export async function commitAdminUnavailableAction(adminId: string, fromDate: string, toDate: string) {
+  const result = await commitAdminUnavailable(adminId, fromDate, toDate);
+  revalidatePath("/admin/calendar");
+  revalidatePath("/admin/bulk-reschedule");
+  return result;
+}
+
+export async function previewDateShiftAction(projectId: string, fromDate: string, toDate: string, offsetDays: number) {
+  return previewDateShift(projectId, fromDate, toDate, offsetDays);
+}
+
+export async function commitDateShiftAction(projectId: string, fromDate: string, toDate: string, offsetDays: number) {
+  const result = await commitDateShift(projectId, fromDate, toDate, offsetDays);
+  revalidatePath("/admin/calendar");
+  revalidatePath("/admin/bulk-reschedule");
+  return result;
+}
+
 export async function sendTestAction(templateId: string, recipientEmail: string) {
   await sendTestEmail(templateId, recipientEmail);
   revalidatePath("/admin/templates/[id]/edit");

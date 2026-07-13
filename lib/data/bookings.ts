@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
 import { offerNextWaitlistEntry } from "@/lib/data/waitlist";
+import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
+import { logNotification } from "@/lib/data/notifications";
 import type { Prisma } from "@prisma/client";
 
 function parseMinutes(t: string): number {
@@ -259,4 +261,217 @@ export async function cancelBooking(bookingId: string) {
   });
 
   return updated;
+}
+
+type RescheduleOk = {
+  ok: true;
+  oldBooking: { id: string; adminId: string; dateKey: string; time: string };
+  newBooking: { id: string; adminId: string; dateKey: string; time: string };
+};
+type RescheduleErr = { ok: false; reason: "not_found" | "already_resolved" | "slot_full" | "no_admin_available" };
+type RescheduleResult = RescheduleOk | RescheduleErr;
+
+export async function rescheduleBookingTime(
+  bookingId: string,
+  newDateKey: string,
+  newTime: string,
+  options?: { keepSameAdminIfPossible?: boolean }
+): Promise<RescheduleResult> {
+  const original = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: { id: true, projectId: true, adminId: true, dateKey: true, time: true, participantName: true, participantEmail: true, status: true },
+  });
+  if (!original) return { ok: false, reason: "not_found" };
+  if (original.status !== "confirmed") return { ok: false, reason: "already_resolved" };
+
+  try {
+    const result: RescheduleResult = await db.$transaction(async (tx): Promise<RescheduleResult> => {
+      const project = await tx.project.findUnique({
+        where: { id: original.projectId },
+        select: { sessionCapacity: true },
+      });
+      if (!project) return { ok: false as const, reason: "slot_full" as const };
+
+      const existingCount = await tx.booking.count({
+        where: {
+          projectId: original.projectId,
+          dateKey: newDateKey,
+          time: newTime,
+          status: "confirmed",
+        },
+      });
+      if (existingCount >= project.sessionCapacity) {
+        return { ok: false as const, reason: "slot_full" as const };
+      }
+
+      let targetAdminId = original.adminId;
+      if (options?.keepSameAdminIfPossible) {
+        const sameOk = await isAdminEligibleForSlot(original.projectId, original.adminId, newDateKey, newTime, tx);
+        if (!sameOk) {
+          const picked = await pickAvailableAdmin(original.projectId, newDateKey, newTime, tx);
+          if (!picked) return { ok: false as const, reason: "no_admin_available" as const };
+          targetAdminId = picked.id;
+        }
+      } else {
+        const picked = await pickAvailableAdmin(original.projectId, newDateKey, newTime, tx);
+        if (!picked) return { ok: false as const, reason: "no_admin_available" as const };
+        targetAdminId = picked.id;
+      }
+
+      await tx.booking.update({
+        where: { id: original.id },
+        data: { status: "rescheduled" },
+      });
+
+      const newBooking = await tx.booking.create({
+        data: {
+          projectId: original.projectId,
+          adminId: targetAdminId,
+          participantName: original.participantName,
+          participantEmail: original.participantEmail,
+          dateKey: newDateKey,
+          time: newTime,
+          status: "confirmed",
+          rescheduledFromId: original.id,
+        },
+        select: { id: true, adminId: true, dateKey: true, time: true },
+      });
+
+      return { ok: true as const, oldBooking: { id: original.id, adminId: original.adminId, dateKey: original.dateKey, time: original.time }, newBooking };
+    }, {
+      isolationLevel: "Serializable",
+      maxWait: 5000,
+      timeout: 10000,
+    });
+
+    if (result.ok) {
+      recordAudit({
+        action: "booking_rescheduled",
+        actorType: "admin",
+        actorId: result.oldBooking.adminId,
+        actorLabel: "System Admin",
+        entityType: "Booking",
+        entityId: original.id,
+        projectId: original.projectId,
+        beforeState: { dateKey: original.dateKey, time: original.time, adminId: original.adminId },
+        afterState: { dateKey: newDateKey, time: newTime, adminId: result.newBooking.adminId },
+      }).catch(() => {});
+
+      (async () => {
+        try {
+          const project = await db.project.findUnique({ where: { id: original.projectId }, select: { name: true, company: true } });
+          const template = await getActiveTemplate("reschedule_notice", original.projectId);
+          const ctx = {
+            participant_name: original.participantName,
+            project_name: project?.name ?? "",
+            company_name: project?.company ?? "",
+            session_date: newDateKey,
+            session_time: newTime,
+            admin_name: "",
+            time_zone: "",
+            meeting_link: "",
+            booking_link: `${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/book/${original.projectId}`,
+            company_logo: "",
+            old_session_date: original.dateKey,
+            old_session_time: original.time,
+          };
+          const rendered = renderTemplate(template, ctx);
+          await logNotification({
+            templateId: template.id,
+            category: "reschedule_notice",
+            projectId: original.projectId,
+            recipientEmail: original.participantEmail,
+            recipientRole: "participant",
+            subject: rendered.subject,
+            renderedBody: rendered.bodyHtml,
+            status: "sent",
+          });
+        } catch (err) {
+          console.error("Failed to send reschedule notification:", err);
+        }
+      })();
+
+      offerNextWaitlistEntry(original.projectId, original.dateKey, original.time).catch((err) => {
+        console.error("Failed to offer waitlist after reschedule:", err);
+      });
+    }
+
+    return result;
+  } catch (err: any) {
+    if (err?.code === "P2002" || err?.code === "P2034") {
+      return { ok: false, reason: "slot_full" };
+    }
+    throw err;
+  }
+}
+
+export async function isAdminEligibleForSlot(
+  projectId: string,
+  adminId: string,
+  dateKey: string,
+  time: string,
+  tx?: Prisma.TransactionClient
+): Promise<boolean> {
+  const client = tx ?? db;
+  const project = await client.project.findUnique({
+    where: { id: projectId },
+    select: { durationMinutes: true, bufferMinutes: true, maxSessionsPerAdminPerDay: true },
+  });
+  if (!project) return false;
+
+  const avail = await client.adminAvailability.findUnique({
+    where: { projectId_adminId_dateKey_time: { projectId, adminId, dateKey, time } },
+  });
+  if (!avail) return false;
+
+  const dayBookings = await client.booking.findMany({
+    where: { projectId, dateKey, adminId, status: "confirmed" },
+    select: { time: true },
+  });
+  if (dayBookings.length >= project.maxSessionsPerAdminPerDay) return false;
+
+  for (const b of dayBookings) {
+    if (timesOverlap(time, project.durationMinutes + project.bufferMinutes, b.time, project.durationMinutes + project.bufferMinutes)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export async function reassignBookingAdmin(
+  bookingId: string,
+  newAdminId: string
+): Promise<
+  { ok: true; booking: { id: string; adminId: string; dateKey: string; time: string } }
+  | { ok: false; reason: "not_found" | "already_resolved" | "admin_not_eligible" }
+> {
+  const booking = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: { id: true, projectId: true, adminId: true, dateKey: true, time: true, participantName: true, participantEmail: true, status: true },
+  });
+  if (!booking) return { ok: false, reason: "not_found" };
+  if (booking.status !== "confirmed") return { ok: false, reason: "already_resolved" };
+
+  const eligible = await isAdminEligibleForSlot(booking.projectId, newAdminId, booking.dateKey, booking.time);
+  if (!eligible) return { ok: false, reason: "admin_not_eligible" };
+
+  const updated = await db.booking.update({
+    where: { id: bookingId },
+    data: { adminId: newAdminId },
+    select: { id: true, adminId: true, dateKey: true, time: true },
+  });
+
+  recordAudit({
+    action: "booking_rescheduled",
+    actorType: "admin",
+    actorId: booking.adminId,
+    actorLabel: "System Admin",
+    entityType: "Booking",
+    entityId: booking.id,
+    projectId: booking.projectId,
+    beforeState: { dateKey: booking.dateKey, time: booking.time, adminId: booking.adminId },
+    afterState: { dateKey: booking.dateKey, time: booking.time, adminId: newAdminId },
+  }).catch(() => {});
+
+  return { ok: true, booking: updated };
 }
