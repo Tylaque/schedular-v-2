@@ -22,6 +22,15 @@ enum ParticipantStatus {
   completed
   no_show
   cancelled
+  waitlisted
+}
+
+enum WaitlistStatus {
+  waiting
+  offered
+  expired
+  claimed
+  cancelled
 }
 
 enum BookingStatus {
@@ -91,6 +100,7 @@ model Project {
   availabilityEntries       AdminAvailability[]
   participants              Participant[]
   bookings                  Booking[]
+  waitlistEntries           WaitlistEntry[]
   emailTemplates            EmailTemplate[]
   notificationLogs          NotificationLog[]
   auditLogs                 AuditLog[]
@@ -157,6 +167,25 @@ model Booking {
   // enforces capacity >1 by counting before insert inside a serializable transaction.
 }
 
+model WaitlistEntry {
+  id               String         @id @default(cuid())
+  project          Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId        String
+  name             String
+  email            String
+  dateKey          String?
+  time             String?
+  status           WaitlistStatus @default(waiting)
+  offeredAt        DateTime?
+  expiresAt        DateTime?
+  claimedBookingId String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([projectId, status, createdAt])
+  @@index([projectId, dateKey, time, status])
+}
+
 model EmailTemplate {
   id               String            @id @default(cuid())
   category         EmailCategory
@@ -199,6 +228,7 @@ enum AuditAction {
   template_created
   template_updated
   notification_sent
+  waitlist_joined
 }
 
 model AuditLog {

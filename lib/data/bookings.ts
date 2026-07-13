@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
+import { offerNextWaitlistEntry } from "@/lib/data/waitlist";
 import type { Prisma } from "@prisma/client";
 
 function parseMinutes(t: string): number {
@@ -226,4 +227,36 @@ export async function createBooking(input: {
     }
     throw err;
   }
+}
+
+export async function cancelBooking(bookingId: string) {
+  const booking = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: { id: true, projectId: true, dateKey: true, time: true, participantName: true, participantEmail: true, adminId: true, status: true },
+  });
+  if (!booking || booking.status === "cancelled") return null;
+
+  const updated = await db.booking.update({
+    where: { id: bookingId },
+    data: { status: "cancelled" },
+    select: { id: true, projectId: true, dateKey: true, time: true, participantName: true, participantEmail: true, adminId: true },
+  });
+
+  recordAudit({
+    action: "booking_cancelled",
+    actorType: "admin",
+    actorId: booking.adminId,
+    actorLabel: "System Admin",
+    entityType: "Booking",
+    entityId: booking.id,
+    projectId: booking.projectId,
+    beforeState: { status: "confirmed" },
+    afterState: { status: "cancelled" },
+  }).catch(() => {});
+
+  offerNextWaitlistEntry(booking.projectId, booking.dateKey, booking.time).catch((err) => {
+    console.error("Failed to offer waitlist entry after cancellation:", err);
+  });
+
+  return updated;
 }

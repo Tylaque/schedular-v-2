@@ -7,7 +7,8 @@ import {
   updateProject as dataUpdateProject,
 } from "@/lib/data/projects";
 import { setAdminAvailabilityBulk } from "@/lib/data/availability";
-import { createBooking } from "@/lib/data/bookings";
+import { createBooking, cancelBooking } from "@/lib/data/bookings";
+import { joinWaitlist, claimWaitlistOffer } from "@/lib/data/waitlist";
 import { createTemplateVersion } from "@/lib/data/templates";
 import { sendTestEmail } from "@/lib/data/notifications";
 
@@ -100,6 +101,32 @@ export async function saveTemplateAction(formData: {
   await createTemplateVersion(formData);
   revalidatePath("/admin/templates");
   revalidatePath("/admin/templates/[id]/edit");
+}
+
+export async function cancelBookingAction(bookingId: string) {
+  await cancelBooking(bookingId);
+  revalidatePath("/admin/calendar");
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/admin/my-dashboard");
+}
+
+export async function joinWaitlistAction(input: {
+  projectId: string;
+  name: string;
+  email: string;
+  dateKey?: string;
+  time?: string;
+}) {
+  await joinWaitlist(input);
+  revalidatePath("/book/[project]");
+}
+
+export async function claimWaitlistOfferAction(entryId: string) {
+  const result = await claimWaitlistOffer(entryId);
+  if (result.ok) {
+    revalidatePath("/admin/waitlist");
+  }
+  return result;
 }
 
 export async function sendTestAction(templateId: string, recipientEmail: string) {

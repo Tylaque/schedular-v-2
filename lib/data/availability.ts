@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
+import { expireStaleOffers } from "@/lib/data/waitlist";
 
 export async function getAdminAvailability(
   projectId: string,
@@ -67,6 +68,8 @@ export async function setAdminAvailabilityBulk(
 export async function getConsolidatedAvailability(
   projectId: string
 ): Promise<Record<string, string[]>> {
+  await expireStaleOffers();
+
   const project = await db.project.findUnique({
     where: { id: projectId },
     select: { sessionCapacity: true },
@@ -85,18 +88,30 @@ export async function getConsolidatedAvailability(
     _count: { id: true },
   });
 
+  const offeredSlots = await db.waitlistEntry.findMany({
+    where: { projectId, status: "offered", dateKey: { not: null }, time: { not: null } },
+    select: { dateKey: true, time: true },
+  });
+  const offeredSet = new Set(offeredSlots.map((s) => `${s.dateKey}|${s.time}`));
+
   const fullMap: Record<string, number> = {};
   for (const bc of bookingCounts) {
     fullMap[`${bc.dateKey}|${bc.time}`] = bc._count.id;
   }
 
   const map: Record<string, string[]> = {};
+  const seenDates = new Set<string>();
   for (const row of rows) {
+    seenDates.add(row.dateKey);
     const key = `${row.dateKey}|${row.time}`;
     const count = fullMap[key] ?? 0;
     if (count >= project.sessionCapacity) continue;
+    if (offeredSet.has(key)) continue;
     if (!map[row.dateKey]) map[row.dateKey] = [];
     map[row.dateKey].push(row.time);
+  }
+  for (const d of seenDates) {
+    if (!map[d]) map[d] = [];
   }
   return map;
 }

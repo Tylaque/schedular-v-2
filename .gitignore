@@ -33,6 +33,19 @@ scheduler_pgdata/
 scripts/seed-test-data.mjs
 scripts/verify-dashboard.mjs
 scripts/verify-task10.ts
+scripts/verify-all-6.ts
+scripts/check-db.ts
+scripts/fill-slots.ts
+scripts/full-verify.ts
+scripts/setup-test-data.ts
+scripts/step-setup.ts
+scripts/step1-setup.ts
+scripts/steps2-5.ts
+
+# platform-specific dev scripts
+scripts/start-and-test.ps1
+scripts/steps-all.ps1
+scripts/test-server.cmd
 
 # dev server logs
 dev-server*.log

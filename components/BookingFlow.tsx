@@ -15,7 +15,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Project, TIMEZONES } from "@/lib/slotHelpers";
-import { confirmBookingAction } from "@/lib/actions";
+import { confirmBookingAction, joinWaitlistAction } from "@/lib/actions";
 
 type Step = "calendar" | "details" | "confirmed";
 type BookingState =
@@ -59,6 +59,10 @@ export default function BookingFlow({
   const [email, setEmail] = useState("");
   const [bookingState, setBookingState] = useState<BookingState>({ status: "idle" });
   const [confirmedAdminName, setConfirmedAdminName] = useState<string | null>(null);
+  const [wlName, setWlName] = useState("");
+  const [wlEmail, setWlEmail] = useState("");
+  const [wlSubmitted, setWlSubmitted] = useState(false);
+  const [wlLoading, setWlLoading] = useState(false);
 
   const daysInMonth = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0).getDate();
   const firstDow = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1).getDay();
@@ -198,7 +202,8 @@ export default function BookingFlow({
                         if (!d) return <div key={i} />;
                         const key = dateKey(d);
                         const slots = availability[key] || [];
-                        const disabled = slots.length === 0 || isPast(d);
+                        const hasAvailRow = key in availability;
+                        const disabled = !hasAvailRow || isPast(d);
                         const selected = key === selectedDateKey;
                         return (
                           <button
@@ -231,7 +236,39 @@ export default function BookingFlow({
                       <p className="text-sm text-gray-400">Select a highlighted day to see open times.</p>
                     )}
                     {selectedDateObj && selectedSlots.length === 0 && (
-                      <p className="text-sm text-gray-400">No open times this day. Join the waitlist from the link in your invite email.</p>
+                      <div>
+                        {wlSubmitted ? (
+                          <p className="text-sm text-green-600 font-medium">You're on the waitlist! We'll email you if a slot opens up.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            <p className="text-sm text-gray-400">No open times this day. Join the waitlist:</p>
+                            <input
+                              value={wlName}
+                              onChange={(e) => setWlName(e.target.value)}
+                              placeholder="Your name"
+                              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2"
+                            />
+                            <input
+                              value={wlEmail}
+                              onChange={(e) => setWlEmail(e.target.value)}
+                              placeholder="Your email"
+                              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2"
+                            />
+                            <button
+                              disabled={!wlName || !wlEmail || wlLoading}
+                              onClick={async () => {
+                                setWlLoading(true);
+                                await joinWaitlistAction({ projectId: project.id, name: wlName, email: wlEmail, dateKey: selectedDateKey! });
+                                setWlLoading(false);
+                                setWlSubmitted(true);
+                              }}
+                              className="w-full text-sm bg-gray-800 hover:bg-gray-900 disabled:bg-gray-300 text-white font-semibold rounded-lg py-2"
+                            >
+                              {wlLoading ? <><Loader2 className="w-4 h-4 animate-spin inline mr-1" />Joining...</> : "Join waitlist"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     )}
                     <div className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
                       {selectedSlots.map((t) => (

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Loader2 } from "lucide-react";
+import { cancelBookingAction } from "@/lib/actions";
 
 type CalendarEvent = {
   id: string;
@@ -47,6 +48,25 @@ function getWeekDays(ref: Date): Date[] {
     days.push(d);
   }
   return days;
+}
+
+function CancelBookingButton({ bookingId }: { bookingId: string }) {
+  const [loading, setLoading] = useState(false);
+  const handleCancel = useCallback(async () => {
+    if (!confirm("Cancel this booking?")) return;
+    setLoading(true);
+    await cancelBookingAction(bookingId);
+    setLoading(false);
+  }, [bookingId]);
+  return (
+    <button
+      onClick={handleCancel}
+      disabled={loading}
+      className="text-xs text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
+    >
+      {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Cancel"}
+    </button>
+  );
 }
 
 export default function CalendarView({
@@ -252,7 +272,7 @@ export default function CalendarView({
           <p className="text-sm text-gray-400 text-center py-8">No events on this date.</p>
         ) : (
           <div className="space-y-2">
-            {dayEvents.map((ev) => (
+                {dayEvents.map((ev) => (
               <div key={ev.id} className="border border-gray-200 rounded-lg p-3 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
@@ -263,9 +283,14 @@ export default function CalendarView({
                     {ev.adminName} · {ev.participantName}
                   </div>
                 </div>
-                <span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700">
-                  {ev.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700">
+                    {ev.status}
+                  </span>
+                  {ev.status === "confirmed" && (
+                    <CancelBookingButton bookingId={ev.id} />
+                  )}
+                </div>
               </div>
             ))}
           </div>
