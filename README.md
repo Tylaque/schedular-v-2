@@ -93,6 +93,18 @@ Push your code to the repository branch that your hosting provider watches, or t
 - `scripts/check-env.js` (the `prebuild` script) verifies `DATABASE_URL` is set and does not point to localhost — if it does, the build fails with a clear message.
 - `scripts/postinstall.js` runs `prisma generate` to build the Prisma client (safe to run during build even though the production database isn't reachable from the build environment).
 
+#### Auto-migrate and seed on startup (free-tier platforms)
+
+On hosting platforms without Shell/exec access or a separate release-phase step (e.g. Render's free tier), migrations and seeding run automatically on every boot via the `start` script:
+
+1. `prisma migrate deploy` — applies any pending migrations; safe to run repeatedly (idempotent).
+2. `node scripts/seed-if-empty.js` — checks if the database has any admins. If empty, runs the full seed. If data already exists, skips seeding with a log message.
+3. `next start` — starts the Next.js server.
+
+This happens on every cold start/restart, so no manual Shell access is ever needed.
+
+On platforms that DO support a release phase (Heroku, Render paid tiers, etc.), moving these steps into a dedicated release command is more conventional and avoids re-running the empty-check on every restart. The current approach works correctly everywhere and is deliberately chosen for portability.
+
 ### 5. Verify the deployment
 
 After the deploy succeeds, check the health endpoint:
