@@ -41,6 +41,8 @@ scripts/setup-test-data.ts
 scripts/step-setup.ts
 scripts/step1-setup.ts
 scripts/steps2-5.ts
+scripts/query-db.cjs
+scripts/query-db.mjs
 
 # platform-specific dev scripts
 scripts/start-and-test.ps1

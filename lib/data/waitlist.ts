@@ -66,13 +66,26 @@ export async function listWaitlistForProject(projectId: string) {
 }
 
 export async function expireStaleOffers() {
+  const stale = await db.waitlistEntry.findMany({
+    where: { status: "offered", expiresAt: { lt: new Date() } },
+    select: { id: true, projectId: true, dateKey: true, time: true },
+  });
+  if (stale.length === 0) return;
+
   await db.waitlistEntry.updateMany({
-    where: {
-      status: "offered",
-      expiresAt: { lt: new Date() },
-    },
+    where: { id: { in: stale.map((s) => s.id) } },
     data: { status: "expired" },
   });
+
+  // Cascade: offer the freed slot to the next person in line
+  const seen = new Set<string>();
+  for (const s of stale) {
+    if (!s.dateKey || !s.time) continue;
+    const key = `${s.projectId}|${s.dateKey}|${s.time}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    await offerNextWaitlistEntry(s.projectId, s.dateKey, s.time);
+  }
 }
 
 export async function offerNextWaitlistEntry(
