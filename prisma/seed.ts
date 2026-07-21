@@ -7,16 +7,16 @@ const adapter = new PrismaPg(pool);
 const db = new PrismaClient({ adapter });
 
 const ALL_ADMINS = [
-  { id: "a1", name: "Priya Nair", initials: "PN", email: "priya@northwind.com" },
-  { id: "a2", name: "Marcus Webb", initials: "MW", email: "marcus@northwind.com" },
-  { id: "a3", name: "Jo Ellery", initials: "JE", email: "jo@northwind.com" },
-  { id: "a4", name: "Sam Torres", initials: "ST", email: "sam@northwind.com" },
-  { id: "a5", name: "Lina Chen", initials: "LC", email: "lina@northwind.com" },
-  { id: "a6", name: "Omar Hassan", initials: "OH", email: "omar@northwind.com" },
-  { id: "a7", name: "Kate Brooks", initials: "KB", email: "kate@northwind.com" },
-  { id: "a8", name: "Raj Patel", initials: "RP", email: "raj@northwind.com" },
-  { id: "a9", name: "Fiona O'Sullivan", initials: "FO", email: "fiona@northwind.com" },
-  { id: "a10", name: "Derek Kim", initials: "DK", email: "derek@northwind.com" },
+  { id: "a1", name: "Priya Nair", initials: "PN", email: "priya@northwind.com", role: "admin" as const, accountType: "organizational" as const },
+  { id: "a2", name: "Marcus Webb", initials: "MW", email: "marcus@northwind.com", role: "admin" as const, accountType: "organizational" as const },
+  { id: "a3", name: "Jo Ellery", initials: "JE", email: "jo@northwind.com", role: "admin" as const, accountType: "organizational" as const },
+  { id: "a4", name: "Sam Torres", initials: "ST", email: "sam@northwind.com", role: "admin" as const, accountType: "organizational" as const },
+  { id: "a5", name: "Lina Chen", initials: "LC", email: "lina@northwind.com", role: "admin" as const, accountType: "organizational" as const },
+  { id: "a6", name: "Omar Hassan", initials: "OH", email: "omar@northwind.com", role: "admin" as const, accountType: "organizational" as const },
+  { id: "a7", name: "Kate Brooks", initials: "KB", email: "kate@northwind.com", role: "super_admin" as const, accountType: "organizational" as const },
+  { id: "a8", name: "Raj Patel", initials: "RP", email: "raj@northwind.com", role: "admin" as const, accountType: "organizational" as const },
+  { id: "a9", name: "Fiona O'Sullivan", initials: "FO", email: "fiona@northwind.com", role: "admin" as const, accountType: "organizational" as const },
+  { id: "a10", name: "Derek Kim", initials: "DK", email: "derek@northwind.com", role: "admin" as const, accountType: "organizational" as const },
 ];
 
 function pad(n: number) {
@@ -79,8 +79,8 @@ async function main() {
   for (const a of ALL_ADMINS) {
     await db.admin.upsert({
       where: { id: a.id },
-      update: { name: a.name, initials: a.initials, email: a.email },
-      create: a,
+      update: { name: a.name, initials: a.initials, email: a.email, role: a.role, accountType: a.accountType },
+      create: { id: a.id, name: a.name, initials: a.initials, email: a.email, role: a.role, accountType: a.accountType },
     });
   }
   console.log(`  Created ${ALL_ADMINS.length} admins`);
@@ -112,6 +112,7 @@ async function main() {
       brandingLogoInitial: "NL",
       brandingPrimaryColor: "#4338CA",
       brandingSenderName: "Northwind Labs",
+      ownerId: "a7",
     },
     create: {
       id: projectId,
@@ -136,6 +137,7 @@ async function main() {
       brandingLogoInitial: "NL",
       brandingPrimaryColor: "#4338CA",
       brandingSenderName: "Northwind Labs",
+      ownerId: "a7",
     },
   });
   console.log("  Created project: Senior PM — Round 1 Interview");
@@ -188,15 +190,32 @@ async function main() {
     {
       category: "admin_invitation",
       audience: "admin",
-      subject: "You've been added as an interviewer for {{project_name}}",
-      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-<p>Hi {{admin_name}},</p>
-<p>You have been added as an interviewer for <strong>{{project_name}}</strong> at {{company_name}}.</p>
-<p>Please submit your availability for the coming days so candidates can start booking sessions.</p>
-<p style="margin:24px 0;"><a href="{{booking_link}}" style="background:#4338CA;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Submit availability</a></p>
-<p>If you have any questions, please reach out to your scheduling coordinator.</p>
-<p>Thanks,<br/>{{company_name}}</p>
-</div>`,
+      subject: "You've been added to {{project_name}} at {{company_name}}",
+      bodyHtml: `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<tr><td style="padding:40px 20px;background-color:#f3f4f6;">
+<table role="presentation" cellpadding="0" cellspacing="0" style="max-width:480px;margin:0 auto;background-color:#ffffff;border-radius:12px;overflow:hidden;">
+<tr><td style="padding:32px 32px 0;">
+<h1 style="margin:0;font-size:20px;font-weight:700;color:#111827;">You've been added to {{project_name}}</h1>
+</td></tr>
+<tr><td style="padding:16px 32px;">
+<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#374151;">
+You've been added as an associate on <strong>{{project_name}}</strong> at {{company_name}}.
+</p>
+<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#374151;">
+To access your account, check your inbox for a setup link from your organisation owner. Use that link to create your password and sign in.
+</p>
+<p style="margin:16px 0 0;font-size:14px;line-height:1.6;color:#374151;">
+You don't need a Microsoft account to sign in — just your email and the password you set up.
+</p>
+</td></tr>
+<tr><td style="padding:16px 32px;border-top:1px solid #e5e7eb;">
+<p style="margin:0;font-size:12px;color:#9ca3af;">
+Scheduler &mdash; Multi-project scheduling platform
+</p>
+</td></tr>
+</table>
+</td></tr>
+</table>`,
     },
     {
       category: "availability_request",
@@ -238,6 +257,7 @@ async function main() {
 <p style="margin:0 0 4px;">Interviewer: {{admin_name}}</p>
 <p style="margin:12px 0 0;"><a href="{{meeting_link}}" style="color:#4338CA;font-weight:600;">Join Microsoft Teams meeting</a></p>
 </div>
+<p style="margin:16px 0;"><a href="{{manage_booking_link}}" style="color:#4338CA;">Manage your booking</a> — reschedule or cancel while the self-service window is open.</p>
 <p>The meeting link will also appear on your calendar invitation shortly.</p>
 <p>Thanks,<br/>{{company_name}}</p>
 </div>`,
@@ -312,17 +332,31 @@ async function main() {
   ];
 
   for (const t of TEMPLATES) {
-    await db.emailTemplate.create({
-      data: {
-        category: t.category as any,
-        audience: t.audience as any,
-        projectId: null,
-        subject: t.subject,
-        bodyHtml: t.bodyHtml,
-        version: 1,
-        isActive: true,
-      },
+    const existing = await db.emailTemplate.findFirst({
+      where: { category: t.category as any, projectId: null, isActive: true },
     });
+    if (existing) {
+      await db.emailTemplate.update({
+        where: { id: existing.id },
+        data: {
+          subject: t.subject,
+          bodyHtml: t.bodyHtml,
+          version: existing.version + 1,
+        },
+      });
+    } else {
+      await db.emailTemplate.create({
+        data: {
+          category: t.category as any,
+          audience: t.audience as any,
+          projectId: null,
+          subject: t.subject,
+          bodyHtml: t.bodyHtml,
+          version: 1,
+          isActive: true,
+        },
+      });
+    }
   }
   console.log(`  Created ${TEMPLATES.length} global email templates`);
 

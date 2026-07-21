@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import Link from "next/link";
 import { listProjects } from "@/lib/data/projects";
 import type { ProjectWithAdmins } from "@/lib/data/projects";
@@ -26,12 +27,15 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default async function AdminProjectsPage() {
-  const projects = await listProjects();
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  const ownerId = role === "org_owner" ? undefined : session?.user?.id;
+  const projects = await listProjects(ownerId);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto p-6">
-        <AdminNav current="/admin/projects" />
+        <AdminNav current="/admin/projects" role={role} />
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -68,6 +72,7 @@ export default async function AdminProjectsPage() {
                 <tr className="border-b border-gray-200 bg-gray-50">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Name</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Owner</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Admins</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Lock date</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
@@ -78,6 +83,7 @@ export default async function AdminProjectsPage() {
                   <tr key={p.slug} className="border-b border-gray-200 last:border-b-0">
                     <td className="px-4 py-3 font-medium text-gray-900">{p.name}</td>
                     <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
+                    <td className="px-4 py-3 text-gray-500">{p.ownerName ?? "—"}</td>
                     <td className="px-4 py-3 text-gray-500">{p.admins.length}</td>
                     <td className="px-4 py-3 text-gray-500">
                       {p.availabilityLockDate.toLocaleDateString("en-US", {

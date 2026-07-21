@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { generateReport, REPORT_DEFINITIONS } from "@/lib/data/reports";
 
@@ -14,7 +15,10 @@ export async function GET(
   }
 
   try {
-    const rows = await generateReport(params.type);
+    const session = await auth();
+    const role = (session?.user as any)?.role;
+    const ownerId = role === "org_owner" ? undefined : session?.user?.id;
+    const rows = await generateReport(params.type, ownerId);
 
     if (format === "csv") {
       const header = def.columns.map((c) => c.label).join(",");

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Project, TIMEZONES } from "@/lib/slotHelpers";
 import { confirmBookingAction, joinWaitlistAction } from "@/lib/actions";
+import { TimeSlotList } from "@/components/SlotPicker";
 
 type Step = "calendar" | "details" | "confirmed";
 type BookingState =
@@ -270,22 +271,11 @@ export default function BookingFlow({
                         )}
                       </div>
                     )}
-                    <div className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
-                      {selectedSlots.map((t) => (
-                        <button
-                          key={t}
-                          onClick={() => setSelectedTime(t)}
-                          className={
-                            "text-sm rounded-lg border px-3 py-2 text-left transition-colors " +
-                            (selectedTime === t
-                              ? "border-brand-500 bg-brand-500 text-white font-semibold"
-                              : "border-gray-200 text-gray-700 hover:border-brand-100 hover:bg-brand-50")
-                          }
-                        >
-                          {t}
-                        </button>
-                      ))}
-                    </div>
+                    <TimeSlotList
+                      times={selectedSlots}
+                      selectedTime={selectedTime}
+                      onSelectTime={setSelectedTime}
+                    />
                     {selectedTime && (
                       <button
                         onClick={() => setStep("details")}

@@ -57,6 +57,19 @@ enum EmailAudience {
   super_admin
 }
 
+enum AdminRole {
+  admin
+  super_admin
+  org_owner
+}
+
+enum AdminAccountType {
+  organizational
+  personal
+  no_microsoft
+  unknown
+}
+
 enum NotificationStatus {
   sent
   failed
@@ -66,12 +79,48 @@ enum NotificationStatus {
 model Admin {
   id                 String              @id @default(cuid())
   name               String
-  initials           String
+  initials           String              @default("")
   email              String              @unique
+  emailVerified      DateTime?
+  passwordHash       String?
+  role               AdminRole           @default(admin)
+  accountType        AdminAccountType    @default(unknown)
   projectAssignments ProjectAdmin[]
   availabilityEntries AdminAvailability[]
   bookings           Booking[]
+  ownedProjects      Project[]           @relation("ProjectOwner")
+  passwordResetTokens PasswordResetToken[]
+  accounts           Account[]
+  sessions           Session[]
   createdAt          DateTime            @default(now())
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user Admin @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user Admin @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Project {
@@ -91,6 +140,7 @@ model Project {
   bufferMinutes             Int
   maxSessionsPerAdminPerDay Int
   sessionCapacity           Int            @default(1)
+  selfServiceWindowHours    Int            @default(4)
   status                    ProjectStatus  @default(draft)
   availabilityLockDate      DateTime
   brandingLogoInitial       String
@@ -104,6 +154,8 @@ model Project {
   emailTemplates            EmailTemplate[]
   notificationLogs          NotificationLog[]
   auditLogs                 AuditLog[]
+  ownerId                   String?
+  owner                     Admin?         @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   createdAt                 DateTime       @default(now())
   updatedAt                 DateTime       @updatedAt
 }
@@ -250,4 +302,16 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([projectId, createdAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  adminId   String
+  token     String   @unique
+  expires   DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([adminId])
 }

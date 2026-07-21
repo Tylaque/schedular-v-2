@@ -35,6 +35,7 @@ type AdminRecord = {
   name: string;
   initials: string;
   email: string;
+  accountType: string | null;
 };
 
 type DashboardData = {

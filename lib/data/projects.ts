@@ -22,6 +22,8 @@ export type ProjectWithAdmins = {
   availabilityLockDate: Date;
   branding: { logoInitial: string; primaryColor: string; senderName: string };
   admins: { id: string; name: string; initials: string }[];
+  ownerId: string | null;
+  ownerName: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -49,6 +51,8 @@ function toProjectWithAdmins(row: {
   brandingPrimaryColor: string;
   brandingSenderName: string;
   admins?: { admin: { id: string; name: string; initials: string } }[];
+  ownerId: string | null;
+  owner?: { name: string } | null;
   createdAt: Date;
   updatedAt: Date;
 }): ProjectWithAdmins {
@@ -76,6 +80,8 @@ function toProjectWithAdmins(row: {
       primaryColor: row.brandingPrimaryColor,
       senderName: row.brandingSenderName,
     },
+    ownerId: row.ownerId,
+    ownerName: row.owner?.name ?? null,
     admins: (row.admins ?? []).map((pa) => ({
       id: pa.admin.id,
       name: pa.admin.name,
@@ -90,9 +96,11 @@ function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "untitled";
 }
 
-export async function listProjects(): Promise<ProjectWithAdmins[]> {
+export async function listProjects(ownerId?: string): Promise<ProjectWithAdmins[]> {
+  const where = ownerId ? { ownerId } : {};
   const rows = await db.project.findMany({
-    include: { admins: { include: { admin: true } } },
+    where,
+    include: { admins: { include: { admin: true } }, owner: { select: { name: true } } },
     orderBy: { createdAt: "desc" },
   });
   return rows.map(toProjectWithAdmins);
@@ -101,7 +109,7 @@ export async function listProjects(): Promise<ProjectWithAdmins[]> {
 export async function getProjectBySlug(slug: string): Promise<ProjectWithAdmins | null> {
   const row = await db.project.findUnique({
     where: { slug },
-    include: { admins: { include: { admin: true } } },
+    include: { admins: { include: { admin: true } }, owner: { select: { name: true } } },
   });
   return row ? toProjectWithAdmins(row) : null;
 }
@@ -125,6 +133,7 @@ export async function createProject(input: {
   status?: "draft" | "active" | "paused" | "closed" | "archived";
   availabilityPeriodDays: number;
   adminIds: string[];
+  ownerId?: string;
 }): Promise<ProjectWithAdmins> {
   let slug = slugify(input.name);
 
@@ -157,11 +166,12 @@ export async function createProject(input: {
       brandingLogoInitial: input.branding.logoInitial,
       brandingPrimaryColor: input.branding.primaryColor,
       brandingSenderName: input.branding.senderName,
+      ownerId: input.ownerId ?? null,
       admins: {
         create: input.adminIds.map((adminId) => ({ adminId })),
       },
     },
-    include: { admins: { include: { admin: true } } },
+    include: { admins: { include: { admin: true } }, owner: { select: { name: true } } },
   });
 
   // Audit: non-blocking, outside transaction — failure won't affect the create
@@ -199,6 +209,7 @@ export async function updateProject(
     status: "draft" | "active" | "paused" | "closed" | "archived";
     availabilityPeriodDays: number;
     adminIds: string[];
+    ownerId?: string;
   }
 ): Promise<ProjectWithAdmins> {
   const existing = await db.project.findUnique({ where: { slug } });
@@ -230,30 +241,35 @@ export async function updateProject(
       });
     }
 
+    const updateData: Record<string, unknown> = {
+      name: updates.name,
+      company: updates.company,
+      description: updates.description,
+      durationMinutes: updates.durationMinutes,
+      availabilityPeriodDays: updates.availabilityPeriodDays,
+      dailyStart: updates.dailyStart,
+      dailyEnd: updates.dailyEnd,
+      includeWeekends: updates.includeWeekends,
+      minNoticeHours: updates.minNoticeHours,
+      timezone: updates.timezone,
+      bookingDeadlineDays: updates.bookingDeadlineDays,
+      bufferMinutes: updates.bufferMinutes,
+      maxSessionsPerAdminPerDay: updates.maxSessionsPerAdminPerDay,
+      sessionCapacity: updates.sessionCapacity,
+      status: updates.status,
+      availabilityLockDate: updates.availabilityLockDate,
+      brandingLogoInitial: updates.branding.logoInitial,
+      brandingPrimaryColor: updates.branding.primaryColor,
+      brandingSenderName: updates.branding.senderName,
+    };
+    if (updates.ownerId !== undefined) {
+      updateData.ownerId = updates.ownerId;
+    }
+
     return tx.project.update({
       where: { id: existing.id },
-      data: {
-        name: updates.name,
-        company: updates.company,
-        description: updates.description,
-        durationMinutes: updates.durationMinutes,
-        availabilityPeriodDays: updates.availabilityPeriodDays,
-        dailyStart: updates.dailyStart,
-        dailyEnd: updates.dailyEnd,
-        includeWeekends: updates.includeWeekends,
-        minNoticeHours: updates.minNoticeHours,
-        timezone: updates.timezone,
-        bookingDeadlineDays: updates.bookingDeadlineDays,
-        bufferMinutes: updates.bufferMinutes,
-        maxSessionsPerAdminPerDay: updates.maxSessionsPerAdminPerDay,
-        sessionCapacity: updates.sessionCapacity,
-        status: updates.status,
-        availabilityLockDate: updates.availabilityLockDate,
-        brandingLogoInitial: updates.branding.logoInitial,
-        brandingPrimaryColor: updates.branding.primaryColor,
-        brandingSenderName: updates.branding.senderName,
-      },
-      include: { admins: { include: { admin: true } } },
+      data: updateData,
+    include: { admins: { include: { admin: true } }, owner: { select: { name: true } } },
     });
   });
 

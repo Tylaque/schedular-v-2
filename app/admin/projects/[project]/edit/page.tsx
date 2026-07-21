@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { auth } from "@/auth";
 import { getProjectBySlug } from "@/lib/data/projects";
+import { canManageProject } from "@/lib/authz";
 import ProjectForm from "@/components/ProjectForm";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +13,14 @@ export default async function EditProjectPage({
 }: {
   params: { project: string };
 }) {
+  const session = await auth();
+  if (!session?.user?.id) return notFound();
+
   const project = await getProjectBySlug(params.project);
   if (!project) return notFound();
+
+  const user = { id: session.user.id, role: (session.user as any).role as "admin" | "super_admin" | "org_owner" };
+  if (!canManageProject(user, project)) return notFound();
 
   return (
     <div className="min-h-screen bg-gray-50">

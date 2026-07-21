@@ -121,15 +121,18 @@ Expected response:
 
 If the database is unreachable, you'll get a `503` with `{"status":"error","database":"unreachable","message":"..."}` instead — check your `DATABASE_URL` and network rules (e.g. allowlists on the database host).
 
-## Auth status
+## Auth
 
-Authentication is intentionally disabled during development. The `/admin/**` routes are freely accessible with no sign-in required.
+Authentication is live via **Microsoft Entra ID** (multi-tenant, supporting both organizational work/school accounts and personal Microsoft accounts) and **email/password credentials** (invite-only, via password-setup tokens).
 
-Two placeholder auth pages exist at `app/auth/signin/page.tsx` and `app/auth/signup/page.tsx` — these are **inert UI only** with no backend, no session handling, and no middleware gating routes behind them. They are preserved in the repo as a reference for when real Microsoft Entra ID auth is implemented (a dedicated task deferred until Azure app-registration credentials are available).
-
-- No middleware.ts exists to gate routes
-- No auth dependencies are installed (no next-auth, bcrypt, jose, etc.)
-- No auth-related Prisma models exist (no User, Account, Session, VerificationToken)
+- `/admin/**` routes are protected by middleware — unauthenticated requests redirect to `/auth/signin`.
+- Real OAuth flow with Microsoft: the callback is handled by `app/api/auth/[...nextauth]/route.ts`.
+- Credentials provider with bcryptjs (12 salt rounds) for invited associates who set up a password.
+- Password reset flow via forgot-password page; reset links expire in 48 hours and are single-use.
+- Custom Prisma adapter (`lib/auth-adapter.ts`) maps Auth.js's adapter interface to this project's `Admin` model (instead of the standard `User`).
+- JWT session strategy — no server-side session storage.
+- Tokens (access + refresh) are stored in the `Account` table; `refreshAccessToken` in `auth.ts` handles transparent token renewal.
+- `/book/[project]`, `/waitlist/[project]`, `/manage/[booking]` remain public (no auth required).
 
 ## Tech stack
 
@@ -223,22 +226,17 @@ npx prisma migrate reset --force
 npx prisma db seed
 ```
 
-## Architecture
-
-- **Server Components** fetch data directly via async data-access functions in `lib/data/`.
-- **Client Components** that mutate data call Server Actions in `lib/actions.ts`, which invoke the data-access layer and revalidate the Next.js cache.
-- Pure calculation helpers (`generateSystemSlotGrid`, `buildSlotsForDate`, `assignAdmin`) live in `lib/slotHelpers.ts` — they have no database dependency.
-
 ## Seeded demo data
 
 - **Admins**: 10 mock people (Priya Nair, Marcus Webb, Jo Ellery, Sam Torres, Lina Chen, Omar Hassan, Kate Brooks, Raj Patel, Fiona O'Sullivan, Derek Kim)
 - **Project**: "Senior PM — Round 1 Interview" (Northwind Labs) — 45 min slots, weekdays only, 09:00–16:00
 - **Availability**: Priya Nair has 12 pre-seeded availability slots across four days
 
-## Planned features (not yet built)
+## Architecture
 
-- Microsoft Graph integration for Teams meeting + calendar creation
-- Entra ID authentication
-- Participant tokenized invite links
-- Email notifications
-- Reporting dashboard
+- **Server Components** fetch data directly via async data-access functions in `lib/data/`.
+- **Client Components** that mutate data call Server Actions in `lib/actions.ts`, which invoke the data-access layer and revalidate the Next.js cache.
+- Pure calculation helpers (`generateSystemSlotGrid`, `buildSlotsForDate`, `assignAdmin`) live in `lib/slotHelpers.ts` — they have no database dependency.
+- Email/password auth is invite-only: the `inviteAssociate` function creates a `PasswordResetToken` and sends a setup link via Resend. Password reset uses the same token model.
+- All admin API routes and server actions enforce authentication and role-based authorization (`org_owner`/`super_admin`/`admin`).
+- Email templates are versioned and stored in the database, rendered with Handlebars-style `{{placeholder}}` substitution.

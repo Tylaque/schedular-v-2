@@ -1,7 +1,5 @@
-// Auth is intentionally disabled during development.
-// See app/auth/signin + app/auth/signup for a prior placeholder attempt (inert UI only, no backend).
-// These are preserved for reference but not wired to anything.
-// Real Microsoft Entra ID auth will be a separate task when credentials are available.
+// Auth via Microsoft Entra ID (multi-tenant + personal accounts).
+// See auth.ts for configuration.
 
 import Link from "next/link";
 import {
@@ -24,11 +22,8 @@ export default function LandingPage() {
             <span className="font-bold text-gray-900">Scheduler</span>
           </div>
           <nav className="flex items-center gap-4">
-            <Link
-              href="/admin/projects"
-              className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg px-4 py-2"
-            >
-              Admin
+            <Link href="/auth/signin" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+              Sign in
             </Link>
           </nav>
         </div>
@@ -44,14 +39,14 @@ export default function LandingPage() {
         </p>
         <div className="flex items-center justify-center gap-3 mt-8">
           <Link
-            href="/admin/projects"
+            href="/auth/signin"
             className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg px-6 py-3"
           >
             Get started
             <ArrowRight className="w-4 h-4 inline ml-1.5" />
           </Link>
           <Link
-            href="/admin/projects"
+            href="/book/senior-pm-interview"
             className="border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium px-6 py-3"
           >
             View demo
@@ -122,7 +117,7 @@ export default function LandingPage() {
           <h2 className="text-2xl font-bold text-gray-900 mb-3">Ready to streamline your scheduling?</h2>
           <p className="text-sm text-gray-500 mb-6">Start with a demo project, no account required.</p>
           <Link
-            href="/admin/projects"
+            href="/book/senior-pm-interview"
             className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg px-6 py-3 inline-block"
           >
             Explore the demo

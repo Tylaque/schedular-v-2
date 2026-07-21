@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import AdminNav from "@/components/AdminNav";
 import { getSuperAdminStats, getAdminUtilization, getProjectProgress } from "@/lib/data/dashboard";
 import {
@@ -45,14 +46,17 @@ function StatCard({
 }
 
 export default async function AdminDashboardPage() {
-  const stats = await getSuperAdminStats();
-  const utilization = await getAdminUtilization();
-  const progress = await getProjectProgress();
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  const ownerId = role === "org_owner" ? undefined : session?.user?.id;
+  const stats = await getSuperAdminStats(ownerId);
+  const utilization = await getAdminUtilization(ownerId);
+  const progress = await getProjectProgress(ownerId);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto p-6">
-        <AdminNav current="/admin/dashboard" />
+        <AdminNav current="/admin/dashboard" role={role} />
         <h1 className="text-xl font-bold text-gray-900 mb-6">Dashboard</h1>
 
         {/* Stat cards */}

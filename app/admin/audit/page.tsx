@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import AdminNav from "@/components/AdminNav";
 import { listAuditLogs } from "@/lib/data/audit";
 import { listProjects } from "@/lib/data/projects";
@@ -34,20 +35,24 @@ export default async function AuditPage({
 }: {
   searchParams: { projectId?: string; action?: string; from?: string; to?: string };
 }) {
-  const projects = await listProjects();
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  const ownerId = role === "org_owner" ? undefined : session?.user?.id;
+  const projects = await listProjects(ownerId);
 
   const filters: Parameters<typeof listAuditLogs>[0] = {};
   if (searchParams.projectId) filters.projectId = searchParams.projectId;
   if (searchParams.action) filters.action = searchParams.action as AuditAction;
   if (searchParams.from) filters.from = new Date(searchParams.from);
   if (searchParams.to) filters.to = new Date(searchParams.to);
+  if (ownerId) filters.ownerId = ownerId;
 
   const logs = await listAuditLogs(filters);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto p-6">
-        <AdminNav current="/admin/audit" />
+        <AdminNav current="/admin/audit" role={role} />
 
         <div className="mb-6">
           <h1 className="text-xl font-bold text-gray-900">Audit Log</h1>

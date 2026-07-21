@@ -1,13 +1,17 @@
+import { auth } from "@/auth";
 import AdminNav from "@/components/AdminNav";
 import { REPORT_DEFINITIONS } from "@/lib/data/reports";
 
 export const dynamic = "force-dynamic";
 
-export default function ReportsPage() {
+export default async function ReportsPage() {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto p-6">
-        <AdminNav current="/admin/reports" />
+        <AdminNav current="/admin/reports" role={role} />
 
         <div className="mb-6">
           <h1 className="text-xl font-bold text-gray-900">Reports</h1>

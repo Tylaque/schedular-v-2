@@ -38,6 +38,7 @@ export async function listAuditLogs(filters: {
   from?: Date;
   to?: Date;
   limit?: number;
+  ownerId?: string;
 }) {
   const where: Record<string, unknown> = {};
   if (filters.projectId) where.projectId = filters.projectId;
@@ -47,6 +48,9 @@ export async function listAuditLogs(filters: {
     where.createdAt = {};
     if (filters.from) (where.createdAt as Record<string, unknown>).gte = filters.from;
     if (filters.to) (where.createdAt as Record<string, unknown>).lte = filters.to;
+  }
+  if (filters.ownerId) {
+    where.project = { ownerId: filters.ownerId };
   }
 
   return db.auditLog.findMany({

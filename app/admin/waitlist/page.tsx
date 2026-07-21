@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import AdminNav from "@/components/AdminNav";
 import { listWaitlistForProject } from "@/lib/data/waitlist";
 import { listProjects } from "@/lib/data/projects";
@@ -25,14 +26,17 @@ export default async function AdminWaitlistPage({
 }: {
   searchParams: { projectId?: string };
 }) {
-  const projects = await listProjects();
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  const ownerId = role === "org_owner" ? undefined : session?.user?.id;
+  const projects = await listProjects(ownerId);
   const projectId = searchParams.projectId ?? projects[0]?.id ?? "";
   const entries = projectId ? await listWaitlistForProject(projectId) : [];
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto p-6">
-        <AdminNav current="/admin/waitlist" />
+        <AdminNav current="/admin/waitlist" role={role} />
 
         <div className="mb-6">
           <h1 className="text-xl font-bold text-gray-900">Waitlist</h1>

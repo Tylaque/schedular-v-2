@@ -25,6 +25,7 @@ export type Project = {
   status: "draft" | "active" | "paused" | "closed" | "archived";
   branding: { logoInitial: string; primaryColor: string; senderName: string };
   availabilityPeriodDays: number;
+  ownerId: string | null;
 };
 
 export type SlotGridDay = {
@@ -144,4 +145,13 @@ export function isSessionInPast(dateKey: string, time: string, projectTimezone: 
   const utcCandidate = Date.UTC(y, m - 1, d, h, min);
   const offsetMinutes = getOffsetMinutesForDate(dateKey, projectTimezone);
   return utcCandidate - offsetMinutes * 60000 < Date.now();
+}
+
+export function hoursUntilSession(dateKey: string, time: string, projectTimezone: string): number {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const [h, min] = time.split(":").map(Number);
+  const utcSession = Date.UTC(y, m - 1, d, h, min);
+  const offsetMinutes = getOffsetMinutesForDate(dateKey, projectTimezone);
+  const sessionLocal = utcSession - offsetMinutes * 60000;
+  return (sessionLocal - Date.now()) / 3600000;
 }

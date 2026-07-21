@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createProjectAction, updateProjectAction } from "@/lib/actions";
+import { createProjectAction, updateProjectAction, inviteAssociateAction } from "@/lib/actions";
 import type { Project } from "@/lib/slotHelpers";
 
 const STATUS_OPTIONS: {
@@ -34,6 +34,7 @@ type FormData = {
   maxSessionsPerAdminPerDay: number;
   sessionCapacity: number;
   admins: string[];
+  ownerId: string;
   status: "draft" | "active" | "paused" | "closed" | "archived";
   logoInitial: string;
   primaryColor: string;
@@ -44,7 +45,9 @@ type FormData = {
 
 type ValidationErrors = Partial<Record<keyof FormData, string>>;
 
-type AdminOption = { id: string; name: string; initials: string; email: string };
+type AdminOption = { id: string; name: string; initials: string; email: string; accountType: string | null; role: string };
+
+type SuperAdminOption = { id: string; name: string; email: string; role: string };
 
 function futureDateString(days: number): string {
   const d = new Date();
@@ -62,16 +65,19 @@ export default function ProjectForm({
   const router = useRouter();
   const isEdit = mode === "edit";
   const [allAdmins, setAllAdmins] = useState<AdminOption[]>([]);
+  const [superAdmins, setSuperAdmins] = useState<SuperAdminOption[]>([]);
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch("/api/admins");
-        if (res.ok) {
-          setAllAdmins(await res.json());
-        }
+        const [adminsRes, superRes] = await Promise.all([
+          fetch("/api/admins"),
+          fetch("/api/super-admins"),
+        ]);
+        if (adminsRes.ok) setAllAdmins(await adminsRes.json());
+        if (superRes.ok) setSuperAdmins(await superRes.json());
       } catch {
-        // admins list is empty
+        // lists are empty
       }
     }
     load();
@@ -94,6 +100,7 @@ export default function ProjectForm({
         maxSessionsPerAdminPerDay: initialProject.maxSessionsPerAdminPerDay,
         sessionCapacity: initialProject.sessionCapacity,
         admins: initialProject.admins.map((a) => a.id),
+        ownerId: initialProject.ownerId ?? "",
         status: initialProject.status,
         logoInitial: initialProject.branding.logoInitial,
         primaryColor: initialProject.branding.primaryColor,
@@ -117,6 +124,7 @@ export default function ProjectForm({
       maxSessionsPerAdminPerDay: 3,
       sessionCapacity: 1,
       admins: [],
+      ownerId: "",
       status: "draft",
       logoInitial: "",
       primaryColor: COLOR_SWATCHES[0],
@@ -186,6 +194,7 @@ export default function ProjectForm({
       branding,
       availabilityPeriodDays: data.availabilityPeriodDays,
       adminIds: data.admins,
+      ownerId: data.ownerId || undefined,
     };
 
     try {
@@ -447,9 +456,43 @@ export default function ProjectForm({
                 className="rounded border-gray-300 text-brand-500"
               />
               {admin.name}
+
             </label>
           ))}
         </div>
+
+        <InviteAssociateForm
+          projectId={initialProject?.id}
+          onInvited={(newAdmin) => {
+            if (!data.admins.includes(newAdmin.id)) {
+              update("admins", [...data.admins, newAdmin.id]);
+            }
+            setAllAdmins((prev) => {
+              if (prev.find((a) => a.id === newAdmin.id)) return prev;
+              return [...prev, newAdmin];
+            });
+          }}
+        />
+      </div>
+
+      {/* Owner assignment */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <h2 className="text-sm font-bold text-gray-900 mb-4">Project owner</h2>
+        {superAdmins.length === 0 && (
+          <p className="text-sm text-gray-400">Loading owners...</p>
+        )}
+        <select
+          value={data.ownerId}
+          onChange={(e) => update("ownerId", e.target.value)}
+          className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white"
+        >
+          <option value="">Unassigned</option>
+          {superAdmins.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name} ({a.role})
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Status */}
@@ -500,6 +543,73 @@ export default function ProjectForm({
           Cancel
         </button>
       </div>
+    </div>
+  );
+}
+
+function InviteAssociateForm({
+  projectId,
+  onInvited,
+}: {
+  projectId?: string;
+  onInvited: (admin: { id: string; name: string; initials: string; email: string; accountType: string | null; role: string }) => void;
+}) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr("");
+    setSending(true);
+    try {
+      const admin = await inviteAssociateAction({ name, email, projectId });
+      onInvited(admin);
+      setName("");
+      setEmail("");
+      setDone(true);
+      setTimeout(() => setDone(false), 4000);
+    } catch (e: any) {
+      setErr(e?.message ?? "Failed to invite. Try again.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-gray-200">
+      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Invite a new associate</h3>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Name"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+          />
+          <input
+            type="email"
+            placeholder="you@example.com"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+          />
+          <button
+            type="submit"
+            disabled={sending}
+            className="bg-brand-500 hover:bg-brand-600 disabled:bg-brand-300 text-white text-sm font-semibold rounded-lg px-4 py-2 shrink-0"
+          >
+            {sending ? "Sending..." : "Invite"}
+          </button>
+        </div>
+        {err && <p className="text-xs text-red-600">{err}</p>}
+        {done && <p className="text-xs text-green-600">Invitation sent! The associate has been added to this project.</p>}
+      </form>
     </div>
   );
 }

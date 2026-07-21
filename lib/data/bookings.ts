@@ -23,6 +23,49 @@ function timesOverlap(
 
 type AdminInfo = { id: string; name: string; initials: string };
 
+async function sendNotification(category: "booking_confirmation" | "cancellation_notice" | "reschedule_notice", booking: {
+  projectId: string;
+  participantName: string;
+  participantEmail: string;
+  dateKey: string;
+  time: string;
+  adminId: string;
+}, extraCtx?: Record<string, string>) {
+  try {
+    const [project, admin] = await Promise.all([
+      db.project.findUnique({ where: { id: booking.projectId }, select: { name: true, company: true, timezone: true } }),
+      db.admin.findUnique({ where: { id: booking.adminId }, select: { name: true } }),
+    ]);
+    const template = await getActiveTemplate(category, booking.projectId);
+    const ctx: Record<string, string> = {
+      participant_name: booking.participantName,
+      project_name: project?.name ?? "",
+      company_name: project?.company ?? "",
+      session_date: booking.dateKey,
+      session_time: booking.time,
+      admin_name: admin?.name ?? "",
+      time_zone: project?.timezone ?? "",
+      meeting_link: "",
+      booking_link: `${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/book/${booking.projectId}`,
+      company_logo: "",
+      ...extraCtx,
+    };
+    const rendered = renderTemplate(template, ctx);
+    await logNotification({
+      templateId: template.id,
+      category,
+      projectId: booking.projectId,
+      recipientEmail: booking.participantEmail,
+      recipientRole: "participant",
+      subject: rendered.subject,
+      renderedBody: rendered.bodyHtml,
+      status: "sent",
+    });
+  } catch (err) {
+    console.error(`Failed to send ${category} notification:`, err);
+  }
+}
+
 export async function pickAvailableAdmin(
   projectId: string,
   dateKey: string,
@@ -47,7 +90,11 @@ export async function pickAvailableAdmin(
   });
   if (eligible.length === 0) return null;
 
+  // All admins are eligible regardless of accountType (Teams meetings are
+  // always hosted by the owning super_admin/org_owner, never by the
+  // assigned admin-tier admin).
   const candidateIds = eligible.map((e) => e.adminId);
+  if (candidateIds.length === 0) return null;
 
   const bookingsToday = await client.booking.findMany({
     where: {
@@ -217,6 +264,18 @@ export async function createBooking(input: {
           adminId: result.booking.adminId,
         },
       }).catch(() => {});
+
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+      sendNotification("booking_confirmation", {
+        projectId: input.projectId,
+        participantName: input.participantName,
+        participantEmail: input.participantEmail,
+        dateKey: input.dateKey,
+        time: input.time,
+        adminId: result.booking.adminId,
+      }, {
+        manage_booking_link: `${baseUrl}/manage/${result.booking.id}`,
+      }).catch(() => {});
     }
 
     return result;
@@ -231,7 +290,7 @@ export async function createBooking(input: {
   }
 }
 
-export async function cancelBooking(bookingId: string) {
+export async function cancelBooking(bookingId: string, actor?: { actorType: string; actorLabel: string }) {
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
     select: { id: true, projectId: true, dateKey: true, time: true, participantName: true, participantEmail: true, adminId: true, status: true },
@@ -246,9 +305,9 @@ export async function cancelBooking(bookingId: string) {
 
   recordAudit({
     action: "booking_cancelled",
-    actorType: "admin",
+    actorType: actor?.actorType ?? "admin",
     actorId: booking.adminId,
-    actorLabel: "System Admin",
+    actorLabel: actor?.actorLabel ?? "System Admin",
     entityType: "Booking",
     entityId: booking.id,
     projectId: booking.projectId,
@@ -259,6 +318,18 @@ export async function cancelBooking(bookingId: string) {
   offerNextWaitlistEntry(booking.projectId, booking.dateKey, booking.time).catch((err) => {
     console.error("Failed to offer waitlist entry after cancellation:", err);
   });
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  sendNotification("cancellation_notice", {
+    projectId: booking.projectId,
+    participantName: booking.participantName,
+    participantEmail: booking.participantEmail,
+    dateKey: booking.dateKey,
+    time: booking.time,
+    adminId: booking.adminId,
+  }, {
+    manage_booking_link: `${baseUrl}/manage/${booking.id}`,
+  }).catch(() => {});
 
   return updated;
 }
@@ -275,7 +346,7 @@ export async function rescheduleBookingTime(
   bookingId: string,
   newDateKey: string,
   newTime: string,
-  options?: { keepSameAdminIfPossible?: boolean }
+  options?: { keepSameAdminIfPossible?: boolean; actor?: { actorType: string; actorLabel: string } }
 ): Promise<RescheduleResult> {
   const original = await db.booking.findUnique({
     where: { id: bookingId },
@@ -345,11 +416,12 @@ export async function rescheduleBookingTime(
     });
 
     if (result.ok) {
+      const a = options?.actor ?? { actorType: "admin", actorLabel: "System Admin" };
       recordAudit({
         action: "booking_rescheduled",
-        actorType: "admin",
+        actorType: a.actorType,
         actorId: result.oldBooking.adminId,
-        actorLabel: "System Admin",
+        actorLabel: a.actorLabel,
         entityType: "Booking",
         entityId: original.id,
         projectId: original.projectId,
@@ -361,6 +433,7 @@ export async function rescheduleBookingTime(
         try {
           const project = await db.project.findUnique({ where: { id: original.projectId }, select: { name: true, company: true } });
           const template = await getActiveTemplate("reschedule_notice", original.projectId);
+          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
           const ctx = {
             participant_name: original.participantName,
             project_name: project?.name ?? "",
@@ -370,7 +443,8 @@ export async function rescheduleBookingTime(
             admin_name: "",
             time_zone: "",
             meeting_link: "",
-            booking_link: `${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/book/${original.projectId}`,
+            booking_link: `${baseUrl}/book/${original.projectId}`,
+            manage_booking_link: `${baseUrl}/manage/${original.id}`,
             company_logo: "",
             old_session_date: original.dateKey,
             old_session_time: original.time,

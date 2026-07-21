@@ -1,6 +1,12 @@
 import Link from "next/link";
 
-const TABS = [
+type AdminNavProps = {
+  current: string;
+  role?: string;
+};
+
+const ORG_OWNER_TABS = [
+  { href: "/admin/my-area", label: "My Area" },
   { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/my-dashboard", label: "My Dashboard" },
   { href: "/admin/calendar", label: "Calendar" },
@@ -13,10 +19,30 @@ const TABS = [
   { href: "/admin/waitlist", label: "Waitlist" },
 ];
 
-export default function AdminNav({ current }: { current: string }) {
+const SUPER_ADMIN_TABS = [
+  { href: "/admin/my-area", label: "My Area" },
+  { href: "/admin/my-dashboard", label: "My Dashboard" },
+  { href: "/admin/calendar", label: "Calendar" },
+  { href: "/admin/projects", label: "Projects" },
+  { href: "/admin/templates", label: "Templates" },
+  { href: "/admin/templates/logs", label: "Notification Logs" },
+  { href: "/admin/audit", label: "Audit Log" },
+  { href: "/admin/reports", label: "Reports" },
+];
+
+const ADMIN_TABS = [
+  { href: "/admin/my-area", label: "My Area" },
+];
+
+export default function AdminNav({ current, role }: AdminNavProps) {
+  const tabs =
+    role === "admin" ? ADMIN_TABS :
+    role === "super_admin" ? SUPER_ADMIN_TABS :
+    ORG_OWNER_TABS;
+
   return (
     <nav className="flex items-center gap-6 mb-6 border-b border-gray-200 pb-3">
-      {TABS.map((tab) => (
+      {tabs.map((tab) => (
         <Link
           key={tab.href}
           href={tab.href}

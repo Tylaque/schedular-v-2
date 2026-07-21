@@ -1,12 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import Link from "next/link";
-import { Calendar } from "lucide-react";
+import { Calendar, ArrowLeft } from "lucide-react";
 
 export default function SignUpPage() {
-  const router = useRouter();
-
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="border-b border-gray-200 bg-white">
@@ -25,60 +23,42 @@ export default function SignUpPage() {
 
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
-          <h1 className="text-2xl font-bold text-gray-900 text-center mb-1">Create your account</h1>
-          <p className="text-sm text-gray-500 text-center mb-8">Get started with Scheduler.</p>
+          <h1 className="text-2xl font-bold text-gray-900 text-center mb-1">Access by invitation only</h1>
+          <p className="text-sm text-gray-500 text-center mb-8">
+            Scheduler accounts are created by your organisation owner.
+          </p>
 
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              router.push("/admin/projects");
-            }}
+          <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 mb-6">
+            <p className="text-sm text-blue-800 leading-relaxed">
+              <strong>Already have an invite?</strong> Check your email for a setup link from your organisation
+              owner. If you have an organisational Microsoft account, you can sign in below.
+            </p>
+          </div>
+
+          <button
+            onClick={() => signIn("azure-ad", { redirectTo: "/admin/projects" })}
+            className="w-full bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-lg py-2.5 flex items-center justify-center gap-2"
           >
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-gray-500">First name</label>
-                <input
-                  placeholder="Jane"
-                  className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500">Last name</label>
-                <input
-                  placeholder="Doe"
-                  className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500">Email</label>
-              <input
-                type="email"
-                placeholder="you@company.com"
-                className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500">Password</label>
-              <input
-                type="password"
-                placeholder="At least 8 characters"
-                className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
-              />
-            </div>
-            <button
-              type="submit"
-              className="mt-1 w-full bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg py-2.5"
-            >
-              Create account
-            </button>
-          </form>
+            <svg viewBox="0 0 21 21" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+              <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+              <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+              <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+            </svg>
+            Sign in with Microsoft
+          </button>
 
           <p className="text-xs text-gray-400 text-center mt-6">
             Already have an account?{" "}
             <Link href="/auth/signin" className="text-brand-600 hover:text-brand-700 font-medium">
               Sign in
+            </Link>
+          </p>
+
+          <p className="text-xs text-gray-400 text-center mt-3">
+            <Link href="/auth/signin" className="text-gray-500 hover:text-gray-700 inline-flex items-center gap-1">
+              <ArrowLeft className="w-3 h-3" />
+              Back to sign in
             </Link>
           </p>
         </div>

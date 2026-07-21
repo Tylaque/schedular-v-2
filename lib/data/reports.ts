@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
 export type ReportRow = Record<string, string | number | boolean | null>;
 
@@ -90,28 +91,32 @@ export const REPORT_DEFINITIONS: ReportDefinition[] = [
   },
 ];
 
-export async function generateReport(slug: string): Promise<ReportRow[]> {
+export async function generateReport(slug: string, ownerId?: string): Promise<ReportRow[]> {
   switch (slug) {
     case "bookings-summary":
-      return generateBookingsSummary();
+      return generateBookingsSummary(ownerId);
     case "admin-utilization":
-      return generateAdminUtilization();
+      return generateAdminUtilization(ownerId);
     case "participant-activity":
-      return generateParticipantActivity();
+      return generateParticipantActivity(ownerId);
     case "project-progress":
-      return generateProjectProgress();
+      return generateProjectProgress(ownerId);
     case "template-usage":
-      return generateTemplateUsage();
+      return generateTemplateUsage(ownerId);
     case "notification-log":
-      return generateNotificationLog();
+      return generateNotificationLog(ownerId);
     default:
       throw new Error(`Unknown report slug: ${slug}`);
   }
 }
 
-async function generateBookingsSummary(): Promise<ReportRow[]> {
+async function generateBookingsSummary(ownerId?: string): Promise<ReportRow[]> {
+  const where: Prisma.BookingWhereInput = { status: "confirmed" };
+  if (ownerId) {
+    where.project = { ownerId };
+  }
   const rows = await db.booking.findMany({
-    where: { status: "confirmed" },
+    where,
     include: { project: { select: { name: true } }, admin: { select: { name: true } } },
     orderBy: [{ dateKey: "asc" }, { time: "asc" }],
   });
@@ -127,8 +132,10 @@ async function generateBookingsSummary(): Promise<ReportRow[]> {
   }));
 }
 
-async function generateAdminUtilization(): Promise<ReportRow[]> {
+async function generateAdminUtilization(ownerId?: string): Promise<ReportRow[]> {
+  const projectFilter = ownerId ? { ownerId } : {};
   const projects = await db.project.findMany({
+    where: projectFilter,
     select: { id: true, name: true },
   });
   const rows: ReportRow[] = [];
@@ -153,8 +160,10 @@ async function generateAdminUtilization(): Promise<ReportRow[]> {
   return rows;
 }
 
-async function generateParticipantActivity(): Promise<ReportRow[]> {
+async function generateParticipantActivity(ownerId?: string): Promise<ReportRow[]> {
+  const where = ownerId ? { project: { ownerId } } : {};
   const participants = await db.participant.findMany({
+    where,
     include: { project: { select: { name: true } } },
     orderBy: [{ projectId: "asc" }, { email: "asc" }],
   });
@@ -174,8 +183,12 @@ async function generateParticipantActivity(): Promise<ReportRow[]> {
   return rows;
 }
 
-async function generateProjectProgress(): Promise<ReportRow[]> {
-  const projects = await db.project.findMany({ select: { id: true, name: true, status: true, availabilityPeriodDays: true } });
+async function generateProjectProgress(ownerId?: string): Promise<ReportRow[]> {
+  const projectFilter = ownerId ? { ownerId } : {};
+  const projects = await db.project.findMany({
+    where: projectFilter,
+    select: { id: true, name: true, status: true, availabilityPeriodDays: true },
+  });
   const rows: ReportRow[] = [];
   for (const project of projects) {
     const availableSlots = await db.adminAvailability.count({
@@ -195,11 +208,15 @@ async function generateProjectProgress(): Promise<ReportRow[]> {
   return rows;
 }
 
-async function generateTemplateUsage(): Promise<ReportRow[]> {
+async function generateTemplateUsage(ownerId?: string): Promise<ReportRow[]> {
   const templates = await db.emailTemplate.findMany({
     orderBy: [{ category: "asc" }, { version: "asc" }],
   });
-  const projects = await db.project.findMany({ select: { id: true, name: true } });
+  const projectFilter = ownerId ? { ownerId } : {};
+  const projects = await db.project.findMany({
+    where: projectFilter,
+    select: { id: true, name: true },
+  });
   const projectMap = new Map(projects.map((p) => [p.id, p.name]));
   return templates.map((t) => ({
     category: t.category,
@@ -212,8 +229,10 @@ async function generateTemplateUsage(): Promise<ReportRow[]> {
   }));
 }
 
-async function generateNotificationLog(): Promise<ReportRow[]> {
+async function generateNotificationLog(ownerId?: string): Promise<ReportRow[]> {
+  const where = ownerId ? { project: { ownerId } } : {};
   const logs = await db.notificationLog.findMany({
+    where,
     orderBy: { createdAt: "desc" },
     take: 500,
   });

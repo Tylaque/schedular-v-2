@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import Link from "next/link";
 import { listNotificationLogs, CATEGORY_LABEL } from "@/lib/data/notifications";
 import { CheckCircle2, XCircle, Send } from "lucide-react";
@@ -18,12 +19,14 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 };
 
 export default async function NotificationLogsPage() {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
   const logs = await listNotificationLogs();
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto p-6">
-        <AdminNav current="/admin/templates/logs" />
+        <AdminNav current="/admin/templates/logs" role={role} />
         <div className="mb-6">
           <h1 className="text-xl font-bold text-gray-900">Notification Logs</h1>
           <p className="text-sm text-gray-500 mt-1">All email notifications sent by the system.</p>

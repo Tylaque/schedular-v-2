@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import Link from "next/link";
 import { listTemplates } from "@/lib/data/templates";
 import { listProjects } from "@/lib/data/projects";
@@ -18,14 +19,17 @@ export default async function AdminTemplatesPage({
 }: {
   searchParams: { projectId?: string };
 }) {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  const ownerId = role === "org_owner" ? undefined : session?.user?.id;
   const selectedProjectId = searchParams.projectId ?? "";
   const templates = await listTemplates(selectedProjectId || undefined);
-  const projects = await listProjects();
+  const projects = await listProjects(ownerId);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto p-6">
-        <AdminNav current="/admin/templates" />
+        <AdminNav current="/admin/templates" role={role} />
 
         <div className="flex items-center justify-between mb-6">
           <div>

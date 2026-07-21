@@ -10,8 +10,10 @@ function sessionInPast(dateKey: string, time: string, timezone: string): boolean
   return isSessionInPast(dateKey, time, timezone);
 }
 
-export async function getSuperAdminStats() {
+export async function getSuperAdminStats(ownerId?: string) {
+  const projectFilter = ownerId ? { ownerId } : {};
   const projects = await db.project.findMany({
+    where: projectFilter,
     select: { status: true, timezone: true },
   });
 
@@ -21,14 +23,18 @@ export async function getSuperAdminStats() {
     projectsByStatus[p.status] = (projectsByStatus[p.status] ?? 0) + 1;
   }
 
-  const totalParticipants = await db.participant.count();
+  const totalParticipants = await db.participant.count({
+    where: ownerId ? { project: { ownerId } } : {},
+  });
 
   const confirmedBookings = await db.booking.findMany({
-    where: { status: "confirmed" },
+    where: { status: "confirmed", ...(ownerId ? { project: { ownerId } } : {}) },
     select: { dateKey: true, time: true, project: { select: { timezone: true } } },
   });
 
-  const cancelledSessions = await db.booking.count({ where: { status: "cancelled" } });
+  const cancelledSessions = await db.booking.count({
+    where: { status: "cancelled", ...(ownerId ? { project: { ownerId } } : {}) },
+  });
 
   let upcomingSessions = 0;
   let completedSessions = 0;
@@ -52,8 +58,15 @@ export async function getSuperAdminStats() {
   };
 }
 
-export async function getAdminUtilization() {
-  const admins = await db.admin.findMany({ select: { id: true, name: true } });
+export async function getAdminUtilization(ownerId?: string) {
+  // When scoped, only include admins assigned to the owner's projects
+  const adminFilter = ownerId
+    ? { projectAssignments: { some: { project: { ownerId } } } }
+    : {};
+  const admins = await db.admin.findMany({
+    where: adminFilter,
+    select: { id: true, name: true },
+  });
   const result: {
     adminId: string;
     adminName: string;
@@ -63,9 +76,13 @@ export async function getAdminUtilization() {
   }[] = [];
 
   for (const admin of admins) {
+    const bookingFilter: Record<string, unknown> = { adminId: admin.id, status: "confirmed" };
+    if (ownerId) {
+      bookingFilter.project = { ownerId };
+    }
     const [availCount, bookingCount] = await Promise.all([
       db.adminAvailability.count({ where: { adminId: admin.id } }),
-      db.booking.count({ where: { adminId: admin.id, status: "confirmed" } }),
+      db.booking.count({ where: bookingFilter as any }),
     ]);
     result.push({
       adminId: admin.id,
@@ -89,8 +106,10 @@ export type ProjectProgressItem = {
   participantsScheduledPercent: number;
 };
 
-export async function getProjectProgress(): Promise<ProjectProgressItem[]> {
+export async function getProjectProgress(ownerId?: string): Promise<ProjectProgressItem[]> {
+  const projectFilter = ownerId ? { ownerId } : {};
   const projects = await db.project.findMany({
+    where: projectFilter,
     select: {
       id: true,
       slug: true,
@@ -230,6 +249,7 @@ type CalendarFilters = {
   projectId?: string;
   adminId?: string;
   participantSearch?: string;
+  ownerId?: string;
 };
 
 export async function getCalendarEvents(filters: CalendarFilters) {
@@ -243,6 +263,9 @@ export async function getCalendarEvents(filters: CalendarFilters) {
 
   if (filters.projectId) where.projectId = filters.projectId;
   if (filters.adminId) where.adminId = filters.adminId;
+  if (filters.ownerId) {
+    where.project = { ownerId: filters.ownerId };
+  }
 
   if (filters.participantSearch) {
     where.OR = [

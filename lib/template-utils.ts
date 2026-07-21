@@ -25,12 +25,14 @@ export const ALL_CATEGORIES: EmailCategoryTuple[] = [
 export const PLACEHOLDER_TOKENS = [
   "participant_name",
   "admin_name",
+  "admin_email",
   "project_name",
   "session_date",
   "session_time",
   "time_zone",
   "meeting_link",
   "booking_link",
+  "manage_booking_link",
   "company_logo",
   "company_name",
 ];
@@ -44,6 +46,7 @@ export const MOCK_PREVIEW_CONTEXT: Record<string, string> = {
   time_zone: "Africa/Nairobi (GMT+3)",
   meeting_link: "https://teams.microsoft.com/meeting/example",
   booking_link: "http://localhost:3000/book/senior-pm-interview",
+  manage_booking_link: "http://localhost:3000/manage/cmrbookingid123",
   company_logo: "",
   company_name: "Northwind Labs",
 };

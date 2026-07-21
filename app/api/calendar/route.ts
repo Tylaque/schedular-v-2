@@ -1,9 +1,14 @@
+import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { getCalendarEvents } from "@/lib/data/dashboard";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  const ownerId = role === "org_owner" ? undefined : session?.user?.id;
+
   const params = request.nextUrl.searchParams;
   const from = params.get("from");
   const to = params.get("to");
@@ -16,6 +21,7 @@ export async function GET(request: NextRequest) {
     projectId: params.get("projectId") ?? undefined,
     adminId: params.get("adminId") ?? undefined,
     participantSearch: params.get("participantSearch") ?? undefined,
+    ownerId,
   });
   return NextResponse.json(events);
 }
