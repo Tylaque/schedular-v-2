@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createProjectAction, updateProjectAction, inviteAssociateAction } from "@/lib/actions";
 import type { Project } from "@/lib/slotHelpers";
+import { OwnerGraphStatus } from "@/components/OwnerGraphStatus";
 
 const STATUS_OPTIONS: {
   value: "draft" | "active" | "paused" | "closed" | "archived";
@@ -493,6 +494,9 @@ export default function ProjectForm({
             </option>
           ))}
         </select>
+        <div className="mt-2">
+          <OwnerGraphStatus ownerId={data.ownerId} />
+        </div>
       </div>
 
       {/* Status */}

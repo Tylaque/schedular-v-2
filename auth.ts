@@ -1,8 +1,7 @@
 import NextAuth from "next-auth";
 import AzureAD from "next-auth/providers/azure-ad";
 import Credentials from "next-auth/providers/credentials";
-
-const AZURE_AD_TOKEN_ENDPOINT = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+import { refreshAzureToken } from "@/lib/graph/refresh";
 
 const CONSUMER_TENANT = "9188040d-6c67-4c5b-b112-36a304b66dad";
 
@@ -22,45 +21,21 @@ async function getAdapter() {
 }
 
 async function refreshAccessToken(token: any) {
-  try {
-    const body = new URLSearchParams({
-      client_id: process.env.AZURE_AD_CLIENT_ID!,
-      client_secret: process.env.AZURE_AD_CLIENT_SECRET!,
-      grant_type: "refresh_token",
-      refresh_token: token.refresh_token,
-    });
+  if (!token.accountId) return { ...token, error: "RefreshAccessTokenError" };
 
-    const res = await fetch(AZURE_AD_TOKEN_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body,
-    });
+  const updated = await refreshAzureToken(token.accountId);
+  if (!updated) return { ...token, error: "RefreshAccessTokenError" };
 
-    const refreshed = await res.json();
-    if (!res.ok) throw refreshed;
+  const db = await getDb();
+  const account = await db.account.findUnique({ where: { id: token.accountId } });
 
-    if (token.accountId) {
-      const db = await getDb();
-      await db.account.update({
-        where: { id: token.accountId },
-        data: {
-          access_token: refreshed.access_token,
-          expires_at: Math.floor(Date.now() / 1000 + refreshed.expires_in),
-          refresh_token: refreshed.refresh_token ?? token.refresh_token,
-        },
-      });
-    }
-
-    return {
-      ...token,
-      access_token: refreshed.access_token,
-      expires_at: Math.floor(Date.now() / 1000 + refreshed.expires_in),
-      refresh_token: refreshed.refresh_token ?? token.refresh_token,
-    };
-  } catch (error) {
-    console.error("Failed to refresh access token", error);
-    return { ...token, error: "RefreshAccessTokenError" };
-  }
+  return {
+    ...token,
+    access_token: updated,
+    expires_at: account?.expires_at ?? token.expires_at,
+    refresh_token: account?.refresh_token ?? token.refresh_token,
+    error: undefined,
+  };
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({

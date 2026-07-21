@@ -39,6 +39,14 @@ enum BookingStatus {
   rescheduled
 }
 
+enum TeamsProvisionStatus {
+  pending
+  provisioned
+  failed_personal_account
+  failed_insufficient_permissions
+  failed_unknown
+}
+
 enum EmailCategory {
   admin_invitation
   availability_request
@@ -209,9 +217,12 @@ model Booking {
   dateKey          String
   time             String
   status           BookingStatus @default(confirmed)
-  teamsMeetingId   String?
-  calendarEventId  String?
-  rescheduledFrom  Booking?      @relation("BookingReschedule", fields: [rescheduledFromId], references: [id])
+  teamsMeetingId      String?
+  calendarEventId     String?
+  teamsProvisionStatus TeamsProvisionStatus?
+  teamsJoinUrl        String?
+  teamsErrorDetail    String?
+  rescheduledFrom     Booking?      @relation("BookingReschedule", fields: [rescheduledFromId], references: [id])
   rescheduledFromId String?      @unique
   rescheduledTo    Booking?      @relation("BookingReschedule")
   createdAt        DateTime      @default(now())

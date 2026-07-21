@@ -2,6 +2,8 @@ import { auth } from "@/auth";
 import Link from "next/link";
 import { listProjects } from "@/lib/data/projects";
 import type { ProjectWithAdmins } from "@/lib/data/projects";
+import { getOwnerGraphStatus } from "@/lib/graph/tokens";
+import { GraphStatusBadge } from "@/components/GraphStatusBadge";
 import AdminNav from "@/components/AdminNav";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +33,13 @@ export default async function AdminProjectsPage() {
   const role = (session?.user as any)?.role;
   const ownerId = role === "org_owner" ? undefined : session?.user?.id;
   const projects = await listProjects(ownerId);
+
+  const uniqueOwnderIds = [...new Set(projects.map((p) => p.ownerId).filter(Boolean))] as string[];
+  const statuses = await Promise.all(
+    uniqueOwnderIds.map((oid) => getOwnerGraphStatus(oid).catch(() => null))
+  );
+  const ownerStatusMap = new Map<string, Awaited<ReturnType<typeof getOwnerGraphStatus>> | null>();
+  uniqueOwnderIds.forEach((oid, i) => ownerStatusMap.set(oid, statuses[i]));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -83,7 +92,16 @@ export default async function AdminProjectsPage() {
                   <tr key={p.slug} className="border-b border-gray-200 last:border-b-0">
                     <td className="px-4 py-3 font-medium text-gray-900">{p.name}</td>
                     <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-                    <td className="px-4 py-3 text-gray-500">{p.ownerName ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-gray-500">{p.ownerName ?? "—"}</span>
+                        {(() => {
+                          const s = p.ownerId ? ownerStatusMap.get(p.ownerId) : undefined;
+                          const badgeStatus = s?.connected ? "connected" : (s?.reason ?? null);
+                          return badgeStatus ? <GraphStatusBadge status={badgeStatus as any} /> : null;
+                        })()}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-gray-500">{p.admins.length}</td>
                     <td className="px-4 py-3 text-gray-500">
                       {p.availabilityLockDate.toLocaleDateString("en-US", {

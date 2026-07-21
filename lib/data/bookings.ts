@@ -3,6 +3,7 @@ import { recordAudit } from "@/lib/data/audit";
 import { offerNextWaitlistEntry } from "@/lib/data/waitlist";
 import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
 import { logNotification } from "@/lib/data/notifications";
+import { createMeetingEvent, deleteMeetingEvent, updateMeetingEventTime } from "@/lib/graph/client";
 import type { Prisma } from "@prisma/client";
 
 function parseMinutes(t: string): number {
@@ -24,6 +25,7 @@ function timesOverlap(
 type AdminInfo = { id: string; name: string; initials: string };
 
 async function sendNotification(category: "booking_confirmation" | "cancellation_notice" | "reschedule_notice", booking: {
+  id: string;
   projectId: string;
   participantName: string;
   participantEmail: string;
@@ -45,7 +47,7 @@ async function sendNotification(category: "booking_confirmation" | "cancellation
       session_time: booking.time,
       admin_name: admin?.name ?? "",
       time_zone: project?.timezone ?? "",
-      meeting_link: "",
+      meeting_link: `${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/manage/${booking.id}`,
       booking_link: `${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/book/${booking.projectId}`,
       company_logo: "",
       ...extraCtx,
@@ -170,6 +172,72 @@ type BookingOk = {
 type BookingErr = { ok: false; reason: "slot_full" | "no_admin_available" };
 type BookingResult = BookingOk | BookingErr;
 
+async function provisionTeamsMeeting(projectId: string, bookingId: string) {
+  const [project, booking] = await Promise.all([
+    db.project.findUnique({ where: { id: projectId }, select: { ownerId: true } }),
+    db.booking.findUnique({ where: { id: bookingId }, select: { id: true, projectId: true, participantName: true, participantEmail: true, dateKey: true, time: true } }),
+  ]);
+  if (!project?.ownerId || !booking) return;
+
+  const result = await createMeetingEvent(project.ownerId, {
+    id: booking.id,
+    projectId: booking.projectId,
+    participantName: booking.participantName,
+    participantEmail: booking.participantEmail,
+    dateKey: booking.dateKey,
+    time: booking.time,
+  });
+
+  if ("error" in result) {
+    const statusMap = {
+      personal: "failed_personal_account" as const,
+      insufficient_permissions: "failed_insufficient_permissions" as const,
+      unknown: "failed_unknown" as const,
+    };
+    await db.booking.update({
+      where: { id: bookingId },
+      data: {
+        teamsProvisionStatus: statusMap[result.error],
+        teamsErrorDetail: result.detail ?? result.error,
+      },
+    });
+  } else {
+    await db.booking.update({
+      where: { id: bookingId },
+      data: {
+        teamsMeetingId: result.teamsMeetingId,
+        calendarEventId: result.calendarEventId,
+        teamsJoinUrl: result.joinUrl,
+        teamsProvisionStatus: "provisioned",
+      },
+    });
+  }
+}
+
+async function removeTeamsMeeting(bookingId: string, ownerId: string, teamsMeetingId: string) {
+  const result = await deleteMeetingEvent(ownerId, teamsMeetingId);
+  if ("error" in result) {
+    console.error("Failed to delete Teams meeting for booking", bookingId, result.error);
+  }
+}
+
+async function updateTeamsMeetingTime(bookingId: string, ownerId: string, dateKey: string, time: string) {
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, projectId: true, participantName: true, participantEmail: true } });
+  if (!booking) return;
+
+  const result = await updateMeetingEventTime(ownerId, {
+    id: booking.id,
+    projectId: booking.projectId,
+    participantName: booking.participantName,
+    participantEmail: booking.participantEmail,
+    dateKey,
+    time,
+  });
+  if ("error" in result) {
+    console.error("Failed to update Teams meeting time for booking", bookingId, result.error);
+  }
+}
+
 export async function createBooking(input: {
   projectId: string;
   dateKey: string;
@@ -267,6 +335,7 @@ export async function createBooking(input: {
 
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
       sendNotification("booking_confirmation", {
+        id: result.booking.id,
         projectId: input.projectId,
         participantName: input.participantName,
         participantEmail: input.participantEmail,
@@ -276,6 +345,10 @@ export async function createBooking(input: {
       }, {
         manage_booking_link: `${baseUrl}/manage/${result.booking.id}`,
       }).catch(() => {});
+
+      provisionTeamsMeeting(input.projectId, result.booking.id).catch((err) => {
+        console.error("Failed to provision Teams meeting:", err);
+      });
     }
 
     return result;
@@ -293,7 +366,7 @@ export async function createBooking(input: {
 export async function cancelBooking(bookingId: string, actor?: { actorType: string; actorLabel: string }) {
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
-    select: { id: true, projectId: true, dateKey: true, time: true, participantName: true, participantEmail: true, adminId: true, status: true },
+    select: { id: true, projectId: true, dateKey: true, time: true, participantName: true, participantEmail: true, adminId: true, status: true, teamsMeetingId: true },
   });
   if (!booking || booking.status === "cancelled") return null;
 
@@ -319,8 +392,17 @@ export async function cancelBooking(bookingId: string, actor?: { actorType: stri
     console.error("Failed to offer waitlist entry after cancellation:", err);
   });
 
+  if (booking.teamsMeetingId) {
+    db.project.findUnique({ where: { id: booking.projectId }, select: { ownerId: true } }).then((project) => {
+      if (project?.ownerId) {
+        removeTeamsMeeting(booking.id, project.ownerId, booking.teamsMeetingId!).catch(() => {});
+      }
+    }).catch(() => {});
+  }
+
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   sendNotification("cancellation_notice", {
+    id: booking.id,
     projectId: booking.projectId,
     participantName: booking.participantName,
     participantEmail: booking.participantEmail,
@@ -350,7 +432,7 @@ export async function rescheduleBookingTime(
 ): Promise<RescheduleResult> {
   const original = await db.booking.findUnique({
     where: { id: bookingId },
-    select: { id: true, projectId: true, adminId: true, dateKey: true, time: true, participantName: true, participantEmail: true, status: true },
+    select: { id: true, projectId: true, adminId: true, dateKey: true, time: true, participantName: true, participantEmail: true, status: true, teamsMeetingId: true },
   });
   if (!original) return { ok: false, reason: "not_found" };
   if (original.status !== "confirmed") return { ok: false, reason: "already_resolved" };
@@ -468,6 +550,14 @@ export async function rescheduleBookingTime(
       offerNextWaitlistEntry(original.projectId, original.dateKey, original.time).catch((err) => {
         console.error("Failed to offer waitlist after reschedule:", err);
       });
+
+      if (original.teamsMeetingId) {
+        db.project.findUnique({ where: { id: original.projectId }, select: { ownerId: true } }).then((project) => {
+          if (project?.ownerId) {
+            updateTeamsMeetingTime(result.newBooking.id, project.ownerId, newDateKey, newTime).catch(() => {});
+          }
+        }).catch(() => {});
+      }
     }
 
     return result;
