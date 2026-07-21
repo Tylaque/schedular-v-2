@@ -3,6 +3,8 @@ import { isOrgOwner, isSuperAdmin } from "@/lib/authz";
 import { listProjects } from "@/lib/data/projects";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
