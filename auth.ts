@@ -1,7 +1,6 @@
 import NextAuth from "next-auth";
 import AzureAD from "next-auth/providers/azure-ad";
 import Credentials from "next-auth/providers/credentials";
-import { refreshAzureToken } from "@/lib/graph/refresh";
 
 const CONSUMER_TENANT = "9188040d-6c67-4c5b-b112-36a304b66dad";
 
@@ -23,6 +22,7 @@ async function getAdapter() {
 async function refreshAccessToken(token: any) {
   if (!token.accountId) return { ...token, error: "RefreshAccessTokenError" };
 
+  const { refreshAzureToken } = await import("@/lib/graph/refresh");
   const updated = await refreshAzureToken(token.accountId);
   if (!updated) return { ...token, error: "RefreshAccessTokenError" };
 
@@ -178,6 +178,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
+  trustHost: true,
   pages: {
     signIn: "/auth/signin",
   },
