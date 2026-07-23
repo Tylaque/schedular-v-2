@@ -6,7 +6,7 @@ const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
 export function buildAdminConsentUrl(): string {
   const params = new URLSearchParams({
     client_id: process.env.AZURE_AD_CLIENT_ID!,
-    redirect_uri: `${process.env.NEXTAUTH_URL!}/api/auth/callback/azure-ad`,
+    redirect_uri: `${process.env.AUTH_URL ?? process.env.NEXTAUTH_URL!}/api/auth/callback/azure-ad`,
     response_type: "code",
     scope: "openid profile email offline_access User.Read Calendars.ReadWrite OnlineMeetings.ReadWrite",
   });
