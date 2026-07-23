@@ -240,3 +240,7 @@ npx prisma db seed
 - Email/password auth is invite-only: the `inviteAssociate` function creates a `PasswordResetToken` and sends a setup link via Resend. Password reset uses the same token model.
 - All admin API routes and server actions enforce authentication and role-based authorization (`org_owner`/`super_admin`/`admin`).
 - Email templates are versioned and stored in the database, rendered with Handlebars-style `{{placeholder}}` substitution.
+
+## Production database notes
+
+Role changes, user edits, or data modifications made locally (against your dev database) are **not** reflected in production — they are separate databases. To make manual changes in production, use the **External Database URL** from Render's PostgreSQL resource dashboard (requires `?sslmode=require`). Do not put the production URL in `.env`; use it inline for one-off commands only.
