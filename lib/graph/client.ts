@@ -68,16 +68,6 @@ export async function createMeetingEvent(
         startDateTime: start,
         endDateTime: end,
         subject: `Booking: ${booking.participantName}`,
-        participants: {
-          attendees: [
-            {
-              identity: {
-                user: { displayName: booking.participantName },
-              },
-              role: "attendee",
-            },
-          ],
-        },
       }),
     });
 
