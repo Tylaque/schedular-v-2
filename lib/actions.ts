@@ -1,8 +1,10 @@
 "use server";
 
 import { auth } from "@/auth";
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import {
   createProject as dataCreateProject,
   getProjectBySlug,
@@ -76,11 +78,18 @@ export async function confirmBookingAction(input: {
   participantEmail: string;
 }): Promise<
   | { ok: true; adminName: string }
-  | { ok: false; reason: "slot_full" | "no_admin_available" }
+  | { ok: false; reason: "slot_full" | "no_admin_available" | "rate_limited" }
 > {
   if (!input.projectId || !input.participantEmail) {
     return { ok: false, reason: "slot_full" };
   }
+
+  const hdrs = await headers();
+  const ip = getClientIp(hdrs);
+  if (!checkRateLimit(`booking:${ip}`, 5, 15 * 60 * 1000)) {
+    return { ok: false, reason: "rate_limited" };
+  }
+
   const result = await createBooking(input);
   if (result.ok) {
     revalidatePath(`/book/${input.projectId}`);
@@ -172,6 +181,13 @@ export async function joinWaitlistAction(input: {
   if (!input.projectId || !input.email || !input.name) {
     throw new Error("Missing required fields");
   }
+
+  const hdrs = await headers();
+  const ip = getClientIp(hdrs);
+  if (!checkRateLimit(`waitlist:${ip}`, 5, 15 * 60 * 1000)) {
+    throw new Error("Too many requests. Please try again later.");
+  }
+
   await joinWaitlist(input);
   revalidatePath(`/book/${input.projectId}`);
 }
@@ -248,6 +264,12 @@ export async function inviteAssociateAction(input: {
   const role = (session?.user as any)?.role;
   if (!canViewAllProjects(role)) {
     redirect("/admin/my-area");
+  }
+
+  const hdrs = await headers();
+  const ip = getClientIp(hdrs);
+  if (!checkRateLimit(`invite:${ip}`, 10, 15 * 60 * 1000)) {
+    throw new Error("Too many requests. Please try again later.");
   }
 
   const admin = await inviteAssociate(input);

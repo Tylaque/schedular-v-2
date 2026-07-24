@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 function hashToken(raw: string): string {
   return crypto.createHash("sha256").update(raw).digest("hex");
@@ -37,6 +38,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    // Defense-in-depth: rate-limit token submissions to slow brute-force.
+    // Tokens are already 256-bit random values, so this is not the primary
+    // protection — just an additional layer.
+    const ip = getClientIp(request.headers);
+    if (!checkRateLimit(`setup-password:${ip}`, 10, 15 * 60 * 1000)) {
+      return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
+    }
+
     const { token: rawToken, password } = await request.json();
 
     if (!rawToken || !password) {

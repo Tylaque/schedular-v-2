@@ -1,6 +1,8 @@
 import NextAuth from "next-auth";
 import AzureAD from "next-auth/providers/azure-ad";
 import Credentials from "next-auth/providers/credentials";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { headers } from "next/headers";
 
 const CONSUMER_TENANT = "9188040d-6c67-4c5b-b112-36a304b66dad";
 
@@ -118,9 +120,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
+
+        // Rate-limit sign-in attempts: 10 per email+IP per 15 minutes.
+        // Generous enough to avoid locking out real users who mistype,
+        // strict enough to slow brute-force attacks.
+        const hdrs = await headers();
+        const ip = getClientIp(hdrs);
+        const email = (credentials.email as string).toLowerCase().trim();
+        if (!checkRateLimit(`signin:${email}:${ip}`, 10, 15 * 60 * 1000)) {
+          return null;
+        }
+
         const { verifyPassword } = await import("@/lib/password");
         const { db } = await import("@/lib/db");
-        const admin = await db.admin.findUnique({ where: { email: credentials.email as string } });
+        const admin = await db.admin.findUnique({ where: { email } });
         if (!admin || !admin.passwordHash) return null;
         const valid = await verifyPassword(credentials.password as string, admin.passwordHash);
         if (!valid) return null;

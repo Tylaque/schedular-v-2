@@ -3,9 +3,15 @@ import { Resend } from "resend";
 import { db } from "@/lib/db";
 import { createPasswordToken } from "@/lib/data/password-reset";
 import { logNotification } from "@/lib/data/notifications";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request.headers);
+    if (!checkRateLimit(`password-reset:${ip}`, 5, 15 * 60 * 1000)) {
+      return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
+    }
+
     const { email } = await request.json();
 
     if (!email || typeof email !== "string") {

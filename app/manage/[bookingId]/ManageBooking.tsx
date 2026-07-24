@@ -2,8 +2,8 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Globe, CalendarDays, Loader2, CheckCircle, XCircle } from "lucide-react";
-import { participantCancelAction, participantRescheduleAction } from "./actions";
+import { Clock, Globe, CalendarDays, Loader2, CheckCircle, XCircle, Mail } from "lucide-react";
+import { participantCancelAction, participantRescheduleAction, verifyManageEmail } from "./actions";
 import SlotPicker, { formatDate, formatTime } from "@/components/SlotPicker";
 
 type Booking = {
@@ -49,11 +49,35 @@ export default function ManageBooking({
   const [rescheduling, setRescheduling] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // Email verification gate
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [verifyEmail, setVerifyEmail] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+
+  const handleVerifyEmail = useCallback(async () => {
+    if (!verifyEmail.trim()) return;
+    setVerifying(true);
+    setVerifyError(null);
+    try {
+      const result = await verifyManageEmail(booking.id, verifyEmail.trim());
+      if (result.verified) {
+        setEmailVerified(true);
+      } else {
+        setVerifyError(result.error);
+      }
+    } catch {
+      setVerifyError("Something went wrong. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
+  }, [booking.id, verifyEmail]);
+
   const handleCancel = useCallback(async () => {
     setCancelling(true);
     setMessage(null);
     try {
-      await participantCancelAction(booking.id);
+      await participantCancelAction(booking.id, verifyEmail.trim());
       setMessage({ type: "success", text: "Your booking has been cancelled." });
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message ?? "Something went wrong." });
@@ -61,14 +85,14 @@ export default function ManageBooking({
       setCancelling(false);
       setShowConfirmCancel(false);
     }
-  }, [booking.id]);
+  }, [booking.id, verifyEmail]);
 
   const handleReschedule = useCallback(async () => {
     if (!selectedDateKey || !selectedTime) return;
     setRescheduling(true);
     setMessage(null);
     try {
-      const result = await participantRescheduleAction(booking.id, selectedDateKey, selectedTime);
+      const result = await participantRescheduleAction(booking.id, selectedDateKey, selectedTime, verifyEmail.trim());
       if (result.ok) {
         setMessage({ type: "success", text: "Your booking has been rescheduled!" });
         setSelectedDateKey(null);
@@ -82,7 +106,7 @@ export default function ManageBooking({
     } finally {
       setRescheduling(false);
     }
-  }, [booking.id, selectedDateKey, selectedTime]);
+  }, [booking.id, selectedDateKey, selectedTime, verifyEmail]);
 
   const formatHoursLeft = hoursLeft > 0
     ? `${Math.floor(hoursLeft)}h${Math.floor((hoursLeft % 1) * 60) > 0 ? ` ${Math.floor((hoursLeft % 1) * 60)}m` : ""}`
@@ -126,7 +150,39 @@ export default function ManageBooking({
             </div>
           ) : null}
 
-          {windowOpen && !message?.type.startsWith("success") && (
+          {windowOpen && !message?.type.startsWith("success") && !emailVerified && (
+            <div className="border-t pt-4 space-y-3">
+              <p className="text-sm text-gray-600">
+                To cancel or reschedule, please confirm your email address.
+              </p>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="email"
+                    value={verifyEmail}
+                    onChange={(e) => { setVerifyEmail(e.target.value); setVerifyError(null); }}
+                    onKeyDown={(e) => e.key === "Enter" && handleVerifyEmail()}
+                    placeholder="Enter your booking email"
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  />
+                </div>
+                <button
+                  onClick={handleVerifyEmail}
+                  disabled={verifying || !verifyEmail.trim()}
+                  className="px-4 py-2 text-sm font-medium text-white bg-brand-500 rounded-lg hover:bg-brand-600 disabled:opacity-50 flex items-center gap-1"
+                >
+                  {verifying && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Verify
+                </button>
+              </div>
+              {verifyError && (
+                <p className="text-sm text-red-600">{verifyError}</p>
+              )}
+            </div>
+          )}
+
+          {windowOpen && !message?.type.startsWith("success") && emailVerified && (
             <div className="space-y-4 pt-2">
               <div className="text-sm text-gray-500">
                 Self-service window closes in <span className="font-semibold text-gray-700">{formatHoursLeft}</span>.
