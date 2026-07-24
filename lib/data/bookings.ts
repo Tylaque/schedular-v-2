@@ -175,7 +175,7 @@ type BookingResult = BookingOk | BookingErr;
 async function provisionTeamsMeeting(projectId: string, bookingId: string) {
   const [project, booking] = await Promise.all([
     db.project.findUnique({ where: { id: projectId }, select: { ownerId: true } }),
-    db.booking.findUnique({ where: { id: bookingId }, select: { id: true, projectId: true, participantName: true, participantEmail: true, dateKey: true, time: true } }),
+    db.booking.findUnique({ where: { id: bookingId }, select: { id: true, projectId: true, participantName: true, participantEmail: true, adminId: true, dateKey: true, time: true } }),
   ]);
   if (!project?.ownerId || !booking) return;
 
@@ -184,6 +184,7 @@ async function provisionTeamsMeeting(projectId: string, bookingId: string) {
     projectId: booking.projectId,
     participantName: booking.participantName,
     participantEmail: booking.participantEmail,
+    adminId: booking.adminId,
     dateKey: booking.dateKey,
     time: booking.time,
   });
@@ -222,7 +223,7 @@ async function removeTeamsMeeting(bookingId: string, ownerId: string, teamsMeeti
 }
 
 async function updateTeamsMeetingTime(bookingId: string, ownerId: string, dateKey: string, time: string) {
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, projectId: true, participantName: true, participantEmail: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, projectId: true, adminId: true, participantName: true, participantEmail: true, calendarEventId: true } });
   if (!booking) return;
 
   const result = await updateMeetingEventTime(ownerId, {
@@ -230,8 +231,10 @@ async function updateTeamsMeetingTime(bookingId: string, ownerId: string, dateKe
     projectId: booking.projectId,
     participantName: booking.participantName,
     participantEmail: booking.participantEmail,
+    adminId: booking.adminId,
     dateKey,
     time,
+    calendarEventId: booking.calendarEventId ?? undefined,
   });
   if ("error" in result) {
     console.error("Failed to update Teams meeting time for booking", bookingId, result.error);
@@ -432,7 +435,7 @@ export async function rescheduleBookingTime(
 ): Promise<RescheduleResult> {
   const original = await db.booking.findUnique({
     where: { id: bookingId },
-    select: { id: true, projectId: true, adminId: true, dateKey: true, time: true, participantName: true, participantEmail: true, status: true, teamsMeetingId: true },
+    select: { id: true, projectId: true, adminId: true, dateKey: true, time: true, participantName: true, participantEmail: true, status: true, teamsMeetingId: true, calendarEventId: true },
   });
   if (!original) return { ok: false, reason: "not_found" };
   if (original.status !== "confirmed") return { ok: false, reason: "already_resolved" };
@@ -486,6 +489,9 @@ export async function rescheduleBookingTime(
           time: newTime,
           status: "confirmed",
           rescheduledFromId: original.id,
+          ...(original.calendarEventId
+            ? { calendarEventId: original.calendarEventId }
+            : {}),
         },
         select: { id: true, adminId: true, dateKey: true, time: true },
       });

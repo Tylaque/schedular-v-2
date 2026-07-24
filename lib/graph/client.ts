@@ -18,8 +18,10 @@ export interface BookingMeetingInfo {
   projectId: string;
   participantName: string;
   participantEmail: string;
+  adminId: string;
   dateKey: string;
   time: string;
+  calendarEventId?: string;
 }
 
 function toMeetingDateTime(dateKey: string, time: string): string {
@@ -44,10 +46,12 @@ export async function createMeetingEvent(
   calendarEventId?: string;
   joinUrl?: string;
 } | { error: "personal" | "insufficient_permissions" | "unknown"; detail?: string }> {
-  const admin = await db.admin.findUnique({ where: { id: ownerId }, select: { accountType: true } });
-  if (admin?.accountType === "personal") {
+  const ownerAdmin = await db.admin.findUnique({ where: { id: ownerId }, select: { accountType: true } });
+  if (ownerAdmin?.accountType === "personal") {
     return { error: "personal", detail: "Personal Microsoft accounts cannot host Teams meetings" };
   }
+
+  const assignedAdmin = await db.admin.findUnique({ where: { id: booking.adminId }, select: { email: true, name: true } });
 
   const accessToken = await getValidGraphAccessToken(ownerId);
   if (!accessToken) {
@@ -101,6 +105,18 @@ export async function createMeetingEvent(
         end: { dateTime: end, timeZone: "UTC" },
         isOnlineMeeting: true,
         onlineMeetingProvider: "teamsForBusiness",
+        attendees: [
+          {
+            emailAddress: { address: booking.participantEmail, name: booking.participantName },
+            type: "required",
+          },
+          ...(assignedAdmin?.email
+            ? [{
+                emailAddress: { address: assignedAdmin.email, name: assignedAdmin.name },
+                type: "required",
+              }]
+            : []),
+        ],
       }),
     });
 
@@ -159,7 +175,12 @@ export async function updateMeetingEventTime(
   const end = toMeetingEndDateTime(booking.dateKey, booking.time);
 
   try {
-    const res = await fetch(`${GRAPH_BASE}/me/events/${booking.id}`, {
+    const eventId = booking.calendarEventId;
+    if (!eventId) {
+      return { error: "unknown", detail: "No calendarEventId — cannot update event" };
+    }
+
+    const res = await fetch(`${GRAPH_BASE}/me/events/${eventId}`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${accessToken}`,
