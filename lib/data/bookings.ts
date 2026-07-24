@@ -22,6 +22,49 @@ function timesOverlap(
   return a < b + endB && b < a + endA;
 }
 
+/**
+ * Cross-project conflict check: returns true if the admin already has a
+ * confirmed booking on this dateKey/time that overlaps with the proposed
+ * slot, across ALL projects (not just the current one).
+ *
+ * Each existing booking's own project duration+buffer is used for the
+ * overlap window — not the new project's rules.
+ */
+export async function hasSchedulingConflict(
+  adminId: string,
+  dateKey: string,
+  time: string,
+  newDurationMinutes: number,
+  newBufferMinutes: number,
+  excludeBookingId?: string,
+  tx?: Prisma.TransactionClient
+): Promise<boolean> {
+  const client = tx ?? db;
+
+  const existingBookings = await client.booking.findMany({
+    where: {
+      adminId,
+      dateKey,
+      status: "confirmed",
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+    },
+    select: {
+      time: true,
+      project: { select: { durationMinutes: true, bufferMinutes: true } },
+    },
+  });
+
+  for (const b of existingBookings) {
+    const existingWindow = b.project.durationMinutes + b.project.bufferMinutes;
+    const newWindow = newDurationMinutes + newBufferMinutes;
+    if (timesOverlap(time, newWindow, b.time, existingWindow)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 type AdminInfo = { id: string; name: string; initials: string };
 
 async function sendNotification(category: "booking_confirmation" | "cancellation_notice" | "reschedule_notice", booking: {
@@ -98,6 +141,7 @@ export async function pickAvailableAdmin(
   const candidateIds = eligible.map((e) => e.adminId);
   if (candidateIds.length === 0) return null;
 
+  // Check maxSessionsPerAdminPerDay (project-scoped — stays project-specific)
   const bookingsToday = await client.booking.findMany({
     where: {
       projectId,
@@ -105,30 +149,28 @@ export async function pickAvailableAdmin(
       adminId: { in: candidateIds },
       status: "confirmed",
     },
-    select: { adminId: true, time: true },
+    select: { adminId: true },
   });
 
   const adminDayCounts: Record<string, number> = {};
   const blockedAdmins = new Set<string>();
   for (const b of bookingsToday) {
     adminDayCounts[b.adminId] = (adminDayCounts[b.adminId] ?? 0) + 1;
-
-    if (
-      timesOverlap(
-        time,
-        project.durationMinutes + project.bufferMinutes,
-        b.time,
-        project.durationMinutes + project.bufferMinutes
-      )
-    ) {
-      blockedAdmins.add(b.adminId);
-    }
   }
 
   for (const [adminId, count] of Object.entries(adminDayCounts)) {
     if (count >= project.maxSessionsPerAdminPerDay) {
       blockedAdmins.add(adminId);
     }
+  }
+
+  // Cross-project time-overlap check: skip any admin who has a conflicting
+  // booking on this dateKey/time in ANY project.
+  const newWindow = project.durationMinutes + project.bufferMinutes;
+  for (const adminId of candidateIds) {
+    if (blockedAdmins.has(adminId)) continue;
+    const conflict = await hasSchedulingConflict(adminId, dateKey, time, project.durationMinutes, project.bufferMinutes, undefined, client);
+    if (conflict) blockedAdmins.add(adminId);
   }
 
   let available = candidateIds.filter((id) => !blockedAdmins.has(id));
@@ -462,7 +504,7 @@ export async function rescheduleBookingTime(
 
       let targetAdminId = original.adminId;
       if (options?.keepSameAdminIfPossible) {
-        const sameOk = await isAdminEligibleForSlot(original.projectId, original.adminId, newDateKey, newTime, tx);
+        const sameOk = await isAdminEligibleForSlot(original.projectId, original.adminId, newDateKey, newTime, tx, original.id);
         if (!sameOk) {
           const picked = await pickAvailableAdmin(original.projectId, newDateKey, newTime, tx);
           if (!picked) return { ok: false as const, reason: "no_admin_available" as const };
@@ -580,7 +622,8 @@ export async function isAdminEligibleForSlot(
   adminId: string,
   dateKey: string,
   time: string,
-  tx?: Prisma.TransactionClient
+  tx?: Prisma.TransactionClient,
+  excludeBookingId?: string
 ): Promise<boolean> {
   const client = tx ?? db;
   const project = await client.project.findUnique({
@@ -594,17 +637,17 @@ export async function isAdminEligibleForSlot(
   });
   if (!avail) return false;
 
+  // maxSessionsPerAdminPerDay is project-scoped
   const dayBookings = await client.booking.findMany({
     where: { projectId, dateKey, adminId, status: "confirmed" },
     select: { time: true },
   });
   if (dayBookings.length >= project.maxSessionsPerAdminPerDay) return false;
 
-  for (const b of dayBookings) {
-    if (timesOverlap(time, project.durationMinutes + project.bufferMinutes, b.time, project.durationMinutes + project.bufferMinutes)) {
-      return false;
-    }
-  }
+  // Cross-project time-overlap check
+  const conflict = await hasSchedulingConflict(adminId, dateKey, time, project.durationMinutes, project.bufferMinutes, excludeBookingId, client);
+  if (conflict) return false;
+
   return true;
 }
 

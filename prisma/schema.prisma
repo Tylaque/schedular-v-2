@@ -227,10 +227,12 @@ model Booking {
   rescheduledTo    Booking?      @relation("BookingReschedule")
   createdAt        DateTime      @default(now())
 
-  // No @@unique here — see migration for partial unique index on confirmed bookings only
-  // @@unique([projectId, dateKey, time]) would be WRONG: it caps every slot at 1 regardless of sessionCapacity.
-  // The partial unique index guards capacity=1 at the DB level; application logic in createBooking()
-  // enforces capacity >1 by counting before insert inside a serializable transaction.
+  // No @@unique here — the old partial unique index (Booking_project_slot_confirmed_unique)
+  // was dropped in migration 20260724200000 because it silently blocked sessionCapacity > 1.
+  // Capacity is now enforced ENTIRELY by the application-level count-check inside
+  // createBooking()'s serializable transaction (existingCount vs sessionCapacity before insert).
+
+  @@index([adminId, dateKey])
 }
 
 model WaitlistEntry {
