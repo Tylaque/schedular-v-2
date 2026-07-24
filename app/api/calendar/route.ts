@@ -6,8 +6,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
-  const role = (session?.user as any)?.role;
-  const ownerId = role === "org_owner" ? undefined : session?.user?.id;
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const role = (session.user as any)?.role;
+  const ownerId = role === "org_owner" ? undefined : session.user.id;
 
   const params = request.nextUrl.searchParams;
   const from = params.get("from");

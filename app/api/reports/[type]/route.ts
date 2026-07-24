@@ -16,8 +16,11 @@ export async function GET(
 
   try {
     const session = await auth();
-    const role = (session?.user as any)?.role;
-    const ownerId = role === "org_owner" ? undefined : session?.user?.id;
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const role = (session.user as any)?.role;
+    const ownerId = role === "org_owner" ? undefined : session.user.id;
     const rows = await generateReport(params.type, ownerId);
 
     if (format === "csv") {
