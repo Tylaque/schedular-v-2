@@ -11,6 +11,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 };
 
 function applySecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set("X-Debug-Header", "middleware-ran");
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(key, value);
   }
