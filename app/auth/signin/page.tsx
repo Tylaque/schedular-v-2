@@ -23,8 +23,6 @@ export default function SignInPage() {
       });
       if (result?.error) {
         setError("Invalid email or password.");
-      } else if (result?.url) {
-        window.location.href = result.url;
       } else {
         window.location.href = "/admin/projects";
       }
