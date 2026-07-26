@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       if (admin.passwordHash) {
         // Real reset — send a password reset email
         const { rawToken } = await createPasswordToken(admin.id);
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3002";
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
         const resetUrl = `${baseUrl}/auth/reset-password/${rawToken}`;
 
         const html = `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">

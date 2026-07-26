@@ -76,7 +76,7 @@ export async function inviteAssociate(input: {
       ? (await db.project.findUnique({ where: { id: input.projectId }, select: { name: true, company: true } }))
       : null;
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3002";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
     const projectLabel = projectName ? `${projectName.name} at ${projectName.company}` : "a project";
     const resend = new Resend(process.env.RESEND_API_KEY ?? "");
 

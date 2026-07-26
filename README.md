@@ -110,7 +110,7 @@ On platforms that DO support a release phase (Heroku, Render paid tiers, etc.), 
 After the deploy succeeds, check the health endpoint:
 
 ```bash
-curl https://your-app.onrender.com/api/health
+curl https://eureka-ent.org/api/health
 ```
 
 Expected response:
