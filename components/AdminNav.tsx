@@ -11,6 +11,7 @@ const ORG_OWNER_TABS = [
   { href: "/admin/my-dashboard", label: "My Dashboard" },
   { href: "/admin/calendar", label: "Calendar" },
   { href: "/admin/projects", label: "Projects" },
+  { href: "/admin/team", label: "Team" },
   { href: "/admin/templates", label: "Templates" },
   { href: "/admin/templates/logs", label: "Notification Logs" },
   { href: "/admin/audit", label: "Audit Log" },

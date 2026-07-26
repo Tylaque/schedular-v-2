@@ -3,13 +3,24 @@
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { Calendar, Mail, Lock, LogIn } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then((session) => {
+        if (session?.user) {
+          window.location.href = "/admin/projects";
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleCredentialsSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -55,7 +66,27 @@ export default function SignInPage() {
           <p className="text-sm text-gray-500 text-center mb-8">Sign in to your Scheduler account.</p>
 
           <button
-            onClick={() => signIn("azure-ad", { redirectTo: "/admin/projects" })}
+            onClick={async () => {
+              setError("");
+              setLoading(true);
+              try {
+                const result = await signIn("azure-ad", {
+                  redirectTo: "/admin/projects",
+                  redirect: false,
+                });
+                if (result?.error) {
+                  setError("Microsoft sign-in failed. Please try again.");
+                } else if (result?.url) {
+                  window.location.href = result.url;
+                } else {
+                  window.location.href = "/admin/projects";
+                }
+              } catch (err: any) {
+                setError(err?.message ?? "Microsoft sign-in failed. Please try again.");
+              } finally {
+                setLoading(false);
+              }
+            }}
             className="w-full bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-lg py-2.5 flex items-center justify-center gap-2"
           >
             <svg viewBox="0 0 21 21" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">

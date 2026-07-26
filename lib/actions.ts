@@ -19,6 +19,8 @@ import { sendTestEmail } from "@/lib/data/notifications";
 import { inviteAssociate } from "@/lib/data/admins";
 import { previewAdminUnavailable, commitAdminUnavailable, previewDateShift, commitDateShift } from "@/lib/data/bulk-reschedule";
 import { canViewAllProjects } from "@/lib/authz";
+import { changeAdminRole, promoteToOrgOwner } from "@/lib/data/team";
+import type { AdminRole } from "@prisma/client";
 
 export async function saveAvailabilityAction(
   projectId: string,
@@ -278,4 +280,57 @@ export async function inviteAssociateAction(input: {
     revalidatePath(`/admin/projects/${input.projectId}/edit`);
   }
   return admin;
+}
+
+export async function changeAdminRoleAction(
+  targetAdminId: string,
+  newRole: AdminRole
+): Promise<
+  | { ok: true }
+  | {
+      ok: false;
+      reason:
+        | "not_org_owner"
+        | "target_not_found"
+        | "cannot_demote_last_org_owner"
+        | "self_demotion_blocked";
+    }
+> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false, reason: "not_org_owner" };
+  }
+  const result = await changeAdminRole(session.user.id, targetAdminId, newRole);
+  if (result.ok) {
+    revalidatePath("/admin/team");
+  }
+  return result;
+}
+
+export async function promoteToOrgOwnerAction(
+  targetAdminId: string,
+  confirmationPhrase: string
+): Promise<
+  | { ok: true }
+  | {
+      ok: false;
+      reason:
+        | "not_org_owner"
+        | "target_not_found"
+        | "confirmation_mismatch";
+    }
+> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false, reason: "not_org_owner" };
+  }
+  const result = await promoteToOrgOwner(
+    session.user.id,
+    targetAdminId,
+    confirmationPhrase
+  );
+  if (result.ok) {
+    revalidatePath("/admin/team");
+  }
+  return result;
 }

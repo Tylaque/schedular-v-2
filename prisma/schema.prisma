@@ -297,6 +297,7 @@ enum AuditAction {
   template_updated
   notification_sent
   waitlist_joined
+  role_changed
 }
 
 model AuditLog {
