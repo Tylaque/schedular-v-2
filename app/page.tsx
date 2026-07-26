@@ -35,7 +35,7 @@ export default function LandingPage() {
           Schedule across teams, projects, and time zones.
         </h1>
         <p className="text-lg text-gray-500 mt-4 max-w-xl mx-auto">
-          A Doodle-style scheduling platform where Super Admins configure projects, Admins submit their availability, and participants book from consolidated slots.
+          A scheduling platform where Super Admins configure projects, Admins submit their availability, and participants book from consolidated slots.
         </p>
         <div className="flex items-center justify-center gap-3 mt-8">
           <Link
@@ -68,7 +68,7 @@ export default function LandingPage() {
               {
                 icon: <Users className="w-6 h-6" />,
                 title: "Admins submit availability",
-                desc: "Each Admin marks their available slots on a Doodle-style grid. Results consolidate automatically.",
+                desc: "Each Admin marks their available slots on a visual grid. Results consolidate automatically.",
               },
               {
                 icon: <CheckCircle className="w-6 h-6" />,
@@ -130,7 +130,7 @@ export default function LandingPage() {
       <footer className="border-t border-gray-200 bg-gray-50">
         <div className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between text-xs text-gray-400">
           <span>&copy; {new Date().getFullYear()} Scheduler. All rights reserved.</span>
-          <span>Built with Next.js, Prisma, and Tailwind CSS.</span>
+          <span>Built by FidLaque Solutions.</span>
         </div>
       </footer>
     </div>

@@ -1,14 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import {
-  User,
   FolderKanban,
   CalendarClock,
   CheckCircle2,
   Users,
-  AlertCircle,
   Clock,
 } from "lucide-react";
 
@@ -30,14 +27,6 @@ const STATUS_BADGE_PROJECT: Record<string, string> = {
   archived: "bg-gray-100 text-gray-400",
 };
 
-type AdminRecord = {
-  id: string;
-  name: string;
-  initials: string;
-  email: string;
-  accountType: string | null;
-};
-
 type DashboardData = {
   assignedProjects: { id: string; slug: string; name: string; status: string }[];
   submittedAvailabilityCount: number;
@@ -46,20 +35,15 @@ type DashboardData = {
   relevantParticipants: { id: string; name: string; email: string; status: string; projectName: string }[];
 };
 
-export default function MyDashboardClient({ admins }: { admins: AdminRecord[] }) {
-  const router = useRouter();
-
-  // TEMPORARY: replace with session.user.id once auth is wired up (see auth task).
-  const [selectedAdminId, setSelectedAdminId] = useState(admins[0]?.id ?? "");
+export default function MyDashboardClient({ adminId }: { adminId: string }) {
   const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!selectedAdminId) return;
     setLoading(true);
     setError(false);
-    fetch(`/api/dashboard/admin?adminId=${encodeURIComponent(selectedAdminId)}`)
+    fetch(`/api/dashboard/admin?adminId=${encodeURIComponent(adminId)}`)
       .then((r) => {
         if (!r.ok) throw new Error("not found");
         return r.json();
@@ -72,33 +56,10 @@ export default function MyDashboardClient({ admins }: { admins: AdminRecord[] })
         setError(true);
         setLoading(false);
       });
-  }, [selectedAdminId]);
-
-  if (!admins.length) {
-    return <p className="text-sm text-gray-500">No admins found in the system.</p>;
-  }
+  }, [adminId]);
 
   return (
     <div>
-      {/* TEMPORARY: replace with session.user.id once auth is wired up (see auth task). */}
-      <div className="flex items-center gap-3 mb-6 p-3 border border-amber-200 bg-amber-50 rounded-lg">
-        <AlertCircle className="w-4 h-4 text-amber-500" />
-        <span className="text-xs text-amber-700">
-          Temporary admin selector — will be replaced with automatic session detection once auth is wired up.
-        </span>
-        <select
-          value={selectedAdminId}
-          onChange={(e) => setSelectedAdminId(e.target.value)}
-          className="ml-auto text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700"
-        >
-          {admins.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name} ({a.email})
-            </option>
-          ))}
-        </select>
-      </div>
-
       {loading && <p className="text-sm text-gray-500 py-8 text-center">Loading...</p>}
 
       {error && (
