@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Shield, ChevronDown, AlertTriangle } from "lucide-react";
+import { Shield, AlertTriangle } from "lucide-react";
 import { changeAdminRoleAction, promoteToOrgOwnerAction } from "@/lib/actions";
 import type { TeamMember } from "@/lib/data/team";
 
@@ -37,8 +37,7 @@ export default function TeamClient({
         const reasons: Record<string, string> = {
           not_org_owner: "Only org owners can change roles.",
           target_not_found: "User not found.",
-          cannot_demote_last_org_owner: "Cannot demote the last org owner.",
-          self_demotion_blocked: "You cannot demote yourself. Ask another org owner to do it.",
+          cannot_change_org_owner_role: "Org owner role cannot be changed directly. Use the transfer flow.",
         };
         setMsg({ type: "err", text: reasons[result.reason] ?? "Failed to update role." });
       }
@@ -56,16 +55,17 @@ export default function TeamClient({
     try {
       const result = await promoteToOrgOwnerAction(promoteTarget.id, confirmPhrase);
       if (result.ok) {
-        setMsg({ type: "ok", text: `${promoteTarget.name} promoted to org owner.` });
+        setMsg({ type: "ok", text: `Ownership transferred to ${promoteTarget.name}. You are now Super Admin.` });
         setPromoteTarget(null);
         setConfirmPhrase("");
       } else {
         const reasons: Record<string, string> = {
-          not_org_owner: "Only org owners can promote.",
+          not_org_owner: "Only the current org owner can transfer ownership.",
           target_not_found: "User not found.",
+          already_org_owner: "That user is already the org owner.",
           confirmation_mismatch: "Confirmation phrase does not match the user's email.",
         };
-        setMsg({ type: "err", text: reasons[result.reason] ?? "Failed to promote." });
+        setMsg({ type: "err", text: reasons[result.reason] ?? "Failed to transfer ownership." });
       }
     } catch {
       setMsg({ type: "err", text: "An error occurred. Please try again." });
@@ -73,6 +73,8 @@ export default function TeamClient({
       setPromoting(false);
     }
   }
+
+  const currentOwner = members.find((m) => m.role === "org_owner");
 
   return (
     <div>
@@ -103,6 +105,8 @@ export default function TeamClient({
           <tbody>
             {members.map((m) => {
               const isSelf = m.id === currentUserId;
+              const isOrgOwner = m.role === "org_owner";
+
               return (
                 <tr key={m.id} className="border-b border-gray-100 last:border-b-0">
                   <td className="px-4 py-3 font-medium text-gray-900">{m.name}</td>
@@ -123,25 +127,12 @@ export default function TeamClient({
                     {m.ownedProjectNames.length === 0 && m.assignedProjectNames.length === 0 && "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {isSelf ? (
+                    {isOrgOwner ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600">
+                        <Shield className="w-3 h-3" /> Current Org Owner
+                      </span>
+                    ) : isSelf ? (
                       <span className="text-xs text-gray-400">You</span>
-                    ) : m.role === "org_owner" ? (
-                      <div className="flex items-center justify-end gap-2">
-                        <select
-                          value=""
-                          onChange={(e) => {
-                            if (e.target.value) handleRoleChange(m.id, e.target.value as "admin" | "super_admin");
-                          }}
-                          disabled={saving === m.id}
-                          className="text-xs border border-gray-300 rounded-lg px-2 py-1 bg-white text-gray-700"
-                        >
-                          <option value="" disabled>Demote to...</option>
-                          {ROLE_OPTIONS.map((r) => (
-                            <option key={r} value={r}>{r}</option>
-                          ))}
-                        </select>
-                        {saving === m.id && <span className="text-xs text-gray-400">Saving...</span>}
-                      </div>
                     ) : (
                       <div className="flex items-center justify-end gap-2">
                         <select
@@ -177,16 +168,19 @@ export default function TeamClient({
       {promoteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-2">Promote to Org Owner</h2>
-            <p className="text-sm text-gray-500 mb-4">
-              This grants <strong>{promoteTarget.name}</strong> ({promoteTarget.email}) full org-owner privileges including the ability to manage team roles and projects.
+            <h2 className="text-lg font-bold text-gray-900 mb-2">Transfer Org Ownership</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              This will transfer Org Owner status to <strong>{promoteTarget.name}</strong> ({promoteTarget.email}) and demote you to <strong>Super Admin</strong>. You will no longer be Org Owner.
             </p>
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-              <p className="text-xs text-amber-700">
-                This is a high-privilege action. Type <strong>{promoteTarget.email}</strong> below to confirm.
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              <p className="text-xs text-red-700">
+                This is a significant, irreversible action for your account. Only the new org owner can transfer it back.
               </p>
             </div>
+            <p className="text-xs text-gray-500 mb-2">
+              Type <strong>{promoteTarget.email}</strong> to confirm:
+            </p>
             <input
               type="text"
               value={confirmPhrase}
@@ -207,9 +201,9 @@ export default function TeamClient({
               <button
                 onClick={handlePromote}
                 disabled={promoting || confirmPhrase !== promoteTarget.email}
-                className="text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 rounded-lg px-4 py-2 transition-colors"
+                className="text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300 rounded-lg px-4 py-2 transition-colors"
               >
-                {promoting ? "Promoting..." : "Confirm Promotion"}
+                {promoting ? "Transferring..." : "Confirm Transfer"}
               </button>
             </div>
           </div>

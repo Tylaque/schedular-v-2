@@ -16,6 +16,8 @@ const ACTION_LABEL: Record<string, string> = {
   template_created: "Template Created",
   template_updated: "Template Updated",
   notification_sent: "Test Notification Sent",
+  role_changed: "Role Changed",
+  org_ownership_transferred: "Ownership Transferred",
 };
 
 const ACTION_BADGE: Record<string, string> = {
@@ -28,6 +30,8 @@ const ACTION_BADGE: Record<string, string> = {
   template_created: "bg-indigo-100 text-indigo-700",
   template_updated: "bg-sky-100 text-sky-700",
   notification_sent: "bg-gray-100 text-gray-700",
+  role_changed: "bg-blue-100 text-blue-700",
+  org_ownership_transferred: "bg-purple-100 text-purple-700",
 };
 
 export default async function AuditPage({

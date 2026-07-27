@@ -20,7 +20,6 @@ import { inviteAssociate } from "@/lib/data/admins";
 import { previewAdminUnavailable, commitAdminUnavailable, previewDateShift, commitDateShift } from "@/lib/data/bulk-reschedule";
 import { canViewAllProjects } from "@/lib/authz";
 import { changeAdminRole, promoteToOrgOwner } from "@/lib/data/team";
-import type { AdminRole } from "@prisma/client";
 
 export async function saveAvailabilityAction(
   projectId: string,
@@ -284,7 +283,7 @@ export async function inviteAssociateAction(input: {
 
 export async function changeAdminRoleAction(
   targetAdminId: string,
-  newRole: AdminRole
+  newRole: "admin" | "super_admin"
 ): Promise<
   | { ok: true }
   | {
@@ -292,8 +291,7 @@ export async function changeAdminRoleAction(
       reason:
         | "not_org_owner"
         | "target_not_found"
-        | "cannot_demote_last_org_owner"
-        | "self_demotion_blocked";
+        | "cannot_change_org_owner_role";
     }
 > {
   const session = await auth();
@@ -317,6 +315,7 @@ export async function promoteToOrgOwnerAction(
       reason:
         | "not_org_owner"
         | "target_not_found"
+        | "already_org_owner"
         | "confirmation_mismatch";
     }
 > {

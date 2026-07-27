@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-import type { AdminRole } from "@prisma/client";
 
 export type TeamMember = {
   id: string;
@@ -31,10 +30,20 @@ export async function listTeamMembers(): Promise<TeamMember[]> {
   }));
 }
 
+/**
+ * Change an admin's role between "admin" and "super_admin" only.
+ *
+ * Org-owner can NEVER be set or removed through this path — ownership
+ * changes only via the dedicated `promoteToOrgOwner` transfer flow,
+ * which atomically demotes the current owner while promoting the new one.
+ *
+ * The current org_owner's role cannot be changed through this path either;
+ * they can only lose org_owner via someone else being promoted.
+ */
 export async function changeAdminRole(
   actorAdminId: string,
   targetAdminId: string,
-  newRole: AdminRole
+  newRole: "admin" | "super_admin"
 ): Promise<
   | { ok: true }
   | {
@@ -42,13 +51,12 @@ export async function changeAdminRole(
       reason:
         | "not_org_owner"
         | "target_not_found"
-        | "cannot_demote_last_org_owner"
-        | "self_demotion_blocked";
+        | "cannot_change_org_owner_role";
     }
 > {
   const actor = await db.admin.findUnique({
     where: { id: actorAdminId },
-    select: { role: true },
+    select: { role: true, name: true, email: true },
   });
   if (!actor || actor.role !== "org_owner") {
     return { ok: false, reason: "not_org_owner" };
@@ -62,29 +70,9 @@ export async function changeAdminRole(
     return { ok: false, reason: "target_not_found" };
   }
 
-  // Self-demotion blocked
-  if (actorAdminId === targetAdminId) {
-    const roleHierarchy: Record<string, number> = {
-      admin: 0,
-      super_admin: 1,
-      org_owner: 2,
-    };
-    if (roleHierarchy[newRole] < roleHierarchy[target.role]) {
-      return { ok: false, reason: "self_demotion_blocked" };
-    }
-  }
-
-  // Cannot demote the last org_owner
-  if (
-    target.role === "org_owner" &&
-    newRole !== "org_owner"
-  ) {
-    const orgOwnerCount = await db.admin.count({
-      where: { role: "org_owner" },
-    });
-    if (orgOwnerCount <= 1) {
-      return { ok: false, reason: "cannot_demote_last_org_owner" };
-    }
+  // org_owner's role cannot be changed via this path — only via promoteToOrgOwner transfer
+  if (target.role === "org_owner") {
+    return { ok: false, reason: "cannot_change_org_owner_role" };
   }
 
   const oldRole = target.role;
@@ -99,7 +87,7 @@ export async function changeAdminRole(
         action: "role_changed",
         actorType: "admin",
         actorId: actorAdminId,
-        actorLabel: `${actorAdminId}`,
+        actorLabel: `${actor.name} <${actor.email}>`,
         entityType: "Admin",
         entityId: targetAdminId,
         beforeState: { role: oldRole },
@@ -111,6 +99,19 @@ export async function changeAdminRole(
   return { ok: true };
 }
 
+/**
+ * Transfer org ownership from the current owner to a new person.
+ *
+ * This is the ONLY way to change who the org_owner is. It performs an
+ * atomic transaction that:
+ *  1. Demotes the current org_owner (actorAdminId) to super_admin
+ *     — they keep their projects and assignments, just lose the top-level tier.
+ *  2. Promotes the target (targetAdminId) to org_owner.
+ *  3. Writes a single org_ownership_transferred audit log entry.
+ *
+ * If either update fails, the entire transaction rolls back so there is
+ * never a moment with zero or two org_owners.
+ */
 export async function promoteToOrgOwner(
   actorAdminId: string,
   targetAdminId: string,
@@ -122,12 +123,13 @@ export async function promoteToOrgOwner(
       reason:
         | "not_org_owner"
         | "target_not_found"
+        | "already_org_owner"
         | "confirmation_mismatch";
     }
 > {
   const actor = await db.admin.findUnique({
     where: { id: actorAdminId },
-    select: { role: true },
+    select: { id: true, role: true, name: true, email: true },
   });
   if (!actor || actor.role !== "org_owner") {
     return { ok: false, reason: "not_org_owner" };
@@ -141,28 +143,42 @@ export async function promoteToOrgOwner(
     return { ok: false, reason: "target_not_found" };
   }
 
+  // Target is already the org_owner — no-op
+  if (target.role === "org_owner") {
+    return { ok: false, reason: "already_org_owner" };
+  }
+
   // Confirmation phrase must match target's email exactly
   if (confirmationPhrase !== target.email) {
     return { ok: false, reason: "confirmation_mismatch" };
   }
 
-  const oldRole = target.role;
-
+  // Atomic transfer: demote current owner to super_admin, promote target
   await db.$transaction([
+    db.admin.update({
+      where: { id: actorAdminId },
+      data: { role: "super_admin" },
+    }),
     db.admin.update({
       where: { id: targetAdminId },
       data: { role: "org_owner" },
     }),
     db.auditLog.create({
       data: {
-        action: "role_changed",
+        action: "org_ownership_transferred",
         actorType: "admin",
         actorId: actorAdminId,
-        actorLabel: `${actorAdminId}`,
+        actorLabel: `${actor.name} <${actor.email}>`,
         entityType: "Admin",
         entityId: targetAdminId,
-        beforeState: { role: oldRole },
-        afterState: { role: "org_owner" },
+        beforeState: {
+          previousOwnerId: actorAdminId,
+          previousOwnerEmail: actor.email,
+        },
+        afterState: {
+          newOwnerId: targetAdminId,
+          newOwnerEmail: target.email,
+        },
       },
     }),
   ]);

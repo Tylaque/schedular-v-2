@@ -298,6 +298,7 @@ enum AuditAction {
   notification_sent
   waitlist_joined
   role_changed
+  org_ownership_transferred
 }
 
 model AuditLog {
