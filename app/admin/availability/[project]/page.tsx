@@ -1,16 +1,7 @@
-import { notFound } from "next/navigation";
-import { getProjectBySlug } from "@/lib/data/projects";
-import AvailabilityGrid from "@/components/AvailabilityGrid";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminAvailabilityPage({
-  params,
-}: {
-  params: { project: string };
-}) {
-  const project = await getProjectBySlug(params.project);
-  if (!project) return notFound();
-
-  return <AvailabilityGrid project={project} />;
+export default function OldAvailabilityPage() {
+  redirect("/admin/my-availability");
 }

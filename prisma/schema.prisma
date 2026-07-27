@@ -94,7 +94,9 @@ model Admin {
   role               AdminRole           @default(admin)
   accountType        AdminAccountType    @default(unknown)
   projectAssignments ProjectAdmin[]
+  // Superseded by availabilityRanges — candidate for removal once confirmed unused.
   availabilityEntries AdminAvailability[]
+  availabilityRanges AdminAvailabilityRange[]
   bookings           Booking[]
   ownedProjects      Project[]           @relation("ProjectOwner")
   passwordResetTokens PasswordResetToken[]
@@ -191,6 +193,21 @@ model AdminAvailability {
 
   @@unique([projectId, adminId, dateKey, time])
   @@index([projectId, dateKey])
+}
+
+// Superseded by AdminAvailabilityRange — candidate for removal once confirmed
+// nothing reads from it. Kept in place for historical data / reporting.
+model AdminAvailabilityRange {
+  id        String   @id @default(cuid())
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  adminId   String
+  dateKey   String   // "YYYY-MM-DD"
+  startTime String   // "09:00" — 24hr, minute precision
+  endTime   String   // "17:00"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([adminId, dateKey])
 }
 
 model Participant {

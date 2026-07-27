@@ -4,6 +4,7 @@ import { offerNextWaitlistEntry } from "@/lib/data/waitlist";
 import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
 import { logNotification } from "@/lib/data/notifications";
 import { createMeetingEvent, deleteMeetingEvent, updateMeetingEventTime } from "@/lib/graph/client";
+import { isAdminAvailableForSlot } from "@/lib/data/availability-ranges";
 import type { Prisma } from "@prisma/client";
 
 function parseMinutes(t: string): number {
@@ -129,24 +130,33 @@ export async function pickAvailableAdmin(
   });
   if (!project) return null;
 
-  const eligible = await client.adminAvailability.findMany({
-    where: { projectId, dateKey, time },
+  // Get all admins assigned to this project
+  const projectAdminRows = await client.projectAdmin.findMany({
+    where: { projectId },
     select: { adminId: true },
   });
-  if (eligible.length === 0) return null;
-
-  // All admins are eligible regardless of accountType (Teams meetings are
-  // always hosted by the owning super_admin/org_owner, never by the
-  // assigned admin-tier admin).
-  const candidateIds = eligible.map((e) => e.adminId);
+  const candidateIds = projectAdminRows.map((pa) => pa.adminId);
   if (candidateIds.length === 0) return null;
+
+  // Check range-based availability for each candidate
+  const rangeAvailable: string[] = [];
+  for (const adminId of candidateIds) {
+    const available = await isAdminAvailableForSlot(
+      adminId,
+      dateKey,
+      time,
+      project.durationMinutes
+    );
+    if (available) rangeAvailable.push(adminId);
+  }
+  if (rangeAvailable.length === 0) return null;
 
   // Check maxSessionsPerAdminPerDay (project-scoped — stays project-specific)
   const bookingsToday = await client.booking.findMany({
     where: {
       projectId,
       dateKey,
-      adminId: { in: candidateIds },
+      adminId: { in: rangeAvailable },
       status: "confirmed",
     },
     select: { adminId: true },
@@ -166,14 +176,13 @@ export async function pickAvailableAdmin(
 
   // Cross-project time-overlap check: skip any admin who has a conflicting
   // booking on this dateKey/time in ANY project.
-  const newWindow = project.durationMinutes + project.bufferMinutes;
-  for (const adminId of candidateIds) {
+  for (const adminId of rangeAvailable) {
     if (blockedAdmins.has(adminId)) continue;
     const conflict = await hasSchedulingConflict(adminId, dateKey, time, project.durationMinutes, project.bufferMinutes, undefined, client);
     if (conflict) blockedAdmins.add(adminId);
   }
 
-  let available = candidateIds.filter((id) => !blockedAdmins.has(id));
+  let available = rangeAvailable.filter((id) => !blockedAdmins.has(id));
   if (available.length === 0) return null;
 
   const totalCounts = await client.booking.groupBy({
@@ -632,10 +641,8 @@ export async function isAdminEligibleForSlot(
   });
   if (!project) return false;
 
-  const avail = await client.adminAvailability.findUnique({
-    where: { projectId_adminId_dateKey_time: { projectId, adminId, dateKey, time } },
-  });
-  if (!avail) return false;
+  const available = await isAdminAvailableForSlot(adminId, dateKey, time, project.durationMinutes);
+  if (!available) return false;
 
   // maxSessionsPerAdminPerDay is project-scoped
   const dayBookings = await client.booking.findMany({

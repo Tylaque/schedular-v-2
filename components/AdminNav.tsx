@@ -8,6 +8,7 @@ type AdminNavProps = {
 
 const ORG_OWNER_TABS = [
   { href: "/admin/my-area", label: "My Area" },
+  { href: "/admin/my-availability", label: "My Availability" },
   { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/my-dashboard", label: "My Dashboard" },
   { href: "/admin/calendar", label: "Calendar" },
@@ -23,6 +24,7 @@ const ORG_OWNER_TABS = [
 
 const SUPER_ADMIN_TABS = [
   { href: "/admin/my-area", label: "My Area" },
+  { href: "/admin/my-availability", label: "My Availability" },
   { href: "/admin/my-dashboard", label: "My Dashboard" },
   { href: "/admin/calendar", label: "Calendar" },
   { href: "/admin/projects", label: "Projects" },
@@ -34,6 +36,7 @@ const SUPER_ADMIN_TABS = [
 
 const ADMIN_TABS = [
   { href: "/admin/my-area", label: "My Area" },
+  { href: "/admin/my-availability", label: "My Availability" },
 ];
 
 export default function AdminNav({ current, role }: AdminNavProps) {

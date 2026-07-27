@@ -20,6 +20,7 @@ import { inviteAssociate } from "@/lib/data/admins";
 import { previewAdminUnavailable, commitAdminUnavailable, previewDateShift, commitDateShift } from "@/lib/data/bulk-reschedule";
 import { canViewAllProjects } from "@/lib/authz";
 import { changeAdminRole, promoteToOrgOwner } from "@/lib/data/team";
+import { setAdminRangesForDate } from "@/lib/data/availability-ranges";
 
 export async function saveAvailabilityAction(
   projectId: string,
@@ -330,6 +331,21 @@ export async function promoteToOrgOwnerAction(
   );
   if (result.ok) {
     revalidatePath("/admin/team");
+  }
+  return result;
+}
+
+export async function saveAvailabilityRangesAction(
+  dateKey: string,
+  ranges: { startTime: string; endTime: string }[]
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  const result = await setAdminRangesForDate(session.user.id, dateKey, ranges);
+  if (result.ok) {
+    revalidatePath("/admin/my-availability");
   }
   return result;
 }
