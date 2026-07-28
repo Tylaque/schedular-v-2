@@ -56,7 +56,7 @@ export async function offboardAdminFromProject(
           data: { needsManualAttention: true, manualAttentionReason: reason },
         });
 
-        recordAudit({
+        await recordAudit({
           action: "booking_rescheduled",
           actorType: "system",
           actorLabel: `Off-boarding: no remaining admins for project`,
@@ -65,7 +65,7 @@ export async function offboardAdminFromProject(
           projectId,
           beforeState: { adminId: departingAdminId, needsManualAttention: false },
           afterState: { adminId: departingAdminId, needsManualAttention: true, reason },
-        }).catch(() => {});
+        });
 
         result.flagged.push({ bookingId: booking.id, reason });
       }
@@ -139,7 +139,7 @@ export async function offboardAdminFromProject(
           select: { name: true },
         });
 
-        recordAudit({
+        await recordAudit({
           action: "booking_rescheduled",
           actorType: "system",
           actorLabel: `Off-boarding: ${departingAdmin?.name ?? departingAdminId} removed from project`,
@@ -148,7 +148,7 @@ export async function offboardAdminFromProject(
           projectId,
           beforeState: { adminId: departingAdminId, dateKey: booking.dateKey, time: booking.time },
           afterState: { adminId: pickedAdminId, dateKey: booking.dateKey, time: booking.time },
-        }).catch(() => {});
+        });
 
         result.reassigned.push({
           bookingId: booking.id,
@@ -163,7 +163,7 @@ export async function offboardAdminFromProject(
           data: { needsManualAttention: true, manualAttentionReason: reason },
         });
 
-        recordAudit({
+        await recordAudit({
           action: "booking_rescheduled",
           actorType: "system",
           actorLabel: `Off-boarding: flagged — no eligible replacement for ${departingAdmin?.name ?? departingAdminId}`,
@@ -172,7 +172,7 @@ export async function offboardAdminFromProject(
           projectId,
           beforeState: { adminId: departingAdminId, needsManualAttention: false },
           afterState: { adminId: departingAdminId, needsManualAttention: true, reason },
-        }).catch(() => {});
+        });
 
         result.flagged.push({ bookingId: booking.id, reason });
       }

@@ -456,7 +456,12 @@ export async function manuallyResolveFlaggedBookingAction(
     return { ok: false, reason: "unauthorized" };
   }
 
-  const result = await reassignBookingAdmin(bookingId, newAdminId);
+  const user = session.user as { name?: string | null; email?: string | null };
+  const actorLabel = user.name
+    ? `${user.name} <${user.email ?? ""}>`
+    : user.email ?? session.user.id;
+
+  const result = await reassignBookingAdmin(bookingId, newAdminId, session.user.id, actorLabel);
   if (!result.ok) {
     return { ok: false, reason: result.reason };
   }
@@ -467,16 +472,16 @@ export async function manuallyResolveFlaggedBookingAction(
     data: { needsManualAttention: false, manualAttentionReason: null },
   });
 
-  recordAudit({
+  await recordAudit({
     action: "booking_rescheduled",
     actorType: "admin",
     actorId: session.user.id,
-    actorLabel: "Manual reassignment of flagged booking",
+    actorLabel: `Manual reassignment: ${actorLabel}`,
     entityType: "Booking",
     entityId: bookingId,
     beforeState: { needsManualAttention: true, adminId: result.booking.adminId },
     afterState: { needsManualAttention: false, adminId: newAdminId },
-  }).catch(() => {});
+  });
 
   revalidatePath("/admin/needs-attention");
   revalidatePath("/admin/dashboard");

@@ -660,7 +660,9 @@ export async function isAdminEligibleForSlot(
 
 export async function reassignBookingAdmin(
   bookingId: string,
-  newAdminId: string
+  newAdminId: string,
+  actorAdminId?: string,
+  actorLabel?: string
 ): Promise<
   { ok: true; booking: { id: string; adminId: string; dateKey: string; time: string } }
   | { ok: false; reason: "not_found" | "already_resolved" | "admin_not_eligible" }
@@ -681,17 +683,17 @@ export async function reassignBookingAdmin(
     select: { id: true, adminId: true, dateKey: true, time: true },
   });
 
-  recordAudit({
+  await recordAudit({
     action: "booking_rescheduled",
-    actorType: "admin",
-    actorId: booking.adminId,
-    actorLabel: "System Admin",
+    actorType: actorAdminId ? "admin" : "system",
+    actorId: actorAdminId,
+    actorLabel: actorLabel ?? "System Admin",
     entityType: "Booking",
     entityId: booking.id,
     projectId: booking.projectId,
     beforeState: { dateKey: booking.dateKey, time: booking.time, adminId: booking.adminId },
     afterState: { dateKey: booking.dateKey, time: booking.time, adminId: newAdminId },
-  }).catch(() => {});
+  });
 
   return { ok: true, booking: updated };
 }
