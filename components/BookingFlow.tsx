@@ -45,9 +45,15 @@ const DOW = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 export default function BookingFlow({
   project,
   availability,
+  prefillName,
+  prefillEmail,
+  participantId,
 }: {
   project: Project & { id: string };
   availability: Record<string, string[]>;
+  prefillName?: string;
+  prefillEmail?: string;
+  participantId?: string;
 }) {
   const router = useRouter();
   const today = useMemo(() => new Date(), []);
@@ -56,8 +62,8 @@ export default function BookingFlow({
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("calendar");
   const [tz, setTz] = useState(TIMEZONES[0]);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [name, setName] = useState(prefillName ?? "");
+  const [email, setEmail] = useState(prefillEmail ?? "");
   const [bookingState, setBookingState] = useState<BookingState>({ status: "idle" });
   const [confirmedAdminName, setConfirmedAdminName] = useState<string | null>(null);
   const [wlName, setWlName] = useState("");
@@ -91,6 +97,7 @@ export default function BookingFlow({
       time: selectedTime,
       participantName: name,
       participantEmail: email,
+      participantId,
     });
     if (result.ok) {
       setConfirmedAdminName(result.adminName);
@@ -108,7 +115,7 @@ export default function BookingFlow({
         setBookingState({ status: "idle" });
       }, 2500);
     }
-  }, [selectedDateKey, selectedTime, name, email, project.id, router]);
+  }, [selectedDateKey, selectedTime, name, email, project.id, router, participantId]);
 
   function resetAll() {
     setStep("calendar");

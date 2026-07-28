@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { db } from "@/lib/db";
 import {
   createProject as dataCreateProject,
   getProjectBySlug,
@@ -21,6 +22,9 @@ import { previewAdminUnavailable, commitAdminUnavailable, previewDateShift, comm
 import { canViewAllProjects } from "@/lib/authz";
 import { changeAdminRole, promoteToOrgOwner } from "@/lib/data/team";
 import { setAdminRangesForDate } from "@/lib/data/availability-ranges";
+import { sendInvitationsOnActivation } from "@/lib/data/participants";
+import { updateParticipantStatus } from "@/lib/data/participants";
+import { addParticipant, sendParticipantInvitationsForProject, removeParticipant } from "@/lib/data/participants";
 
 export async function saveAvailabilityAction(
   projectId: string,
@@ -78,6 +82,7 @@ export async function confirmBookingAction(input: {
   time: string;
   participantName: string;
   participantEmail: string;
+  participantId?: string;
 }): Promise<
   | { ok: true; adminName: string }
   | { ok: false; reason: "slot_full" | "no_admin_available" | "rate_limited" }
@@ -94,6 +99,9 @@ export async function confirmBookingAction(input: {
 
   const result = await createBooking(input);
   if (result.ok) {
+    if (input.participantId) {
+      updateParticipantStatus(input.participantId, "booked").catch(() => {});
+    }
     revalidatePath(`/book/${input.projectId}`);
     return { ok: true, adminName: result.admin.name };
   }
@@ -136,8 +144,18 @@ export async function updateProjectAction(
   }
 
   const effectiveOwnerId = role === "org_owner" ? formData.ownerId : session.user.id;
+  const wasActive = project.status === "active";
   await dataUpdateProject(slug, { ...formData, ownerId: effectiveOwnerId });
   revalidatePath("/admin/projects");
+  revalidatePath(`/admin/projects/${slug}/edit`);
+  revalidatePath(`/admin/projects/${project.id}/participants`);
+
+  if (!wasActive && formData.status === "active") {
+    sendInvitationsOnActivation(project.id).catch((err) => {
+      console.error("Failed to send activation invitations:", err);
+    });
+  }
+
   redirect("/admin/projects");
 }
 
@@ -348,4 +366,69 @@ export async function saveAvailabilityRangesAction(
     revalidatePath("/admin/my-availability");
   }
   return result;
+}
+
+export async function addParticipantAction(
+  projectId: string,
+  name: string,
+  email: string
+): Promise<
+  | { ok: true; emailSent: boolean }
+  | { ok: false; reason: string }
+> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  const project = await db.project.findUnique({ where: { id: projectId }, select: { slug: true } });
+  if (!project) {
+    return { ok: false, reason: "project_not_found" };
+  }
+  try {
+    const { emailSent } = await addParticipant(projectId, name, email);
+    revalidatePath(`/admin/projects/${project.slug}/participants`);
+    revalidatePath(`/admin/projects/${projectId}/participants`);
+    return { ok: true, emailSent };
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+export async function sendInvitesNowAction(
+  projectId: string,
+  participantIds?: string[]
+): Promise<
+  | { ok: true; sent: number; failed: number }
+  | { ok: false; reason: string }
+> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  try {
+    const result = await sendParticipantInvitationsForProject(projectId, participantIds);
+    const project = await db.project.findUnique({ where: { id: projectId }, select: { slug: true } });
+    if (project) {
+      revalidatePath(`/admin/projects/${project.slug}/participants`);
+    }
+    return { ok: true, ...result };
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+export async function removeParticipantAction(
+  participantId: string
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  try {
+    await removeParticipant(participantId);
+    revalidatePath("/admin/projects");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : "Unknown error" };
+  }
 }

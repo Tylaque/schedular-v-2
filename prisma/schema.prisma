@@ -218,6 +218,7 @@ model Participant {
   email        String
   customFields Json?
   status       ParticipantStatus @default(invited)
+  lastInvitedAt DateTime?
   createdAt    DateTime          @default(now())
 
   @@unique([projectId, email])
