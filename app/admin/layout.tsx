@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import AdminNav from "@/components/AdminNav";
+import AdminSidebar from "@/components/AdminSidebar";
 import { countFlaggedBookings } from "@/lib/data/needs-attention";
 
 export default async function AdminLayout({
@@ -17,10 +17,10 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6">
-        <AdminNav role={role} flaggedCount={flaggedCount} />
+      <AdminSidebar role={role} flaggedCount={flaggedCount} />
+      <div className="lg:pl-60 pt-14 lg:pt-0 min-h-screen">
+          {children}
       </div>
-      {children}
     </div>
   );
 }

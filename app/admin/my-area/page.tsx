@@ -32,7 +32,7 @@ export default async function MyAreaPage() {
   const data = await getAdminDashboardData(session.user.id);
   if (!data) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <p className="text-sm text-gray-500">Your account is not fully set up yet. Please contact an administrator.</p>
       </div>
     );
