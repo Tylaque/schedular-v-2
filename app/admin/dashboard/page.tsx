@@ -1,6 +1,5 @@
 import { auth } from "@/auth";
 import Link from "next/link";
-import AdminNav from "@/components/AdminNav";
 import { getSuperAdminStats, getAdminUtilization, getProjectProgress } from "@/lib/data/dashboard";
 import { countFlaggedBookings } from "@/lib/data/needs-attention";
 import {
@@ -60,138 +59,135 @@ export default async function AdminDashboardPage() {
   ]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto p-6">
-        <AdminNav current="/admin/dashboard" role={role} />
-        <h1 className="text-xl font-bold text-gray-900 mb-6">Dashboard</h1>
+    <div className="max-w-6xl mx-auto p-6">
+      <h1 className="text-xl font-bold text-gray-900 mb-6">Dashboard</h1>
 
-        {/* Needs Attention Banner */}
-        {flaggedCount > 0 && (
-          <Link
-            href="/admin/needs-attention"
-            className="block mb-6 rounded-xl border-2 border-amber-300 bg-amber-50 p-4 hover:bg-amber-100 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-amber-800">
-                  {flaggedCount} booking{flaggedCount !== 1 ? "s" : ""} need{flaggedCount === 1 ? "s" : ""} manual attention
-                </p>
-                <p className="text-xs text-amber-600 mt-0.5">
-                  Click to view and reassign flagged bookings.
-                </p>
-              </div>
+      {/* Needs Attention Banner */}
+      {flaggedCount > 0 && (
+        <Link
+          href="/admin/needs-attention"
+          className="block mb-6 rounded-xl border-2 border-amber-300 bg-amber-50 p-4 hover:bg-amber-100 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800">
+                {flaggedCount} booking{flaggedCount !== 1 ? "s" : ""} need{flaggedCount === 1 ? "s" : ""} manual attention
+              </p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                Click to view and reassign flagged bookings.
+              </p>
             </div>
-          </Link>
-        )}
-
-        {/* Stat cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <StatCard icon={<FolderKanban className="w-4 h-4" />} label="Total Projects" value={stats.totalProjects}>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {Object.entries(stats.projectsByStatus).map(([status, count]) => (
-                <span
-                  key={status}
-                  className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[status] ?? ""}`}
-                >
-                  {status} {count}
-                </span>
-              ))}
-            </div>
-          </StatCard>
-          <StatCard icon={<Users className="w-4 h-4" />} label="Total Participants" value={stats.totalParticipants} />
-          <StatCard icon={<CheckCircle2 className="w-4 h-4" />} label="Booked Sessions" value={stats.bookedSessions} />
-          <StatCard icon={<Clock className="w-4 h-4" />} label="Upcoming" value={stats.upcomingSessions} />
-          <StatCard
-            icon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}
-            label="Completed"
-            value={stats.completedSessions}
-          />
-          <StatCard icon={<CalendarX2 className="w-4 h-4" />} label="Cancelled" value={stats.cancelledSessions} />
-        </div>
-
-        {/* Admin utilization */}
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 mb-8">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Admin Utilization</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Admin</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Availability slots</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Confirmed bookings</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide w-1/3">Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {utilization.map((u) => (
-                  <tr key={u.adminId} className="border-b border-gray-100 last:border-b-0">
-                    <td className="px-3 py-2.5 font-medium text-gray-900">{u.adminName}</td>
-                    <td className="px-3 py-2.5 text-right text-gray-600">{u.submittedAvailabilityCount}</td>
-                    <td className="px-3 py-2.5 text-right text-gray-600">{u.confirmedBookingsCount}</td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-brand-500 rounded-full transition-all"
-                            style={{ width: `${Math.round(u.utilizationRate * 100)}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-gray-500 w-10 text-right">
-                          {Math.round(u.utilizationRate * 100)}%
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
-        </div>
+        </Link>
+      )}
 
-        {/* Project progress */}
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Project Progress</h2>
-          <div className="space-y-4">
-            {progress.map((p) => (
-              <div key={p.projectId} className="border border-gray-100 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900 text-sm">{p.projectName}</span>
-                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[p.status] ?? ""}`}>
-                      {p.status}
-                    </span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                      <span>Period elapsed</span>
-                      <span>{p.periodElapsedPercent}%</span>
-                    </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-brand-500 rounded-full"
-                        style={{ width: `${p.periodElapsedPercent}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                      <span>Participants scheduled</span>
-                      <span>{p.participantsScheduledPercent}%</span>
-                    </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-brand-500 rounded-full"
-                        style={{ width: `${p.participantsScheduledPercent}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <StatCard icon={<FolderKanban className="w-4 h-4" />} label="Total Projects" value={stats.totalProjects}>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {Object.entries(stats.projectsByStatus).map(([status, count]) => (
+              <span
+                key={status}
+                className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[status] ?? ""}`}
+              >
+                {status} {count}
+              </span>
             ))}
           </div>
+        </StatCard>
+        <StatCard icon={<Users className="w-4 h-4" />} label="Total Participants" value={stats.totalParticipants} />
+        <StatCard icon={<CheckCircle2 className="w-4 h-4" />} label="Booked Sessions" value={stats.bookedSessions} />
+        <StatCard icon={<Clock className="w-4 h-4" />} label="Upcoming" value={stats.upcomingSessions} />
+        <StatCard
+          icon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+          label="Completed"
+          value={stats.completedSessions}
+        />
+        <StatCard icon={<CalendarX2 className="w-4 h-4" />} label="Cancelled" value={stats.cancelledSessions} />
+      </div>
+
+      {/* Admin utilization */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 mb-8">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Admin Utilization</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Admin</th>
+                <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Availability slots</th>
+                <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Confirmed bookings</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide w-1/3">Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {utilization.map((u) => (
+                <tr key={u.adminId} className="border-b border-gray-100 last:border-b-0">
+                  <td className="px-3 py-2.5 font-medium text-gray-900">{u.adminName}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-600">{u.submittedAvailabilityCount}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-600">{u.confirmedBookingsCount}</td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-brand-500 rounded-full transition-all"
+                          style={{ width: `${Math.round(u.utilizationRate * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500 w-10 text-right">
+                        {Math.round(u.utilizationRate * 100)}%
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Project progress */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Project Progress</h2>
+        <div className="space-y-4">
+          {progress.map((p) => (
+            <div key={p.projectId} className="border border-gray-100 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-gray-900 text-sm">{p.projectName}</span>
+                  <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[p.status] ?? ""}`}>
+                    {p.status}
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                    <span>Period elapsed</span>
+                    <span>{p.periodElapsedPercent}%</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-brand-500 rounded-full"
+                      style={{ width: `${p.periodElapsedPercent}%` }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                    <span>Participants scheduled</span>
+                    <span>{p.participantsScheduledPercent}%</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-brand-500 rounded-full"
+                      style={{ width: `${p.participantsScheduledPercent}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

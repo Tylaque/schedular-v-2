@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import AdminNav from "@/components/AdminNav";
+
 import AvailabilityRangePicker from "@/components/AvailabilityRangePicker";
 
 export const dynamic = "force-dynamic";
@@ -35,13 +35,10 @@ export default async function MyAvailabilityPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto p-6">
-        <AdminNav current="/admin/my-availability" role={role} />
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <AvailabilityRangePicker
           projects={projects}
         />
       </div>
-    </div>
   );
 }

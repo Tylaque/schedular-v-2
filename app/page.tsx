@@ -17,9 +17,11 @@ export default function LandingPage() {
       {/* Nav */}
       <header className="border-b border-gray-200 bg-white">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-brand-500" />
-            <span className="font-bold text-gray-900">Scheduler</span>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
+              <span className="text-white font-bold text-sm leading-none">S</span>
+            </div>
+            <span className="font-semibold text-gray-900">Scheduler</span>
           </div>
           <nav className="flex items-center gap-4">
             <Link href="/auth/signin" className="text-sm font-medium text-gray-600 hover:text-gray-900">

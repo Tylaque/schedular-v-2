@@ -2,7 +2,6 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getAdminDashboardData } from "@/lib/data/dashboard";
 import { FolderKanban, CalendarClock, Clock, CheckCircle2, Users } from "lucide-react";
-import AccountMenu from "@/components/AccountMenu";
 
 export const dynamic = "force-dynamic";
 
@@ -40,12 +39,8 @@ export default async function MyAreaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-gray-900">My Area</h1>
-          <AccountMenu />
-        </div>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+        <h1 className="text-xl font-bold text-gray-900 mb-6">My Area</h1>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
@@ -178,6 +173,5 @@ export default async function MyAreaPage() {
           )}
         </div>
       </div>
-    </div>
   );
 }

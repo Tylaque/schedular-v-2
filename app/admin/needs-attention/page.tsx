@@ -2,7 +2,6 @@ import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
-import AdminNav from "@/components/AdminNav";
 import { listFlaggedBookings } from "@/lib/data/needs-attention";
 import { canViewAllProjects } from "@/lib/authz";
 import { db } from "@/lib/db";
@@ -53,35 +52,32 @@ export default async function NeedsAttentionPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto p-6">
-        <AdminNav current="/admin/needs-attention" role={role} />
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
-              Needs Attention
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Bookings that require manual reassignment after an admin was removed from a project.
-            </p>
-          </div>
-          <Link
-            href="/admin/dashboard"
-            className="text-sm text-brand-600 hover:text-brand-700 font-medium"
-          >
-            Dashboard
-          </Link>
+    <div className="max-w-5xl mx-auto p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            Needs Attention
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Bookings that require manual reassignment after an admin was removed from a project.
+          </p>
         </div>
-        {flaggedWithEligible.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-            <AlertTriangle className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-500">No bookings need manual attention.</p>
-          </div>
-        ) : (
-          <NeedsAttentionClient flagged={flaggedWithEligible} />
-        )}
+        <Link
+          href="/admin/dashboard"
+          className="text-sm text-brand-600 hover:text-brand-700 font-medium"
+        >
+          Dashboard
+        </Link>
       </div>
+      {flaggedWithEligible.length === 0 ? (
+        <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
+          <AlertTriangle className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+          <p className="text-sm text-gray-500">No bookings need manual attention.</p>
+        </div>
+      ) : (
+        <NeedsAttentionClient flagged={flaggedWithEligible} />
+      )}
     </div>
   );
 }

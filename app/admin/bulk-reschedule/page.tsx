@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import AdminNav from "@/components/AdminNav";
+
 
 type Mode = "admin-unavailable" | "date-shift";
 
@@ -147,10 +147,7 @@ export default function BulkReschedulePage() {
   const manualCount = previewItems.length - autoCount;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto p-6">
-        <AdminNav current="/admin/bulk-reschedule" />
-
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <div className="mb-6">
           <h1 className="text-xl font-bold text-gray-900">Bulk Reschedule</h1>
           <p className="text-sm text-gray-500 mt-1">Reschedule multiple bookings at once.</p>
@@ -307,6 +304,5 @@ export default function BulkReschedulePage() {
           </div>
         )}
       </div>
-    </div>
   );
 }

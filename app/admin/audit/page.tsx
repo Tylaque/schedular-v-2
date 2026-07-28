@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import AdminNav from "@/components/AdminNav";
+
 import { listAuditLogs } from "@/lib/data/audit";
 import { listProjects } from "@/lib/data/projects";
 import type { AuditAction } from "@prisma/client";
@@ -54,10 +54,7 @@ export default async function AuditPage({
   const logs = await listAuditLogs(filters);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto p-6">
-        <AdminNav current="/admin/audit" role={role} />
-
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <div className="mb-6">
           <h1 className="text-xl font-bold text-gray-900">Audit Log</h1>
           <p className="text-sm text-gray-500 mt-1">Captures every mutation across the platform.</p>
@@ -146,6 +143,5 @@ export default async function AuditPage({
           </table>
         </div>
       </div>
-    </div>
   );
 }
