@@ -138,6 +138,11 @@ export default function ProjectForm({
   const [data, setData] = useState<FormData>(buildInitialData);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [saveError, setSaveError] = useState("");
+  const [offboardingSummary, setOffboardingSummary] = useState<{
+    reassigned: number;
+    flagged: number;
+    flaggedBookings: { bookingId: string; reason: string }[];
+  } | null>(null);
 
   function update<K extends keyof FormData>(key: K, value: FormData[K]) {
     setData((prev) => ({ ...prev, [key]: value }));
@@ -147,6 +152,7 @@ export default function ProjectForm({
       return next;
     });
     setSaveError("");
+    setOffboardingSummary(null);
   }
 
   function validate(): ValidationErrors {
@@ -200,7 +206,20 @@ export default function ProjectForm({
 
     try {
       if (isEdit && initialProject) {
-        await updateProjectAction(initialProject.slug, { ...formPayload, status: data.status });
+        const result = await updateProjectAction(initialProject.slug, { ...formPayload, status: data.status });
+        if (result.ok) {
+          if (result.reassigned > 0 || result.flagged > 0) {
+            setOffboardingSummary({
+              reassigned: result.reassigned,
+              flagged: result.flagged,
+              flaggedBookings: result.flaggedBookings,
+            });
+          } else {
+            router.push("/admin/projects");
+          }
+        } else {
+          setSaveError(result.reason === "unauthorized" ? "You do not have permission to edit this project." : "Failed to save project.");
+        }
       } else {
         await createProjectAction(formPayload);
       }
@@ -526,6 +545,32 @@ export default function ProjectForm({
           ))}
         </div>
       </div>
+
+      {/* Offboarding summary */}
+      {offboardingSummary && (
+        <div className={`rounded-lg border p-4 ${
+          offboardingSummary.flagged > 0
+            ? "bg-amber-50 border-amber-200 text-amber-800"
+            : "bg-green-50 border-green-200 text-green-800"
+        }`}>
+          <p className="text-sm font-semibold mb-1">
+            {offboardingSummary.reassigned > 0 && `${offboardingSummary.reassigned} session(s) automatically reassigned to other associates.`}
+            {offboardingSummary.reassigned > 0 && offboardingSummary.flagged > 0 && " "}
+            {offboardingSummary.flagged > 0 && (
+              <>
+                {offboardingSummary.flagged} session(s) need manual attention —{" "}
+                <a href="/admin/needs-attention" className="underline font-bold">view them here</a>
+              </>
+            )}
+          </p>
+          <button
+            onClick={() => router.push("/admin/projects")}
+            className="mt-2 text-sm font-medium underline"
+          >
+            Back to projects
+          </button>
+        </div>
+      )}
 
       {/* Save error */}
       {saveError && (

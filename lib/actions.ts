@@ -25,6 +25,8 @@ import { setAdminRangesForDate } from "@/lib/data/availability-ranges";
 import { sendInvitationsOnActivation } from "@/lib/data/participants";
 import { updateParticipantStatus } from "@/lib/data/participants";
 import { addParticipant, sendParticipantInvitationsForProject, removeParticipant } from "@/lib/data/participants";
+import { reassignBookingAdmin } from "@/lib/data/bookings";
+import { recordAudit } from "@/lib/data/audit";
 
 export async function saveAvailabilityAction(
   projectId: string,
@@ -131,24 +133,31 @@ export async function updateProjectAction(
     adminIds: string[];
     ownerId?: string;
   }
-) {
+): Promise<{
+  ok: true;
+  reassigned: number;
+  flagged: number;
+  flaggedBookings: { bookingId: string; reason: string }[];
+} | { ok: false; reason: string }> {
   const session = await auth();
-  if (!session?.user?.id) return;
+  if (!session?.user?.id) return { ok: false, reason: "unauthorized" };
 
   const role = (session?.user as any)?.role;
   const user = { id: session.user.id, role: role as "admin" | "super_admin" | "org_owner" };
 
   const project = await getProjectBySlug(slug);
   if (!project || !canManageProject(user, project)) {
-    redirect("/admin/projects?error=unauthorized");
+    return { ok: false, reason: "unauthorized" };
   }
 
   const effectiveOwnerId = role === "org_owner" ? formData.ownerId : session.user.id;
   const wasActive = project.status === "active";
-  await dataUpdateProject(slug, { ...formData, ownerId: effectiveOwnerId });
+  const result = await dataUpdateProject(slug, { ...formData, ownerId: effectiveOwnerId });
   revalidatePath("/admin/projects");
   revalidatePath(`/admin/projects/${slug}/edit`);
   revalidatePath(`/admin/projects/${project.id}/participants`);
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/admin/needs-attention");
 
   if (!wasActive && formData.status === "active") {
     sendInvitationsOnActivation(project.id).catch((err) => {
@@ -156,7 +165,12 @@ export async function updateProjectAction(
     });
   }
 
-  redirect("/admin/projects");
+  return {
+    ok: true,
+    reassigned: result.offboarding.reassigned.length,
+    flagged: result.offboarding.flagged.length,
+    flaggedBookings: result.offboarding.flagged,
+  };
 }
 
 export async function saveTemplateAction(formData: {
@@ -431,4 +445,40 @@ export async function removeParticipantAction(
   } catch (err) {
     return { ok: false, reason: err instanceof Error ? err.message : "Unknown error" };
   }
+}
+
+export async function manuallyResolveFlaggedBookingAction(
+  bookingId: string,
+  newAdminId: string
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false, reason: "unauthorized" };
+  }
+
+  const result = await reassignBookingAdmin(bookingId, newAdminId);
+  if (!result.ok) {
+    return { ok: false, reason: result.reason };
+  }
+
+  // Clear the manual attention flag
+  await db.booking.update({
+    where: { id: bookingId },
+    data: { needsManualAttention: false, manualAttentionReason: null },
+  });
+
+  recordAudit({
+    action: "booking_rescheduled",
+    actorType: "admin",
+    actorId: session.user.id,
+    actorLabel: "Manual reassignment of flagged booking",
+    entityType: "Booking",
+    entityId: bookingId,
+    beforeState: { needsManualAttention: true, adminId: result.booking.adminId },
+    afterState: { needsManualAttention: false, adminId: newAdminId },
+  }).catch(() => {});
+
+  revalidatePath("/admin/needs-attention");
+  revalidatePath("/admin/dashboard");
+  return { ok: true };
 }

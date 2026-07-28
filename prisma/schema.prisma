@@ -243,6 +243,8 @@ model Booking {
   rescheduledFrom     Booking?      @relation("BookingReschedule", fields: [rescheduledFromId], references: [id])
   rescheduledFromId String?      @unique
   rescheduledTo    Booking?      @relation("BookingReschedule")
+  needsManualAttention Boolean    @default(false)
+  manualAttentionReason String?
   createdAt        DateTime      @default(now())
 
   // No @@unique here — the old partial unique index (Booking_project_slot_confirmed_unique)

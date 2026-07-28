@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
+import Link from "next/link";
 import AdminNav from "@/components/AdminNav";
 import { getSuperAdminStats, getAdminUtilization, getProjectProgress } from "@/lib/data/dashboard";
+import { countFlaggedBookings } from "@/lib/data/needs-attention";
 import {
   CheckCircle2,
   Clock,
@@ -8,6 +10,7 @@ import {
   CalendarX2,
   BarChart3,
   FolderKanban,
+  AlertTriangle,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -49,15 +52,38 @@ export default async function AdminDashboardPage() {
   const session = await auth();
   const role = (session?.user as any)?.role;
   const ownerId = role === "org_owner" ? undefined : session?.user?.id;
-  const stats = await getSuperAdminStats(ownerId);
-  const utilization = await getAdminUtilization(ownerId);
-  const progress = await getProjectProgress(ownerId);
+  const [stats, utilization, progress, flaggedCount] = await Promise.all([
+    getSuperAdminStats(ownerId),
+    getAdminUtilization(ownerId),
+    getProjectProgress(ownerId),
+    countFlaggedBookings(ownerId),
+  ]);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto p-6">
         <AdminNav current="/admin/dashboard" role={role} />
         <h1 className="text-xl font-bold text-gray-900 mb-6">Dashboard</h1>
+
+        {/* Needs Attention Banner */}
+        {flaggedCount > 0 && (
+          <Link
+            href="/admin/needs-attention"
+            className="block mb-6 rounded-xl border-2 border-amber-300 bg-amber-50 p-4 hover:bg-amber-100 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800">
+                  {flaggedCount} booking{flaggedCount !== 1 ? "s" : ""} need{flaggedCount === 1 ? "s" : ""} manual attention
+                </p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  Click to view and reassign flagged bookings.
+                </p>
+              </div>
+            </div>
+          </Link>
+        )}
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

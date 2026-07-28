@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
+import { offboardAdminFromProject } from "@/lib/data/offboarding";
 
 export type ProjectWithAdmins = {
   id: string;
@@ -188,6 +189,11 @@ export async function createProject(input: {
   return toProjectWithAdmins(row);
 }
 
+export type OffboardingSummary = {
+  reassigned: { bookingId: string; oldAdminId: string; newAdminId: string }[];
+  flagged: { bookingId: string; reason: string }[];
+};
+
 export async function updateProject(
   slug: string,
   updates: {
@@ -211,9 +217,23 @@ export async function updateProject(
     adminIds: string[];
     ownerId?: string;
   }
-): Promise<ProjectWithAdmins> {
+): Promise<{ project: ProjectWithAdmins; offboarding: OffboardingSummary }> {
   const existing = await db.project.findUnique({ where: { slug } });
   if (!existing) throw new Error(`Project "${slug}" not found`);
+
+  // Capture old admin list BEFORE the transaction
+  const oldAdminRows = await db.projectAdmin.findMany({
+    where: { projectId: existing.id },
+    select: { adminId: true },
+  });
+  const oldAdminIds = new Set(oldAdminRows.map((pa) => pa.adminId));
+  const newAdminIds = new Set(updates.adminIds);
+
+  // Find admins being REMOVED (in old but not in new)
+  const removedAdminIds = [...oldAdminIds].filter((id) => !newAdminIds.has(id));
+  // Remaining admins after removal (new list)
+  const remainingAdminIds = updates.adminIds.filter((id) => oldAdminIds.has(id) && newAdminIds.has(id))
+    .concat([...newAdminIds].filter((id) => !oldAdminIds.has(id)));
 
   const beforeSnapshot = {
     name: existing.name, company: existing.company, status: existing.status,
@@ -297,5 +317,19 @@ export async function updateProject(
     },
   }).catch(() => {});
 
-  return toProjectWithAdmins(row);
+  // Offboard removed admins: non-blocking, failure never affects the project update
+  let offboarding: OffboardingSummary = { reassigned: [], flagged: [] };
+  if (removedAdminIds.length > 0) {
+    try {
+      for (const removedId of removedAdminIds) {
+        const result = await offboardAdminFromProject(existing.id, removedId, remainingAdminIds);
+        offboarding.reassigned.push(...result.reassigned);
+        offboarding.flagged.push(...result.flagged);
+      }
+    } catch (err) {
+      console.error("Offboarding side-effect failed (non-blocking):", err);
+    }
+  }
+
+  return { project: toProjectWithAdmins(row), offboarding };
 }
