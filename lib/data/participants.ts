@@ -90,7 +90,7 @@ export async function bulkImportParticipants(
 
     const emailLower = row.email.trim().toLowerCase();
     if (existingEmails.has(emailLower)) {
-      result.skipped++;
+      result.errors.push({ row: rowNum, name: row.name.trim(), email: emailLower, reason: "Email already exists in this project" });
       continue;
     }
 
