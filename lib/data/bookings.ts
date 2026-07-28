@@ -632,7 +632,8 @@ export async function isAdminEligibleForSlot(
   dateKey: string,
   time: string,
   tx?: Prisma.TransactionClient,
-  excludeBookingId?: string
+  excludeBookingId?: string,
+  skipAvailability?: boolean
 ): Promise<boolean> {
   const client = tx ?? db;
   const project = await client.project.findUnique({
@@ -641,8 +642,10 @@ export async function isAdminEligibleForSlot(
   });
   if (!project) return false;
 
-  const available = await isAdminAvailableForSlot(adminId, dateKey, time, project.durationMinutes);
-  if (!available) return false;
+  if (!skipAvailability) {
+    const available = await isAdminAvailableForSlot(adminId, dateKey, time, project.durationMinutes);
+    if (!available) return false;
+  }
 
   // maxSessionsPerAdminPerDay is project-scoped
   const dayBookings = await client.booking.findMany({
@@ -662,7 +665,8 @@ export async function reassignBookingAdmin(
   bookingId: string,
   newAdminId: string,
   actorAdminId?: string,
-  actorLabel?: string
+  actorLabel?: string,
+  skipAvailability?: boolean
 ): Promise<
   { ok: true; booking: { id: string; adminId: string; dateKey: string; time: string } }
   | { ok: false; reason: "not_found" | "already_resolved" | "admin_not_eligible" }
@@ -674,7 +678,7 @@ export async function reassignBookingAdmin(
   if (!booking) return { ok: false, reason: "not_found" };
   if (booking.status !== "confirmed") return { ok: false, reason: "already_resolved" };
 
-  const eligible = await isAdminEligibleForSlot(booking.projectId, newAdminId, booking.dateKey, booking.time);
+  const eligible = await isAdminEligibleForSlot(booking.projectId, newAdminId, booking.dateKey, booking.time, undefined, undefined, skipAvailability);
   if (!eligible) return { ok: false, reason: "admin_not_eligible" };
 
   const updated = await db.booking.update({

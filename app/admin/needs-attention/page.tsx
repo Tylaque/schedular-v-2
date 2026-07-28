@@ -41,6 +41,9 @@ export default async function NeedsAttentionPage() {
           admin.id,
           booking.dateKey,
           booking.time,
+          undefined,
+          undefined,
+          true,
         );
         if (ok) eligible.push(admin);
       }

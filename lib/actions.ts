@@ -461,7 +461,7 @@ export async function manuallyResolveFlaggedBookingAction(
     ? `${user.name} <${user.email ?? ""}>`
     : user.email ?? session.user.id;
 
-  const result = await reassignBookingAdmin(bookingId, newAdminId, session.user.id, actorLabel);
+  const result = await reassignBookingAdmin(bookingId, newAdminId, session.user.id, actorLabel, true);
   if (!result.ok) {
     return { ok: false, reason: result.reason };
   }
