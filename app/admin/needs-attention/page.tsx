@@ -21,41 +21,28 @@ export default async function NeedsAttentionPage() {
   const ownerId = role === "org_owner" ? undefined : session.user.id;
   const flagged = await listFlaggedBookings(ownerId);
 
-  // For each flagged booking, find eligible admins for reassignment
   const flaggedWithEligible = await Promise.all(
     flagged.map(async (b) => {
-      // Find the project this booking belongs to
       const booking = await db.booking.findUnique({
         where: { id: b.id },
         select: { projectId: true, dateKey: true, time: true, adminId: true },
       });
       if (!booking) return { ...b, eligibleAdmins: [] };
 
-      // Get all admins currently assigned to this project (excluding the departed one)
-      const projectAdmins = await db.projectAdmin.findMany({
-        where: { projectId: booking.projectId },
-        select: { adminId: true },
+      const allAdmins = await db.admin.findMany({
+        select: { id: true, name: true },
       });
-      const candidateIds = projectAdmins
-        .map((pa) => pa.adminId)
-        .filter((id) => id !== booking.adminId);
+      const candidates = allAdmins.filter((a) => a.id !== booking.adminId);
 
-      // Check eligibility for each candidate
       const eligible: { id: string; name: string }[] = [];
-      for (const adminId of candidateIds) {
+      for (const admin of candidates) {
         const ok = await isAdminEligibleForSlot(
           booking.projectId,
-          adminId,
+          admin.id,
           booking.dateKey,
           booking.time,
         );
-        if (ok) {
-          const admin = await db.admin.findUnique({
-            where: { id: adminId },
-            select: { id: true, name: true },
-          });
-          if (admin) eligible.push(admin);
-        }
+        if (ok) eligible.push(admin);
       }
 
       return { ...b, eligibleAdmins: eligible };

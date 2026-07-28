@@ -466,6 +466,21 @@ export async function manuallyResolveFlaggedBookingAction(
     return { ok: false, reason: result.reason };
   }
 
+  const booking = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: { projectId: true },
+  });
+  if (booking) {
+    const alreadyOnProject = await db.projectAdmin.findUnique({
+      where: { projectId_adminId: { projectId: booking.projectId, adminId: newAdminId } },
+    });
+    if (!alreadyOnProject) {
+      await db.projectAdmin.create({
+        data: { projectId: booking.projectId, adminId: newAdminId },
+      });
+    }
+  }
+
   // Clear the manual attention flag
   await db.booking.update({
     where: { id: bookingId },
