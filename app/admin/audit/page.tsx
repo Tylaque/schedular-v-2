@@ -54,9 +54,15 @@ export default async function AuditPage({
   const logs = await listAuditLogs(filters);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+    <div className="max-w-6xl mx-auto p-6">
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-gray-900">Audit Log</h1>
+          <h1 className="text-xl font-bold text-gray-900">Audit Log
+            {logs.length > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-gray-100 text-xs font-semibold text-gray-500 leading-none ml-2 align-middle">
+                {logs.length}
+              </span>
+            )}
+          </h1>
           <p className="text-sm text-gray-500 mt-1">Captures every mutation across the platform.</p>
         </div>
 
@@ -96,7 +102,7 @@ export default async function AuditPage({
         </form>
 
         {/* Table */}
-        <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white">
+        <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white shadow-sm">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
@@ -116,7 +122,7 @@ export default async function AuditPage({
                 </tr>
               )}
               {logs.map((log) => (
-                <tr key={log.id} className="border-b border-gray-200 last:border-b-0">
+                <tr key={log.id} className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
                     {new Date(log.createdAt).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" })}
                   </td>

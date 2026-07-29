@@ -108,7 +108,7 @@ export default function TeamClient({
               const isOrgOwner = m.role === "org_owner";
 
               return (
-                <tr key={m.id} className="border-b border-gray-100 last:border-b-0">
+                <tr key={m.id} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 font-medium text-gray-900">{m.name}</td>
                   <td className="px-4 py-3 text-gray-600">{m.email}</td>
                   <td className="px-4 py-3">

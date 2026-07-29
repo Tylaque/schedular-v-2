@@ -72,6 +72,9 @@ export async function createProjectAction(formData: {
   const role = (session?.user as any)?.role;
   if (!canViewAllProjects(role)) return;
 
+  if (formData.durationMinutes < 5 || formData.durationMinutes > 480) return;
+  if (formData.availabilityPeriodDays < 1 || formData.availabilityPeriodDays > 365) return;
+
   const effectiveOwnerId = formData.ownerId ?? session?.user?.id;
   await dataCreateProject({ ...formData, ownerId: effectiveOwnerId });
   revalidatePath("/admin/projects");
@@ -148,6 +151,13 @@ export async function updateProjectAction(
   const project = await getProjectBySlug(slug);
   if (!project || !canManageProject(user, project)) {
     return { ok: false, reason: "unauthorized" };
+  }
+
+  if (formData.durationMinutes < 5 || formData.durationMinutes > 480) {
+    return { ok: false, reason: "Duration must be 5–480 minutes." };
+  }
+  if (formData.availabilityPeriodDays < 1 || formData.availabilityPeriodDays > 365) {
+    return { ok: false, reason: "Availability period must be 1–365 days." };
   }
 
   const effectiveOwnerId = role === "org_owner" ? formData.ownerId : session.user.id;

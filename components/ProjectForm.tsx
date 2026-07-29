@@ -161,13 +161,13 @@ export default function ProjectForm({
     if (!data.company.trim()) errs.company = "Company is required.";
     if (!data.timezone.trim()) errs.timezone = "Timezone is required.";
     if (data.dailyEnd <= data.dailyStart) errs.dailyEnd = "End time must be after start time.";
-    if (data.durationMinutes <= 0) errs.durationMinutes = "Must be positive.";
+    if (data.durationMinutes < 5 || data.durationMinutes > 480) errs.durationMinutes = "Must be 5–480 minutes.";
     if (data.minNoticeHours < 0) errs.minNoticeHours = "Cannot be negative.";
     if (data.bookingDeadlineDays < 0) errs.bookingDeadlineDays = "Cannot be negative.";
     if (data.bufferMinutes < 0) errs.bufferMinutes = "Cannot be negative.";
     if (data.maxSessionsPerAdminPerDay <= 0) errs.maxSessionsPerAdminPerDay = "Must be at least 1.";
     if (data.sessionCapacity <= 0) errs.sessionCapacity = "Must be at least 1.";
-    if (data.availabilityPeriodDays <= 0) errs.availabilityPeriodDays = "Must be positive.";
+    if (data.availabilityPeriodDays < 1 || data.availabilityPeriodDays > 365) errs.availabilityPeriodDays = "Must be 1–365 days.";
     if (!data.availabilityLockDate) errs.availabilityLockDate = "Required.";
     return errs;
   }
@@ -309,29 +309,31 @@ export default function ProjectForm({
         <h2 className="text-sm font-bold text-gray-900 mb-4">Scheduling rules</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-medium text-gray-500">Session duration</label>
-            <select
+            <label className="text-xs font-medium text-gray-500">
+              Session duration <span className="text-gray-400">(5–480 min)</span>
+            </label>
+            <input
+              type="number"
+              min={5}
+              max={480}
               value={data.durationMinutes}
               onChange={(e) => update("durationMinutes", Number(e.target.value))}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white"
-            >
-              <option value={30}>30 min</option>
-              <option value={60}>60 min</option>
-              <option value={120}>120 min</option>
-            </select>
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+            />
             {errors.durationMinutes && <p className="text-xs text-red-600 mt-1">{errors.durationMinutes}</p>}
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500">Availability period</label>
-            <select
+            <label className="text-xs font-medium text-gray-500">
+              Availability period <span className="text-gray-400">(1–365 days)</span>
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={365}
               value={data.availabilityPeriodDays}
               onChange={(e) => update("availabilityPeriodDays", Number(e.target.value))}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white"
-            >
-              <option value={7}>1 week</option>
-              <option value={14}>2 weeks</option>
-              <option value={30}>1 month</option>
-            </select>
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+            />
             {errors.availabilityPeriodDays && <p className="text-xs text-red-600 mt-1">{errors.availabilityPeriodDays}</p>}
           </div>
           <div>
