@@ -21,17 +21,34 @@ function getInitials(name: string): string {
 export default function AccountMenu() {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ bottom: number; right: number } | null>(null);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      if (
+        panelRef.current &&
+        !panelRef.current.contains(e.target as Node) &&
+        btnRef.current &&
+        !btnRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  // Recalculate position when opening
+  useEffect(() => {
+    if (open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setPos({ bottom: window.innerHeight - rect.top, right: window.innerWidth - rect.right });
+    } else {
+      setPos(null);
+    }
+  }, [open]);
 
   if (!session?.user) return null;
 
@@ -40,8 +57,9 @@ export default function AccountMenu() {
   const role = (session.user as any).role ?? "admin";
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
+        ref={btnRef}
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 transition-colors"
       >
@@ -52,8 +70,12 @@ export default function AccountMenu() {
         <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-3 z-50">
+      {open && pos && (
+        <div
+          ref={panelRef}
+          className="fixed z-[100] w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-3"
+          style={{ bottom: pos.bottom, right: pos.right }}
+        >
           <div className="px-4 pb-3 border-b border-gray-100">
             <p className="text-sm font-semibold text-gray-900">{name}</p>
             <p className="text-xs text-gray-500 mt-0.5">{email}</p>

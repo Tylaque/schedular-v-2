@@ -209,43 +209,37 @@ export default function AdminSidebar({ role, flaggedCount = 0 }: AdminSidebarPro
         <span className="font-semibold text-gray-900 text-sm">Scheduler</span>
       </div>
 
-      {/* Mobile overlay */}
+      {/* Mobile overlay — wrapper ensures sidebar is always ABOVE backdrop */}
       {mobileOpen && (
-        <div
-          className="lg:hidden fixed inset-0 z-50 bg-black/40"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      {/* Mobile slide-in sidebar */}
-      <div
-        className={`lg:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-200 ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex flex-col h-full">
-          <div className="px-4 py-4 border-b border-gray-200 flex items-center justify-between">
-            <Link href="/admin/dashboard" className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
-                <span className="text-white font-bold text-sm leading-none">S</span>
-              </div>
-              <span className="font-semibold text-gray-900 text-sm">Scheduler</span>
-            </Link>
-            <button
-              onClick={() => setMobileOpen(false)}
-              className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-            {renderNavContent()}
-          </nav>
-          <div className="border-t border-gray-200 p-3">
-            <AccountMenu />
+        <div className="lg:hidden fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div className="absolute inset-y-0 left-0 w-64 bg-white shadow-xl flex flex-col">
+            <div className="px-4 py-4 border-b border-gray-200 flex items-center justify-between">
+              <Link href="/admin/dashboard" className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm leading-none">S</span>
+                </div>
+                <span className="font-semibold text-gray-900 text-sm">Scheduler</span>
+              </Link>
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+              {renderNavContent()}
+            </nav>
+            <div className="border-t border-gray-200 p-3">
+              <AccountMenu />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:w-60 lg:flex-col bg-white border-r border-gray-200">
