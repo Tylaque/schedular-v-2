@@ -23,7 +23,7 @@ export default function AccountMenu() {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ bottom: number; right: number } | null>(null);
+  const [pos, setPos] = useState<{ bottom: number; left: number } | null>(null);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -44,7 +44,7 @@ export default function AccountMenu() {
   useEffect(() => {
     if (open && btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
-      setPos({ bottom: window.innerHeight - rect.top, right: window.innerWidth - rect.right });
+      setPos({ bottom: window.innerHeight - rect.top, left: rect.right + 8 });
     } else {
       setPos(null);
     }
@@ -74,7 +74,7 @@ export default function AccountMenu() {
         <div
           ref={panelRef}
           className="fixed z-[100] w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-3"
-          style={{ bottom: pos.bottom, right: pos.right }}
+          style={{ bottom: pos.bottom, left: pos.left }}
         >
           <div className="px-4 pb-3 border-b border-gray-100">
             <p className="text-sm font-semibold text-gray-900">{name}</p>

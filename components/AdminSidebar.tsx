@@ -163,32 +163,32 @@ export default function AdminSidebar({ role, flaggedCount = 0 }: AdminSidebarPro
                   }`}
                 />
               </button>
-              {isOpen && (
-                <div className="ml-4 mt-0.5 space-y-0.5 border-l border-gray-200 pl-3">
-                  {visibleItems.map((item) => {
-                    const active = isActive(item.href);
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                          active
-                            ? "bg-brand-50 text-brand-600 font-medium"
-                            : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                        }`}
-                      >
-                        {renderIcon(item.icon, "w-4 h-4")}
-                        {item.label}
-                        {item.label === "Needs Attention" && badgeCount != null && (
-                          <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-[10px] font-bold text-white leading-none ml-auto">
-                            {badgeCount > 99 ? "99+" : badgeCount}
-                          </span>
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
+                {isOpen && (
+                  <div className="ml-4 mt-0.5 space-y-0.5 border-l border-gray-200 pl-3">
+                    {visibleItems.map((item) => {
+                      const active = isActive(item.href);
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                            active
+                              ? "bg-brand-50 text-brand-600 font-medium"
+                              : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                          }`}
+                        >
+                          {renderIcon(item.icon, "w-4 h-4")}
+                          {item.label}
+                          {item.label === "Needs Attention" && badgeCount != null && (
+                            <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-[10px] font-bold text-white leading-none ml-auto">
+                              {badgeCount > 99 ? "99+" : badgeCount}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
             </div>
           );
         })}

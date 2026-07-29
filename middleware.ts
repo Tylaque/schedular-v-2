@@ -12,6 +12,7 @@ const SECURITY_HEADERS: [string, string][] = [
 
 const ADMIN_ONLY_ROUTES = [
   "/admin/my-area",
+  "/admin/my-availability",
 ];
 
 const adminAuth = auth((req) => {
