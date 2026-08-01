@@ -17,7 +17,7 @@ export default async function AdminLayout({
   const flaggedCount = await countFlaggedBookings(ownerId);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <AdminSidebar role={role} flaggedCount={flaggedCount} />
       <div className="lg:pl-60 pt-14 lg:pt-0 min-h-screen">
           {children}

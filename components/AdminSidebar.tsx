@@ -121,7 +121,7 @@ export default function AdminSidebar({ role, flaggedCount = 0 }: AdminSidebarPro
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     active
                       ? "bg-brand-50 text-brand-600"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
                   }`}
                 >
                   {renderIcon(item.icon)}
@@ -147,7 +147,7 @@ export default function AdminSidebar({ role, flaggedCount = 0 }: AdminSidebarPro
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   groupActive && !isOpen
                     ? "bg-brand-50 text-brand-600"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
                 }`}
               >
                 {renderIcon(group.icon)}
@@ -158,13 +158,13 @@ export default function AdminSidebar({ role, flaggedCount = 0 }: AdminSidebarPro
                   </span>
                 )}
                 <ChevronDown
-                  className={`w-4 h-4 text-gray-400 transition-transform ${
+                  className={`w-4 h-4 text-gray-400 transition-transform dark:text-gray-500 ${
                     isOpen ? "rotate-180" : ""
                   }`}
                 />
               </button>
                 {isOpen && (
-                  <div className="ml-4 mt-0.5 space-y-0.5 border-l border-gray-200 pl-3">
+                  <div className="ml-4 mt-0.5 space-y-0.5 border-l border-gray-200 pl-3 dark:border-gray-700">
                     {visibleItems.map((item) => {
                       const active = isActive(item.href);
                       return (
@@ -174,7 +174,7 @@ export default function AdminSidebar({ role, flaggedCount = 0 }: AdminSidebarPro
                           className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
                             active
                               ? "bg-brand-50 text-brand-600 font-medium"
-                              : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                              : "text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
                           }`}
                         >
                           {renderIcon(item.icon, "w-4 h-4")}
@@ -199,14 +199,14 @@ export default function AdminSidebar({ role, flaggedCount = 0 }: AdminSidebarPro
   return (
     <>
       {/* Mobile hamburger button */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 dark:bg-gray-900 dark:border-gray-700">
         <button
           onClick={() => setMobileOpen(true)}
-          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100"
+          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
         >
           <Menu className="w-5 h-5" />
         </button>
-        <span className="font-semibold text-gray-900 text-sm">Scheduler</span>
+        <span className="font-semibold text-gray-900 text-sm dark:text-gray-50">Scheduler</span>
       </div>
 
       {/* Mobile overlay — wrapper ensures sidebar is always ABOVE backdrop */}
@@ -216,17 +216,17 @@ export default function AdminSidebar({ role, flaggedCount = 0 }: AdminSidebarPro
             className="absolute inset-0 bg-black/40"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 w-64 bg-white shadow-xl flex flex-col">
-            <div className="px-4 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="absolute inset-y-0 left-0 w-64 bg-white shadow-xl flex flex-col dark:bg-gray-900">
+            <div className="px-4 py-4 border-b border-gray-200 flex items-center justify-between dark:border-gray-700">
               <Link href="/admin/dashboard" className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
                   <span className="text-white font-bold text-sm leading-none">S</span>
                 </div>
-                <span className="font-semibold text-gray-900 text-sm">Scheduler</span>
+                <span className="font-semibold text-gray-900 text-sm dark:text-gray-50">Scheduler</span>
               </Link>
               <button
                 onClick={() => setMobileOpen(false)}
-                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"
+                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:text-gray-500 dark:hover:bg-gray-800"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -234,7 +234,7 @@ export default function AdminSidebar({ role, flaggedCount = 0 }: AdminSidebarPro
             <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
               {renderNavContent()}
             </nav>
-            <div className="border-t border-gray-200 p-3">
+            <div className="border-t border-gray-200 p-3 dark:border-gray-700">
               <AccountMenu />
             </div>
           </div>
@@ -242,19 +242,19 @@ export default function AdminSidebar({ role, flaggedCount = 0 }: AdminSidebarPro
       )}
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:w-60 lg:flex-col bg-white border-r border-gray-200">
-        <div className="px-4 py-5 border-b border-gray-100">
+      <div className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:w-60 lg:flex-col bg-white border-r border-gray-200 dark:bg-gray-900 dark:border-gray-700">
+        <div className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
           <Link href="/admin/dashboard" className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
               <span className="text-white font-bold text-sm leading-none">S</span>
             </div>
-            <span className="font-semibold text-gray-900 text-sm">Scheduler</span>
+            <span className="font-semibold text-gray-900 text-sm dark:text-gray-50">Scheduler</span>
           </Link>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
           {renderNavContent()}
         </nav>
-        <div className="border-t border-gray-200 p-3">
+        <div className="border-t border-gray-200 p-3 dark:border-gray-700">
           <AccountMenu />
         </div>
       </div>
