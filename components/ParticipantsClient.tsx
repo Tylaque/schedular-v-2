@@ -214,7 +214,7 @@ export default function ParticipantsClient({
         </button>
       </div>
 
-      <div className="border border-gray-200 rounded-lg mb-6 bg-white">
+      <div className="border border-gray-200 rounded-lg mb-6 bg-white shadow-sm">
         <div className="p-4 border-b border-gray-200">
           <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
             <UserPlus className="w-4 h-4 text-brand-500" /> Add participant
