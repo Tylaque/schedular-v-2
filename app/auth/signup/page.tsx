@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { Calendar, ArrowLeft } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function SignUpPage() {
   return (
@@ -14,6 +15,7 @@ export default function SignUpPage() {
             <span className="font-bold text-gray-900">Scheduler</span>
           </Link>
           <nav className="flex items-center gap-4">
+            <ThemeToggle />
             <Link href="/auth/signin" className="text-sm font-medium text-brand-600 hover:text-brand-700">
               Sign in
             </Link>

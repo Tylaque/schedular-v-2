@@ -7,7 +7,20 @@ body {
   height: 100%;
 }
 
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
 body {
   background: #f7f8fa;
   color: #14161a;
+}
+
+.dark body {
+  background: #030712;
+  color: #f9fafb;
 }

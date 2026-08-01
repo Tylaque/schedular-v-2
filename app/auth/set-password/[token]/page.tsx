@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Calendar } from "lucide-react";
 import { PasswordSetupForm } from "@/components/PasswordSetupForm";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function SetPasswordPage() {
   const params = useParams();
@@ -12,11 +13,12 @@ export default function SetPasswordPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="border-b border-gray-200 bg-white">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-brand-500" />
             <span className="font-bold text-gray-900">Scheduler</span>
           </Link>
+          <ThemeToggle />
         </div>
       </header>
 

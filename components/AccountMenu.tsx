@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { LogOut, ChevronDown } from "lucide-react";
 import Avatar from "@/components/Avatar";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const ROLE_BADGE: Record<string, string> = {
   admin: "bg-gray-100 text-gray-600",
@@ -81,6 +82,10 @@ export default function AccountMenu() {
             <LogOut className="w-4 h-4" />
             Sign out
           </button>
+          <div className="flex items-center justify-between px-4 py-2.5 mt-1 border-t border-gray-100">
+            <span className="text-sm text-gray-600">Theme</span>
+            <ThemeToggle />
+          </div>
         </div>
       )}
     </div>

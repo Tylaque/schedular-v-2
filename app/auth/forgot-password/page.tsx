@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Calendar, ArrowLeft, Mail } from "lucide-react";
 import { useState } from "react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -43,6 +44,7 @@ export default function ForgotPasswordPage() {
             <span className="font-bold text-gray-900">Scheduler</span>
           </Link>
           <nav className="flex items-center gap-4">
+            <ThemeToggle />
             <Link href="/auth/signin" className="text-sm font-medium text-brand-600 hover:text-brand-700">
               Sign in
             </Link>

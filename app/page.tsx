@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Settings,
 } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function LandingPage() {
   return (
@@ -24,6 +25,7 @@ export default function LandingPage() {
             <span className="font-semibold text-gray-900">Scheduler</span>
           </div>
           <nav className="flex items-center gap-4">
+            <ThemeToggle />
             <Link href="/auth/signin" className="text-sm font-medium text-gray-600 hover:text-gray-900">
               Sign in
             </Link>

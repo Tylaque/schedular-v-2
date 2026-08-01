@@ -4,6 +4,7 @@ import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { Calendar, Mail, Lock, LogIn } from "lucide-react";
 import { useState, useEffect } from "react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
@@ -53,6 +54,7 @@ export default function SignInPage() {
             <span className="font-bold text-gray-900">Scheduler</span>
           </Link>
           <nav className="flex items-center gap-4">
+            <ThemeToggle />
             <Link href="/auth/signup" className="text-sm font-medium text-brand-600 hover:text-brand-700">
               Sign up
             </Link>
