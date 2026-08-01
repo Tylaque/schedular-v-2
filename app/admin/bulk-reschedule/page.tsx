@@ -171,7 +171,7 @@ export default function BulkReschedulePage() {
 
         {/* Mode A form */}
         {mode === "admin-unavailable" && (
-          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex flex-wrap gap-3 items-end">
+          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex flex-wrap gap-3 items-end shadow-sm">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Admin</label>
               <select value={aAdminId} onChange={(e) => setAAdminId(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm min-w-[200px]">
@@ -195,7 +195,7 @@ export default function BulkReschedulePage() {
 
         {/* Mode B form */}
         {mode === "date-shift" && (
-          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex flex-wrap gap-3 items-end">
+          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex flex-wrap gap-3 items-end shadow-sm">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Project</label>
               <select value={bProjectId} onChange={(e) => setBProjectId(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm min-w-[200px]">
@@ -224,14 +224,14 @@ export default function BulkReschedulePage() {
         {/* Preview results */}
         {preview && (
           <div className="mb-6">
-            <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
               <p className="text-sm font-medium mb-1">
                 {autoCount} of {previewItems.length} bookings can be automatically resolved;
                 {" "}<span className="text-red-600 font-semibold">{manualCount} need manual attention</span>.
               </p>
             </div>
 
-            <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white">
+            <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white shadow-sm">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
@@ -275,7 +275,7 @@ export default function BulkReschedulePage() {
 
         {/* Commit results */}
         {commitResult && (
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
             <h3 className="text-base font-semibold mb-2">Results</h3>
             <p className="text-sm mb-3">
               <span className="text-green-600 font-semibold">{commitResult.succeeded} succeeded</span>

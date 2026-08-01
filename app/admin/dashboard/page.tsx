@@ -1,7 +1,8 @@
 import { auth } from "@/auth";
 import Link from "next/link";
-import { getSuperAdminStats, getAdminUtilization, getProjectProgress } from "@/lib/data/dashboard";
+import { getSuperAdminStats, getAdminUtilization, getProjectProgress, countTodaySessions } from "@/lib/data/dashboard";
 import { countFlaggedBookings } from "@/lib/data/needs-attention";
+import GreetingHeader from "@/components/GreetingHeader";
 import {
   CheckCircle2,
   Clock,
@@ -51,16 +52,17 @@ export default async function AdminDashboardPage() {
   const session = await auth();
   const role = (session?.user as any)?.role;
   const ownerId = role === "org_owner" ? undefined : session?.user?.id;
-  const [stats, utilization, progress, flaggedCount] = await Promise.all([
+  const [stats, utilization, progress, flaggedCount, todayCount] = await Promise.all([
     getSuperAdminStats(ownerId),
     getAdminUtilization(ownerId),
     getProjectProgress(ownerId),
     countFlaggedBookings(ownerId),
+    countTodaySessions(ownerId ? { ownerId } : {}),
   ]);
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-xl font-bold text-gray-900 mb-6">Dashboard</h1>
+      <GreetingHeader name={session?.user?.name ?? ""} todayCount={todayCount} />
 
       {/* Needs Attention Banner */}
       {flaggedCount > 0 && (

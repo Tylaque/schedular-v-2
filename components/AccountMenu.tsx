@@ -3,20 +3,13 @@
 import { useState, useRef, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { LogOut, ChevronDown } from "lucide-react";
+import Avatar from "@/components/Avatar";
 
 const ROLE_BADGE: Record<string, string> = {
   admin: "bg-gray-100 text-gray-600",
   super_admin: "bg-blue-100 text-blue-700",
   org_owner: "bg-purple-100 text-purple-700",
 };
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-  return name.slice(0, 2).toUpperCase();
-}
 
 export default function AccountMenu() {
   const { data: session } = useSession();
@@ -63,9 +56,7 @@ export default function AccountMenu() {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 transition-colors"
       >
-        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-xs font-bold text-gray-600">
-          {getInitials(name)}
-        </span>
+        <Avatar name={name} seed={email} />
         <span className="hidden sm:inline font-medium">{name}</span>
         <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>

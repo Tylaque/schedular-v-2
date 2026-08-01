@@ -10,6 +10,44 @@ function sessionInPast(dateKey: string, time: string, timezone: string): boolean
   return isSessionInPast(dateKey, time, timezone);
 }
 
+/**
+ * "Today" in a given project timezone, formatted as a dateKey (YYYY-MM-DD).
+ */
+export function todayDateKeyInTimezone(timezone: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
+/**
+ * Counts today's confirmed sessions. Pass ownerId for org/project scope or
+ * adminId to count a single admin's sessions.
+ */
+export async function countTodaySessions(opts: { ownerId?: string; adminId?: string }): Promise<number> {
+  const { ownerId, adminId } = opts;
+  const bookings = await db.booking.findMany({
+    where: {
+      status: "confirmed",
+      ...(adminId ? { adminId } : {}),
+      ...(ownerId ? { project: { ownerId } } : {}),
+    },
+    select: { dateKey: true, project: { select: { timezone: true } } },
+  });
+
+  let count = 0;
+  for (const b of bookings) {
+    if (b.dateKey === todayDateKeyInTimezone(b.project.timezone)) count++;
+  }
+  return count;
+}
+
 export async function getSuperAdminStats(ownerId?: string) {
   const projectFilter = ownerId ? { ownerId } : {};
   const projects = await db.project.findMany({

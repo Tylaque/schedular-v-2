@@ -67,7 +67,7 @@ export default async function AuditPage({
         </div>
 
         {/* Filters */}
-        <form method="get" className="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex flex-wrap gap-3 items-end">
+        <form method="get" className="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex flex-wrap gap-3 items-end shadow-sm">
           <div>
             <label htmlFor="project" className="block text-xs font-medium text-gray-500 mb-1">Project</label>
             <select

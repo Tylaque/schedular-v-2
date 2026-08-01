@@ -50,7 +50,7 @@ export default async function AdminTemplatesPage({
         />
       </div>
 
-      <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white">
+      <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">

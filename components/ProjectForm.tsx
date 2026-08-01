@@ -231,7 +231,7 @@ export default function ProjectForm({
   return (
     <div className="flex flex-col gap-6">
       {/* Basics */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
         <h2 className="text-sm font-bold text-gray-900 mb-4">Basics</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
@@ -305,7 +305,7 @@ export default function ProjectForm({
       </div>
 
       {/* Scheduling rules */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
         <h2 className="text-sm font-bold text-gray-900 mb-4">Scheduling rules</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -454,7 +454,7 @@ export default function ProjectForm({
       </div>
 
       {/* Admin assignment */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
         <h2 className="text-sm font-bold text-gray-900 mb-4">Admin assignment</h2>
         {allAdmins.length === 0 && (
           <p className="text-sm text-gray-400">Loading admins...</p>
@@ -498,7 +498,7 @@ export default function ProjectForm({
       </div>
 
       {/* Owner assignment */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
         <h2 className="text-sm font-bold text-gray-900 mb-4">Project owner</h2>
         {superAdmins.length === 0 && (
           <p className="text-sm text-gray-400">Loading owners...</p>
@@ -521,7 +521,7 @@ export default function ProjectForm({
       </div>
 
       {/* Status */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
         <h2 className="text-sm font-bold text-gray-900 mb-4">Status</h2>
         <select
           value={data.status}

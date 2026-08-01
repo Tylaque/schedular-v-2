@@ -282,7 +282,7 @@ export default function ParticipantsClient({
         </div>
       )}
 
-      <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
+      <div className="border border-gray-200 rounded-lg bg-white overflow-hidden shadow-sm">
         <div className="p-4 border-b border-gray-200">
           <h3 className="text-sm font-semibold text-gray-900">
             Participants ({participants.length})

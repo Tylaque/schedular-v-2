@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Shield, AlertTriangle } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Shield, AlertTriangle, Search } from "lucide-react";
 import { changeAdminRoleAction, promoteToOrgOwnerAction } from "@/lib/actions";
 import type { TeamMember } from "@/lib/data/team";
+import Avatar from "@/components/Avatar";
 
 const ROLE_BADGE: Record<string, string> = {
   admin: "bg-gray-100 text-gray-600",
@@ -25,6 +26,7 @@ export default function TeamClient({
   const [promoteTarget, setPromoteTarget] = useState<TeamMember | null>(null);
   const [confirmPhrase, setConfirmPhrase] = useState("");
   const [promoting, setPromoting] = useState(false);
+  const [search, setSearch] = useState("");
 
   async function handleRoleChange(memberId: string, newRole: "admin" | "super_admin") {
     setSaving(memberId);
@@ -76,6 +78,16 @@ export default function TeamClient({
 
   const currentOwner = members.find((m) => m.role === "org_owner");
 
+  const filteredMembers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return members;
+    return members.filter(
+      (m) =>
+        m.name.toLowerCase().includes(q) ||
+        m.email.toLowerCase().includes(q),
+    );
+  }, [members, search]);
+
   return (
     <div>
       {msg && (
@@ -87,6 +99,19 @@ export default function TeamClient({
           }`}
         >
           {msg.text}
+        </div>
+      )}
+
+      {members.length > 5 && (
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search team by name or email..."
+            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
         </div>
       )}
 
@@ -103,13 +128,17 @@ export default function TeamClient({
             </tr>
           </thead>
           <tbody>
-            {members.map((m) => {
+            {filteredMembers.map((m) => {
               const isSelf = m.id === currentUserId;
               const isOrgOwner = m.role === "org_owner";
-
               return (
                 <tr key={m.id} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-gray-900">{m.name}</td>
+                  <td className="px-4 py-3 font-medium text-gray-900">
+                    <div className="flex items-center gap-2">
+                      <Avatar name={m.name} seed={m.email} size="sm" />
+                      {m.name}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-gray-600">{m.email}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_BADGE[m.role] ?? ""}`}>
@@ -161,6 +190,13 @@ export default function TeamClient({
                 </tr>
               );
             })}
+            {filteredMembers.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                  No team members match your search.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

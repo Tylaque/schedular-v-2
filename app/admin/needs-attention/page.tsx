@@ -71,7 +71,7 @@ export default async function NeedsAttentionPage() {
         </Link>
       </div>
       {flaggedWithEligible.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
+        <div className="bg-white border border-gray-200 rounded-lg p-12 text-center shadow-sm">
           <AlertTriangle className="w-8 h-8 text-gray-300 mx-auto mb-3" />
           <p className="text-sm text-gray-500">No bookings need manual attention.</p>
         </div>

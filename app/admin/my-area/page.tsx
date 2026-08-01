@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { getAdminDashboardData } from "@/lib/data/dashboard";
+import { getAdminDashboardData, countTodaySessions } from "@/lib/data/dashboard";
+import GreetingHeader from "@/components/GreetingHeader";
 import { FolderKanban, CalendarClock, Clock, CheckCircle2, Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,7 @@ export default async function MyAreaPage() {
   }
 
   const data = await getAdminDashboardData(session.user.id);
+  const todayCount = await countTodaySessions({ adminId: session.user.id });
   if (!data) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -40,7 +42,7 @@ export default async function MyAreaPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <h1 className="text-xl font-bold text-gray-900 mb-6">My Area</h1>
+        <GreetingHeader name={session.user.name ?? ""} todayCount={todayCount} />
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">

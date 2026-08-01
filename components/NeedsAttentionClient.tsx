@@ -68,7 +68,7 @@ export default function NeedsAttentionClient({
           return (
             <div
               key={b.id}
-              className={`bg-white border rounded-lg p-4 ${
+              className={`bg-white border rounded-lg p-4 shadow-sm ${
                 isResolved ? "border-green-200 bg-green-50" : "border-amber-200"
               }`}
             >
