@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 
+import { AnalyticsSection } from "@/components/analytics/AnalyticsSection";
 import { REPORT_DEFINITIONS } from "@/lib/data/reports";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,15 @@ export default async function ReportsPage() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <div className="mb-6">
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Reports</h1>
-          <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">Download data extracts in CSV, Excel, or JSON format.</p>
+          <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">Track analytics and download data extracts in CSV, Excel, or JSON format.</p>
+        </div>
+
+        <div className="mb-10">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50">Analytics</h2>
+          <p className="text-sm text-gray-500 mt-1 mb-4 dark:text-gray-400">
+            Track booking volume, admin utilization, and project health over time.
+          </p>
+          <AnalyticsSection />
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
