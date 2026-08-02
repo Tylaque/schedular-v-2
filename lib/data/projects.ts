@@ -19,6 +19,7 @@ export type ProjectWithAdmins = {
   bufferMinutes: number;
   maxSessionsPerAdminPerDay: number;
   sessionCapacity: number;
+  autoCompleteBookings: boolean;
   status: "draft" | "active" | "paused" | "closed" | "archived";
   availabilityLockDate: Date;
   branding: { logoInitial: string; primaryColor: string; senderName: string };
@@ -46,6 +47,7 @@ function toProjectWithAdmins(row: {
   bufferMinutes: number;
   maxSessionsPerAdminPerDay: number;
   sessionCapacity: number;
+  autoCompleteBookings: boolean;
   status: string;
   availabilityLockDate: Date;
   brandingLogoInitial: string;
@@ -75,6 +77,7 @@ function toProjectWithAdmins(row: {
     maxSessionsPerAdminPerDay: row.maxSessionsPerAdminPerDay,
     sessionCapacity: row.sessionCapacity,
     status: row.status as ProjectWithAdmins["status"],
+    autoCompleteBookings: row.autoCompleteBookings,
     availabilityLockDate: row.availabilityLockDate,
     branding: {
       logoInitial: row.brandingLogoInitial,
@@ -135,6 +138,7 @@ export async function createProject(input: {
   availabilityPeriodDays: number;
   adminIds: string[];
   ownerId?: string;
+  autoCompleteBookings?: boolean;
 }): Promise<ProjectWithAdmins> {
   let slug = slugify(input.name);
 
@@ -162,6 +166,7 @@ export async function createProject(input: {
       bufferMinutes: input.bufferMinutes,
       maxSessionsPerAdminPerDay: input.maxSessionsPerAdminPerDay,
       sessionCapacity: input.sessionCapacity,
+      autoCompleteBookings: input.autoCompleteBookings ?? false,
       status: input.status ?? "draft",
       availabilityLockDate: input.availabilityLockDate,
       brandingLogoInitial: input.branding.logoInitial,
@@ -216,6 +221,7 @@ export async function updateProject(
     availabilityPeriodDays: number;
     adminIds: string[];
     ownerId?: string;
+    autoCompleteBookings?: boolean;
   }
 ): Promise<{ project: ProjectWithAdmins; offboarding: OffboardingSummary }> {
   const existing = await db.project.findUnique({ where: { slug } });
@@ -284,6 +290,9 @@ export async function updateProject(
     };
     if (updates.ownerId !== undefined) {
       updateData.ownerId = updates.ownerId;
+    }
+    if (updates.autoCompleteBookings !== undefined) {
+      updateData.autoCompleteBookings = updates.autoCompleteBookings;
     }
 
     return tx.project.update({

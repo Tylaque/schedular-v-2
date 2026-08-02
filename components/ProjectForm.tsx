@@ -38,6 +38,7 @@ type FormData = {
   sessionCapacity: number;
   admins: string[];
   ownerId: string;
+  autoCompleteBookings: boolean;
   status: "draft" | "active" | "paused" | "closed" | "archived";
   logoInitial: string;
   primaryColor: string;
@@ -111,6 +112,7 @@ export default function ProjectForm({
         bufferMinutes: initialProject.bufferMinutes,
         maxSessionsPerAdminPerDay: initialProject.maxSessionsPerAdminPerDay,
         sessionCapacity: initialProject.sessionCapacity,
+        autoCompleteBookings: initialProject.autoCompleteBookings,
         admins: initialProject.admins.map((a) => a.id),
         ownerId: initialProject.ownerId ?? "",
         status: initialProject.status,
@@ -137,6 +139,7 @@ export default function ProjectForm({
       sessionCapacity: 1,
       admins: [],
       ownerId: "",
+      autoCompleteBookings: false,
       status: "draft",
       logoInitial: "",
       primaryColor: COLOR_SWATCHES[0],
@@ -164,6 +167,36 @@ export default function ProjectForm({
     });
     setSaveError("");
     setOffboardingSummary(null);
+  }
+
+  function toggleAdmin(adminId: string, checked: boolean) {
+    if (checked) {
+      update("admins", [...data.admins, adminId]);
+    } else {
+      update("admins", data.admins.filter((id) => id !== adminId));
+    }
+  }
+
+  function renderAdminCheckbox(admin: AdminOption, deEmphasized: boolean) {
+    return (
+      <label
+        key={admin.id}
+        className={
+          "flex items-center gap-2 text-sm cursor-pointer rounded px-2 py-1.5 " +
+          (deEmphasized
+            ? "text-gray-400 hover:bg-gray-50 dark:text-gray-500 dark:hover:bg-gray-800"
+            : "text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800")
+        }
+      >
+        <input
+          type="checkbox"
+          checked={data.admins.includes(admin.id)}
+          onChange={(e) => toggleAdmin(admin.id, e.target.checked)}
+          className="rounded border-gray-300 text-brand-500 dark:border-gray-600"
+        />
+        {admin.name}
+      </label>
+    );
   }
 
   function validate(): ValidationErrors {
@@ -208,6 +241,7 @@ export default function ProjectForm({
       bufferMinutes: data.bufferMinutes,
       maxSessionsPerAdminPerDay: data.maxSessionsPerAdminPerDay,
       sessionCapacity: data.sessionCapacity,
+      autoCompleteBookings: data.autoCompleteBookings,
       availabilityLockDate: new Date(data.availabilityLockDate + "T00:00:00"),
       branding,
       availabilityPeriodDays: data.availabilityPeriodDays,
@@ -393,6 +427,31 @@ export default function ProjectForm({
             </div>
           </div>
           <div>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Auto-complete sessions</label>
+            <div className="mt-2 flex items-start gap-3">
+              <button
+                type="button"
+                onClick={() => update("autoCompleteBookings", !data.autoCompleteBookings)}
+                className={
+                  "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors " +
+                  (data.autoCompleteBookings ? "bg-brand-500" : "bg-gray-300 dark:bg-gray-700")
+                }
+                role="switch"
+                aria-checked={data.autoCompleteBookings}
+              >
+                <span
+                  className="inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform"
+                  style={{ transform: data.autoCompleteBookings ? "translateX(18px)" : "translateX(2px)" }}
+                />
+              </button>
+              <p className="text-xs text-gray-500 leading-snug dark:text-gray-400">
+                {data.autoCompleteBookings
+                  ? "Automatically mark sessions as completed once their scheduled time passes."
+                  : "Require the assigned associate to manually mark sessions complete."}
+              </p>
+            </div>
+          </div>
+          <div>
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Timezone</label>
             <input
               value={data.timezone}
@@ -470,35 +529,88 @@ export default function ProjectForm({
         </div>
       </div>
 
+      {/* Required certifications */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm dark:bg-gray-900 dark:border-gray-700">
+        <h2 className="text-sm font-bold text-gray-900 mb-1 dark:text-gray-50">Required certifications</h2>
+        <p className="text-xs text-gray-500 mb-4 dark:text-gray-400">
+          Associates must hold all selected certifications to be eligible for booking on this project. Leave empty for no certification requirement.
+        </p>
+        {certifications.length === 0 ? (
+          <p className="text-sm text-gray-400 dark:text-gray-500">
+            No certifications in the catalog yet. The organisation owner can add them under Certifications.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {certifications.map((c) => (
+              <label
+                key={c.id}
+                className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50 rounded px-2 py-1.5 dark:text-gray-200 dark:hover:bg-gray-800"
+              >
+                <input
+                  type="checkbox"
+                  checked={requiredCertIds.includes(c.id)}
+                  onChange={() =>
+                    setRequiredCertIds((prev) =>
+                      prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id]
+                    )
+                  }
+                  className="rounded border-gray-300 text-brand-500 dark:border-gray-600"
+                />
+                {c.name}
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Admin assignment */}
       <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm dark:bg-gray-900 dark:border-gray-700">
-        <h2 className="text-sm font-bold text-gray-900 mb-4 dark:text-gray-50">Admin assignment</h2>
+        <h2 className="text-sm font-bold text-gray-900 mb-1 dark:text-gray-50">Admin assignment</h2>
+        {requiredCertIds.length > 0 && (
+          <p className="text-xs text-gray-500 mb-4 dark:text-gray-400">
+            Associates shown first hold all selected required certifications. Others remain selectable below.
+          </p>
+        )}
         {allAdmins.length === 0 && (
           <p className="text-sm text-gray-400 dark:text-gray-500">Loading admins...</p>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-          {allAdmins.map((admin) => (
-            <label
-              key={admin.id}
-              className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50 rounded px-2 py-1.5 dark:text-gray-200 dark:hover:bg-gray-800"
-            >
-              <input
-                type="checkbox"
-                checked={data.admins.includes(admin.id)}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    update("admins", [...data.admins, admin.id]);
-                  } else {
-                    update("admins", data.admins.filter((id) => id !== admin.id));
-                  }
-                }}
-                className="rounded border-gray-300 text-brand-500 dark:border-gray-600"
-              />
-              {admin.name}
-
-            </label>
+        {allAdmins.length > 0 &&
+          (requiredCertIds.length === 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+              {allAdmins.map((admin) => renderAdminCheckbox(admin, false))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {(() => {
+                const certified = allAdmins.filter((a) =>
+                  requiredCertIds.every((id) => (certificationsByAdmin[a.id] ?? []).includes(id))
+                );
+                const others = allAdmins.filter((a) => !certified.includes(a));
+                return (
+                  <>
+                    <div>
+                      <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2 dark:text-gray-400">
+                        Certified for selected requirements ({certified.length})
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                        {certified.map((admin) => renderAdminCheckbox(admin, false))}
+                      </div>
+                    </div>
+                    {others.length > 0 && (
+                      <div>
+                        <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2 dark:text-gray-400">
+                          Others ({others.length})
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                          {others.map((admin) => renderAdminCheckbox(admin, true))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
           ))}
-        </div>
 
         <InviteAssociateForm
           projectId={initialProject?.id}
@@ -542,40 +654,6 @@ export default function ProjectForm({
                   </div>
                 );
               })}
-          </div>
-        )}
-      </div>
-
-      {/* Required certifications */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm dark:bg-gray-900 dark:border-gray-700">
-        <h2 className="text-sm font-bold text-gray-900 mb-1 dark:text-gray-50">Required certifications</h2>
-        <p className="text-xs text-gray-500 mb-4 dark:text-gray-400">
-          Associates must hold all selected certifications to be eligible for booking on this project. Leave empty for no certification requirement.
-        </p>
-        {certifications.length === 0 ? (
-          <p className="text-sm text-gray-400 dark:text-gray-500">
-            No certifications in the catalog yet. The organisation owner can add them under Certifications.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {certifications.map((c) => (
-              <label
-                key={c.id}
-                className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50 rounded px-2 py-1.5 dark:text-gray-200 dark:hover:bg-gray-800"
-              >
-                <input
-                  type="checkbox"
-                  checked={requiredCertIds.includes(c.id)}
-                  onChange={() =>
-                    setRequiredCertIds((prev) =>
-                      prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id]
-                    )
-                  }
-                  className="rounded border-gray-300 text-brand-500 dark:border-gray-600"
-                />
-                {c.name}
-              </label>
-            ))}
           </div>
         )}
       </div>

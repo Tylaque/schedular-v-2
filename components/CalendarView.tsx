@@ -9,6 +9,7 @@ type CalendarEvent = {
   dateKey: string;
   time: string;
   status: string;
+  displayStatus: string;
   participantName: string;
   participantEmail: string;
   projectName: string;
@@ -16,6 +17,24 @@ type CalendarEvent = {
 };
 
 type ViewMode = "day" | "week" | "month";
+
+type StatusFilter = "all" | "confirmed" | "awaiting_completion" | "completed" | "cancelled" | "rescheduled";
+
+const STATUS_BADGE: Record<string, string> = {
+  confirmed: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  awaiting_completion: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  cancelled: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  rescheduled: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  confirmed: "Confirmed",
+  awaiting_completion: "Awaiting completion",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  rescheduled: "Rescheduled",
+};
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAYS_SHORT = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -83,6 +102,7 @@ export default function CalendarView({
   const [projectId, setProjectId] = useState("");
   const [adminId, setAdminId] = useState("");
   const [participantSearch, setParticipantSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -127,8 +147,12 @@ export default function CalendarView({
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
+  const filteredEvents = statusFilter === "all"
+    ? events
+    : events.filter((ev) => ev.displayStatus === statusFilter);
+
   const eventsByDateKey = new Map<string, CalendarEvent[]>();
-  for (const ev of events) {
+  for (const ev of filteredEvents) {
     const list = eventsByDateKey.get(ev.dateKey) ?? [];
     list.push(ev);
     eventsByDateKey.set(ev.dateKey, list);
@@ -284,10 +308,10 @@ export default function CalendarView({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                    {ev.status}
+                  <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[ev.displayStatus] ?? ""}`}>
+                    {STATUS_LABELS[ev.displayStatus] ?? ev.displayStatus}
                   </span>
-                  {ev.status === "confirmed" && (
+                  {ev.displayStatus === "confirmed" && (
                     <CancelBookingButton bookingId={ev.id} />
                   )}
                 </div>
@@ -366,17 +390,30 @@ export default function CalendarView({
             className="w-full text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 dark:border-gray-600"
           />
         </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+          aria-label="Filter by status"
+        >
+          <option value="all">All statuses</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="awaiting_completion">Awaiting completion</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="rescheduled">Rescheduled</option>
+        </select>
       </div>
 
       {loading && <p className="text-sm text-gray-400 text-center py-8 dark:text-gray-500">Loading...</p>}
 
-      {!loading && events.length === 0 && (
+      {!loading && filteredEvents.length === 0 && (
         <div className="text-center py-16">
           <p className="text-sm text-gray-400 dark:text-gray-500">No matching events found.</p>
         </div>
       )}
 
-      {!loading && events.length > 0 && (
+      {!loading && filteredEvents.length > 0 && (
         <div>
           {viewMode === "month" && renderMonth()}
           {viewMode === "week" && renderWeek()}

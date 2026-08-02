@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { isSessionInPast } from "@/lib/slotHelpers";
+import { completePastConfirmedBookings, getBookingDisplayStatus } from "@/lib/data/booking-completion";
 import type { ProjectStatus, Prisma } from "@prisma/client";
 
 /**
@@ -32,6 +33,7 @@ export function todayDateKeyInTimezone(timezone: string): string {
  */
 export async function countTodaySessions(opts: { ownerId?: string; adminId?: string }): Promise<number> {
   const { ownerId, adminId } = opts;
+  await completePastConfirmedBookings();
   const bookings = await db.booking.findMany({
     where: {
       status: "confirmed",
@@ -55,6 +57,9 @@ export async function getSuperAdminStats(ownerId?: string) {
     select: { status: true, timezone: true },
   });
 
+  // Lazy completion: past sessions on autoComplete projects become really "completed".
+  await completePastConfirmedBookings();
+
   const totalProjects = projects.length;
   const projectsByStatus: Record<string, number> = {};
   for (const p of projects) {
@@ -74,12 +79,13 @@ export async function getSuperAdminStats(ownerId?: string) {
     where: { status: "cancelled", ...(ownerId ? { project: { ownerId } } : {}) },
   });
 
+  const completedSessions = await db.booking.count({
+    where: { status: "completed", ...(ownerId ? { project: { ownerId } } : {}) },
+  });
+
   let upcomingSessions = 0;
-  let completedSessions = 0;
   for (const b of confirmedBookings) {
-    if (sessionInPast(b.dateKey, b.time, b.project.timezone)) {
-      completedSessions++;
-    } else {
+    if (!sessionInPast(b.dateKey, b.time, b.project.timezone)) {
       upcomingSessions++;
     }
   }
@@ -90,7 +96,7 @@ export async function getSuperAdminStats(ownerId?: string) {
     totalParticipants,
     bookedSessions: confirmedBookings.length,    // total confirmed (past or future)
     pendingSessions: upcomingSessions,            // confirmed + in the future (synonymous with upcomingSessions; we keep both names for dashboard clarity)
-    completedSessions,                            // confirmed + in the past
+    completedSessions,                            // really completed (stored status), incl. auto-completed
     upcomingSessions,
     cancelledSessions,
   };
@@ -207,6 +213,7 @@ type AdminDashboardBooking = {
   dateKey: string;
   time: string;
   status: string;
+  displayStatus: string;
   projectName: string;
   participantName: string;
 };
@@ -214,6 +221,9 @@ type AdminDashboardBooking = {
 export async function getAdminDashboardData(adminId: string) {
   const admin = await db.admin.findUnique({ where: { id: adminId } });
   if (!admin) return null;
+
+  // Lazy completion: past sessions on autoComplete projects become really "completed".
+  await completePastConfirmedBookings();
 
   const assignedProjects = await db.project.findMany({
     where: { admins: { some: { adminId } } },
@@ -223,37 +233,39 @@ export async function getAdminDashboardData(adminId: string) {
   const availCount = await db.adminAvailability.count({ where: { adminId } });
 
   const myBookings = await db.booking.findMany({
-    where: { adminId, status: "confirmed" },
+    where: { adminId, status: { in: ["confirmed", "completed", "cancelled", "rescheduled"] } },
     select: {
       id: true,
       dateKey: true,
       time: true,
       status: true,
       participantName: true,
-      project: { select: { name: true, timezone: true } },
+      project: {
+        select: { name: true, timezone: true, autoCompleteBookings: true },
+      },
     },
+    orderBy: [{ dateKey: "asc" }, { time: "asc" }],
   });
 
-  const upcomingSessions: AdminDashboardBooking[] = [];
-  const completedSessions: AdminDashboardBooking[] = [];
-
-  for (const b of myBookings) {
-    const entry: AdminDashboardBooking = {
-      id: b.id,
+  const sessions: AdminDashboardBooking[] = myBookings.map((b) => ({
+    id: b.id,
+    dateKey: b.dateKey,
+    time: b.time,
+    status: b.status,
+    displayStatus: getBookingDisplayStatus({
+      status: b.status,
       dateKey: b.dateKey,
       time: b.time,
-      status: b.status,
-      projectName: b.project.name,
-      participantName: b.participantName,
-    };
-    // Pick the first project's timezone as default (all projects assigned to this admin)
-    const tz = b.project.timezone;
-    if (sessionInPast(b.dateKey, b.time, tz)) {
-      completedSessions.push(entry);
-    } else {
-      upcomingSessions.push(entry);
-    }
-  }
+      timezone: b.project.timezone,
+      autoCompleteBookings: b.project.autoCompleteBookings,
+    }),
+    projectName: b.project.name,
+    participantName: b.participantName,
+  }));
+
+  const upcomingSessions = sessions.filter((s) => s.displayStatus === "confirmed");
+  const awaitingCompletionSessions = sessions.filter((s) => s.displayStatus === "awaiting_completion");
+  const completedSessions = sessions.filter((s) => s.displayStatus === "completed");
 
   const participants = await db.participant.findMany({
     where: { projectId: { in: assignedProjects.map((p) => p.id) } },
@@ -270,7 +282,9 @@ export async function getAdminDashboardData(adminId: string) {
     })),
     submittedAvailabilityCount: availCount,
     upcomingSessions,
+    awaitingCompletionSessions,
     completedSessions,
+    sessions,
     relevantParticipants: participants.map((p) => ({
       id: p.id,
       name: p.name,
@@ -291,12 +305,14 @@ type CalendarFilters = {
 };
 
 export async function getCalendarEvents(filters: CalendarFilters) {
+  // Lazy completion: past sessions on autoComplete projects become really "completed".
+  await completePastConfirmedBookings();
+
   const where: Prisma.BookingWhereInput = {
     dateKey: {
       gte: filters.from.toISOString().slice(0, 10),
       lte: filters.to.toISOString().slice(0, 10),
     },
-    status: "confirmed",
   };
 
   if (filters.projectId) where.projectId = filters.projectId;
@@ -321,7 +337,7 @@ export async function getCalendarEvents(filters: CalendarFilters) {
       status: true,
       participantName: true,
       participantEmail: true,
-      project: { select: { name: true } },
+      project: { select: { name: true, timezone: true, autoCompleteBookings: true } },
       admin: { select: { name: true } },
     },
     orderBy: [{ dateKey: "asc" }, { time: "asc" }],
@@ -332,6 +348,13 @@ export async function getCalendarEvents(filters: CalendarFilters) {
     dateKey: b.dateKey,
     time: b.time,
     status: b.status,
+    displayStatus: getBookingDisplayStatus({
+      status: b.status,
+      dateKey: b.dateKey,
+      time: b.time,
+      timezone: b.project.timezone,
+      autoCompleteBookings: b.project.autoCompleteBookings,
+    }),
     participantName: b.participantName,
     participantEmail: b.participantEmail,
     projectName: b.project.name,

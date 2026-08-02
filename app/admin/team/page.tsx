@@ -13,7 +13,7 @@ export default async function TeamPage() {
   }
 
   const role = (session.user as any)?.role;
-  if (role !== "org_owner") {
+  if (role !== "org_owner" && role !== "super_admin") {
     redirect("/admin/projects");
   }
 
@@ -32,6 +32,7 @@ export default async function TeamPage() {
       <TeamClient
         members={members}
         currentUserId={session.user.id}
+        currentUserRole={role}
         certifications={certifications}
         certificationsByAdmin={certificationsByAdmin}
       />

@@ -44,9 +44,10 @@ export const NAV_CONFIG: NavSection[] = [
   ]},
   { type: "dropdown", label: "Availability", icon: "Clock", items: [
     { label: "My Availability", href: "/admin/my-availability", roles: ["admin", "super_admin", "org_owner"], icon: "Clock" },
+    { label: "Team Availability", href: "/admin/team-availability", roles: ["super_admin", "org_owner"], icon: "Users" },
   ]},
   { type: "dropdown", label: "Manage", icon: "Users", items: [
-    { label: "Team", href: "/admin/team", roles: ["org_owner"], icon: "Users" },
+    { label: "Team", href: "/admin/team", roles: ["super_admin", "org_owner"], icon: "Users" },
     { label: "Certifications", href: "/admin/certifications", roles: ["org_owner"], icon: "BadgeCheck" },
     { label: "Templates", href: "/admin/templates", roles: ["super_admin", "org_owner"], icon: "Mail" },
   ]},

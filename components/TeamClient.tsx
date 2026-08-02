@@ -18,11 +18,13 @@ const ROLE_OPTIONS = ["admin", "super_admin"] as const;
 export default function TeamClient({
   members,
   currentUserId,
+  currentUserRole,
   certifications,
   certificationsByAdmin,
 }: {
   members: TeamMember[];
   currentUserId: string;
+  currentUserRole?: string;
   certifications: { id: string; name: string; description: string }[];
   certificationsByAdmin: Record<string, string[]>;
 }) {
@@ -32,6 +34,7 @@ export default function TeamClient({
   const [confirmPhrase, setConfirmPhrase] = useState("");
   const [promoting, setPromoting] = useState(false);
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "super_admin" | "org_owner">("all");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
@@ -75,7 +78,7 @@ export default function TeamClient({
         setMsg({ type: "ok", text: "Role updated successfully." });
       } else {
         const reasons: Record<string, string> = {
-          not_org_owner: "Only org owners can change roles.",
+          not_allowed: "Only org owners and super admins can change roles.",
           target_not_found: "User not found.",
           cannot_change_org_owner_role: "Org owner role cannot be changed directly. Use the transfer flow.",
         };
@@ -118,13 +121,15 @@ export default function TeamClient({
 
   const filteredMembers = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return membersList;
-    return membersList.filter(
-      (m) =>
+    return membersList.filter((m) => {
+      if (roleFilter !== "all" && m.role !== roleFilter) return false;
+      if (!q) return true;
+      return (
         m.name.toLowerCase().includes(q) ||
-        m.email.toLowerCase().includes(q),
-    );
-  }, [membersList, search]);
+        m.email.toLowerCase().includes(q)
+      );
+    });
+  }, [membersList, search, roleFilter]);
 
   return (
     <div>
@@ -140,16 +145,29 @@ export default function TeamClient({
         </div>
       )}
 
-      {membersList.length > 5 && (
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search team by name or email..."
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-gray-600 dark:bg-gray-800"
-          />
+      {membersList.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <div className="relative flex-1 min-w-[220px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search team by name or email..."
+              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-gray-600 dark:bg-gray-800"
+            />
+          </div>
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as typeof roleFilter)}
+            className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+            aria-label="Filter by role"
+          >
+            <option value="all">All roles</option>
+            <option value="admin">Admin</option>
+            <option value="super_admin">Super Admin</option>
+            <option value="org_owner">Org Owner</option>
+          </select>
         </div>
       )}
 
@@ -207,8 +225,8 @@ export default function TeamClient({
         )}
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-900">
-        <table className="w-full text-sm">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-x-auto dark:border-gray-700 dark:bg-gray-900">
+        <table className="w-full min-w-max text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-950">
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Name</th>
@@ -275,15 +293,17 @@ export default function TeamClient({
                           ))}
                         </select>
                         {saving === m.id && <span className="text-xs text-gray-400 dark:text-gray-500">Saving...</span>}
-                        <button
-                          onClick={() => {
-                            setPromoteTarget(m);
-                            setConfirmPhrase("");
-                          }}
-                          className="text-xs text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1 dark:text-purple-300"
-                        >
-                          <Shield className="w-3 h-3" /> Promote
-                        </button>
+                        {currentUserRole === "org_owner" && (
+                          <button
+                            onClick={() => {
+                              setPromoteTarget(m);
+                              setConfirmPhrase("");
+                            }}
+                            className="text-xs text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1 dark:text-purple-300"
+                          >
+                            <Shield className="w-3 h-3" /> Promote
+                          </button>
+                        )}
                       </div>
                     )}
                   </td>

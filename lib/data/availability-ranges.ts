@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
 function parseMinutes(t: string): number {
   const [h, m] = t.split(":").map(Number);
@@ -128,4 +129,71 @@ export async function isAdminAvailableForSlot(
   }
 
   return false;
+}
+
+export type TeamAvailabilityResult = {
+  adminId: string;
+  adminName: string;
+  projectNames: string[];
+  ranges: { dateKey: string; startTime: string; endTime: string }[];
+};
+
+/**
+ * Aggregates real AdminAvailabilityRange data for associates within scope.
+ *
+ * - super_admin scope (scopeToOwnerId set): only associates assigned to
+ *   projects THIS super_admin owns.
+ * - org_owner scope (scopeToOwnerId undefined): ALL associates' (and all
+ *   super_admins' own) submitted availability, system-wide.
+ *
+ * Optional filters narrow by associate and/or project, and by date window
+ * (inclusive dateKey range).
+ */
+export async function getTeamAvailability(
+  scopeToOwnerId: string | undefined,
+  filters: { adminId?: string; projectId?: string; fromDate: string; toDate: string }
+): Promise<TeamAvailabilityResult[]> {
+  const where: Prisma.AdminWhereInput = {};
+  if (scopeToOwnerId) {
+    where.projectAssignments = {
+      some: { project: { ownerId: scopeToOwnerId } },
+    };
+  } else if (filters.projectId) {
+    where.projectAssignments = {
+      some: { project: { id: filters.projectId } },
+    };
+  }
+  if (filters.adminId) {
+    where.id = filters.adminId;
+  }
+
+  const admins = await db.admin.findMany({
+    where,
+    select: {
+      id: true,
+      name: true,
+      projectAssignments: {
+        where: { project: scopeToOwnerId ? { ownerId: scopeToOwnerId } : {} },
+        select: { project: { select: { name: true } } },
+        orderBy: { createdAt: "asc" },
+      },
+      availabilityRanges: {
+        where: { dateKey: { gte: filters.fromDate, lte: filters.toDate } },
+        select: { dateKey: true, startTime: true, endTime: true },
+        orderBy: [{ dateKey: "asc" }, { startTime: "asc" }],
+      },
+    },
+    orderBy: { name: "asc" },
+  });
+
+  return admins.map((a) => ({
+    adminId: a.id,
+    adminName: a.name,
+    projectNames: a.projectAssignments.map((pa) => pa.project.name),
+    ranges: a.availabilityRanges.map((r) => ({
+      dateKey: r.dateKey,
+      startTime: r.startTime,
+      endTime: r.endTime,
+    })),
+  }));
 }

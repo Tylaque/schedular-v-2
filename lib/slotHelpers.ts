@@ -22,6 +22,7 @@ export type Project = {
   bufferMinutes: number;
   maxSessionsPerAdminPerDay: number;
   sessionCapacity: number;
+  autoCompleteBookings: boolean;
   status: "draft" | "active" | "paused" | "closed" | "archived";
   branding: { logoInitial: string; primaryColor: string; senderName: string };
   availabilityPeriodDays: number;

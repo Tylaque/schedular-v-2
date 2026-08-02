@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getAdminDashboardData, countTodaySessions } from "@/lib/data/dashboard";
 import { getAdminCertifications } from "@/lib/data/certifications";
 import GreetingHeader from "@/components/GreetingHeader";
+import MySessions from "@/components/MySessions";
 import { FolderKanban, CalendarClock, Clock, CheckCircle2, Users, BadgeCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -99,47 +100,7 @@ export default async function MyAreaPage() {
           )}
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 mb-8 dark:border-gray-700 dark:bg-gray-900">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2 dark:text-gray-50">
-            <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" /> Upcoming Sessions ({data.upcomingSessions.length})
-          </h2>
-          {data.upcomingSessions.length === 0 ? (
-            <p className="text-sm text-gray-400 dark:text-gray-500">No upcoming sessions.</p>
-          ) : (
-            <div className="space-y-2">
-              {data.upcomingSessions.map((s) => (
-                <div key={s.id} className="flex items-center justify-between border border-gray-100 rounded-lg p-2.5 dark:border-gray-800">
-                  <div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-50">{s.participantName}</span>
-                    <span className="text-xs text-gray-400 ml-2 dark:text-gray-500">{s.projectName}</span>
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">{s.dateKey} @ {s.time}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 mb-8 dark:border-gray-700 dark:bg-gray-900">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2 dark:text-gray-50">
-            <CheckCircle2 className="w-4 h-4 text-gray-400 dark:text-gray-500" /> Completed Sessions ({data.completedSessions.length})
-          </h2>
-          {data.completedSessions.length === 0 ? (
-            <p className="text-sm text-gray-400 dark:text-gray-500">No completed sessions.</p>
-          ) : (
-            <div className="space-y-2">
-              {data.completedSessions.map((s) => (
-                <div key={s.id} className="flex items-center justify-between border border-gray-100 rounded-lg p-2.5 bg-gray-50 dark:border-gray-800 dark:bg-gray-950">
-                  <div>
-                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{s.participantName}</span>
-                    <span className="text-xs text-gray-400 ml-2 dark:text-gray-500">{s.projectName}</span>
-                  </div>
-                  <div className="text-xs text-gray-400 dark:text-gray-500">{s.dateKey} @ {s.time}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <MySessions sessions={data.sessions} />
 
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 mb-8 dark:border-gray-700 dark:bg-gray-900">
           <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2 dark:text-gray-50">

@@ -14,6 +14,7 @@ import {
 import { canManageProject } from "@/lib/authz";
 import { setAdminAvailabilityBulk } from "@/lib/data/availability";
 import { createBooking, cancelBooking } from "@/lib/data/bookings";
+import { isSessionInPast } from "@/lib/slotHelpers";
 import { joinWaitlist, claimWaitlistOffer } from "@/lib/data/waitlist";
 import { createTemplateVersion } from "@/lib/data/templates";
 import { sendTestEmail } from "@/lib/data/notifications";
@@ -74,6 +75,7 @@ export async function createProjectAction(formData: {
   adminIds: string[];
   ownerId?: string;
   certificationIds?: string[];
+  autoCompleteBookings?: boolean;
 }) {
   const session = await auth();
   if (!session?.user?.id) return;
@@ -154,6 +156,7 @@ export async function updateProjectAction(
     availabilityPeriodDays: number;
     adminIds: string[];
     ownerId?: string;
+    autoCompleteBookings?: boolean;
   }
 ): Promise<{
   ok: true;
@@ -232,6 +235,63 @@ export async function cancelBookingAction(bookingId: string, projectId?: string)
   if (projectId) {
     revalidatePath(`/admin/projects/${projectId}/edit`);
   }
+}
+
+/**
+ * Mark a session as completed.
+ *
+ * Server-side verification only: the caller must be the admin actually
+ * assigned to the booking, the booking must be genuinely "awaiting
+ * completion" (status confirmed, session time already past, project does
+ * NOT auto-complete), and it must not have been completed already.
+ */
+export async function markBookingCompletedAction(
+  bookingId: string
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, reason: "unauthorized" };
+
+  const booking = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: {
+      id: true,
+      adminId: true,
+      status: true,
+      dateKey: true,
+      time: true,
+      projectId: true,
+      participantName: true,
+      project: { select: { timezone: true, autoCompleteBookings: true } },
+    },
+  });
+  if (!booking) return { ok: false, reason: "not_found" };
+  if (booking.adminId !== session.user.id) return { ok: false, reason: "not_assigned" };
+  if (booking.status !== "confirmed") return { ok: false, reason: "not_awaiting" };
+  if (booking.project.autoCompleteBookings) return { ok: false, reason: "auto_completed" };
+  if (!isSessionInPast(booking.dateKey, booking.time, booking.project.timezone)) {
+    return { ok: false, reason: "not_in_past" };
+  }
+
+  await db.booking.update({
+    where: { id: bookingId },
+    data: { status: "completed" },
+  });
+
+  recordAudit({
+    action: "booking_completed",
+    actorType: "admin",
+    actorId: session.user.id,
+    actorLabel: certificationActorLabel(session.user),
+    entityType: "Booking",
+    entityId: bookingId,
+    projectId: booking.projectId,
+    beforeState: { status: "confirmed" },
+    afterState: { status: "completed", participantName: booking.participantName, completedAt: new Date().toISOString() },
+  }).catch(() => {});
+
+  revalidatePath("/admin/my-area");
+  revalidatePath("/admin/calendar");
+  return { ok: true };
 }
 
 export async function joinWaitlistAction(input: {
@@ -360,14 +420,14 @@ export async function changeAdminRoleAction(
   | {
       ok: false;
       reason:
-        | "not_org_owner"
+        | "not_allowed"
         | "target_not_found"
         | "cannot_change_org_owner_role";
     }
 > {
   const session = await auth();
   if (!session?.user?.id) {
-    return { ok: false, reason: "not_org_owner" };
+    return { ok: false, reason: "not_allowed" };
   }
   const result = await changeAdminRole(session.user.id, targetAdminId, newRole);
   if (result.ok) {
@@ -644,13 +704,10 @@ export async function setAdminCertificationsAction(
   if (!session?.user?.id) return { ok: false, reason: "unauthorized" };
 
   const role = (session?.user as any)?.role;
-  const allowed =
-    isOrgOwner(role) ||
-    (isSuperAdmin(role) &&
-      (await db.projectAdmin.findFirst({
-        where: { adminId, project: { ownerId: session.user.id } },
-        select: { id: true },
-      })));
+  // org_owner and super_admin can assign certifications to ANY associate
+  // system-wide (super_admin via the Team page is a deliberate exception
+  // to normal project-ownership scoping).
+  const allowed = isOrgOwner(role) || isSuperAdmin(role);
   if (!allowed) return { ok: false, reason: "unauthorized" };
 
   const uniqueIds = [...new Set(certificationIds)];

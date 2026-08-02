@@ -33,6 +33,10 @@ export async function listTeamMembers(): Promise<TeamMember[]> {
 /**
  * Change an admin's role between "admin" and "super_admin" only.
  *
+ * Allowed for org_owner and super_admin callers (super_admin can manage
+ * every associate system-wide on the Team page — a deliberate exception
+ * to normal project-ownership scoping; everything else stays scoped).
+ *
  * Org-owner can NEVER be set or removed through this path — ownership
  * changes only via the dedicated `promoteToOrgOwner` transfer flow,
  * which atomically demotes the current owner while promoting the new one.
@@ -49,7 +53,7 @@ export async function changeAdminRole(
   | {
       ok: false;
       reason:
-        | "not_org_owner"
+        | "not_allowed"
         | "target_not_found"
         | "cannot_change_org_owner_role";
     }
@@ -58,8 +62,8 @@ export async function changeAdminRole(
     where: { id: actorAdminId },
     select: { role: true, name: true, email: true },
   });
-  if (!actor || actor.role !== "org_owner") {
-    return { ok: false, reason: "not_org_owner" };
+  if (!actor || (actor.role !== "org_owner" && actor.role !== "super_admin")) {
+    return { ok: false, reason: "not_allowed" };
   }
 
   const target = await db.admin.findUnique({

@@ -37,6 +37,7 @@ enum BookingStatus {
   confirmed
   cancelled
   rescheduled
+  completed
 }
 
 enum TeamsProvisionStatus {
@@ -191,6 +192,7 @@ model Project {
   bufferMinutes             Int
   maxSessionsPerAdminPerDay Int
   sessionCapacity           Int            @default(1)
+  autoCompleteBookings      Boolean        @default(false)
   selfServiceWindowHours    Int            @default(4)
   status                    ProjectStatus  @default(draft)
   availabilityLockDate      DateTime
@@ -355,6 +357,7 @@ enum AuditAction {
   booking_created
   booking_cancelled
   booking_rescheduled
+  booking_completed
   template_created
   template_updated
   notification_sent
