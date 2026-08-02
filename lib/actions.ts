@@ -19,7 +19,7 @@ import { createTemplateVersion } from "@/lib/data/templates";
 import { sendTestEmail } from "@/lib/data/notifications";
 import { inviteAssociate } from "@/lib/data/admins";
 import { previewAdminUnavailable, commitAdminUnavailable, previewDateShift, commitDateShift } from "@/lib/data/bulk-reschedule";
-import { canViewAllProjects, isOrgOwner } from "@/lib/authz";
+import { canViewAllProjects, isOrgOwner, isSuperAdmin } from "@/lib/authz";
 import { changeAdminRole, promoteToOrgOwner } from "@/lib/data/team";
 import { setAdminRangesForDate } from "@/lib/data/availability-ranges";
 import { sendInvitationsOnActivation } from "@/lib/data/participants";
@@ -27,6 +27,14 @@ import { updateParticipantStatus } from "@/lib/data/participants";
 import { addParticipant, sendParticipantInvitationsForProject, removeParticipant } from "@/lib/data/participants";
 import { reassignBookingAdmin } from "@/lib/data/bookings";
 import { recordAudit } from "@/lib/data/audit";
+import {
+  createCertification,
+  updateCertification,
+  deleteCertification,
+  setAdminCertifications,
+  setProjectCertificationRequirements,
+} from "@/lib/data/certifications";
+import type { CertificationRecord } from "@/lib/data/certifications";
 
 export async function saveAvailabilityAction(
   projectId: string,
@@ -65,6 +73,7 @@ export async function createProjectAction(formData: {
   availabilityPeriodDays: number;
   adminIds: string[];
   ownerId?: string;
+  certificationIds?: string[];
 }) {
   const session = await auth();
   if (!session?.user?.id) return;
@@ -76,7 +85,17 @@ export async function createProjectAction(formData: {
   if (formData.availabilityPeriodDays < 1 || formData.availabilityPeriodDays > 365) return;
 
   const effectiveOwnerId = formData.ownerId ?? session?.user?.id;
-  await dataCreateProject({ ...formData, ownerId: effectiveOwnerId });
+  const created = await dataCreateProject({ ...formData, ownerId: effectiveOwnerId });
+  if (formData.certificationIds && formData.certificationIds.length > 0) {
+    await setProjectCertificationRequirements({
+      projectId: created.id,
+      certificationIds: [...new Set(formData.certificationIds)],
+      actor: {
+        actorId: session.user.id,
+        actorLabel: certificationActorLabel(session.user),
+      },
+    });
+  }
   revalidatePath("/admin/projects");
   redirect("/admin/projects");
 }
@@ -326,6 +345,7 @@ export async function inviteAssociateAction(input: {
 
   const admin = await inviteAssociate({ ...input, role: requestedRole });
   revalidatePath("/admin/projects");
+  revalidatePath("/admin/team");
   if (input.projectId) {
     revalidatePath(`/admin/projects/${input.projectId}/edit`);
   }
@@ -518,5 +538,182 @@ export async function manuallyResolveFlaggedBookingAction(
 
   revalidatePath("/admin/needs-attention");
   revalidatePath("/admin/dashboard");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Certification catalog — org_owner only
+// ---------------------------------------------------------------------------
+
+function certificationActorLabel(user: { name?: string | null; email?: string | null }): string {
+  return user.name ? `${user.name} <${user.email ?? ""}>` : user.email ?? "";
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { code?: string }).code === "P2002";
+}
+
+export async function createCertificationAction(
+  name: string,
+  description?: string
+): Promise<{ ok: true; certification: CertificationRecord } | { ok: false; reason: string }> {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  if (!session?.user?.id || !isOrgOwner(role)) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  const trimmed = name.trim();
+  if (!trimmed) return { ok: false, reason: "Certification name is required." };
+  try {
+    const certification = await createCertification({
+      name: trimmed,
+      description,
+      actorId: session.user.id,
+      actorLabel: certificationActorLabel(session.user),
+    });
+    revalidatePath("/admin/certifications");
+    revalidatePath("/admin/team");
+    return { ok: true, certification };
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return { ok: false, reason: "A certification with this name already exists." };
+    }
+    return { ok: false, reason: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+export async function updateCertificationAction(
+  id: string,
+  name: string,
+  description?: string
+): Promise<{ ok: true; certification: CertificationRecord } | { ok: false; reason: string }> {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  if (!session?.user?.id || !isOrgOwner(role)) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  const trimmed = name.trim();
+  if (!trimmed) return { ok: false, reason: "Certification name is required." };
+  try {
+    const certification = await updateCertification(id, {
+      name: trimmed,
+      description,
+      actorId: session.user.id,
+      actorLabel: certificationActorLabel(session.user),
+    });
+    if (!certification) return { ok: false, reason: "not_found" };
+    revalidatePath("/admin/certifications");
+    revalidatePath("/admin/team");
+    return { ok: true, certification };
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return { ok: false, reason: "A certification with this name already exists." };
+    }
+    return { ok: false, reason: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+export async function deleteCertificationAction(
+  id: string
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  if (!session?.user?.id || !isOrgOwner(role)) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  const deleted = await deleteCertification(id, {
+    actorId: session.user.id,
+    actorLabel: certificationActorLabel(session.user),
+  });
+  if (!deleted) return { ok: false, reason: "not_found" };
+  revalidatePath("/admin/certifications");
+  revalidatePath("/admin/team");
+  revalidatePath("/admin/projects");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Per-associate certification assignment
+// ---------------------------------------------------------------------------
+
+export async function setAdminCertificationsAction(
+  adminId: string,
+  certificationIds: string[]
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, reason: "unauthorized" };
+
+  const role = (session?.user as any)?.role;
+  const allowed =
+    isOrgOwner(role) ||
+    (isSuperAdmin(role) &&
+      (await db.projectAdmin.findFirst({
+        where: { adminId, project: { ownerId: session.user.id } },
+        select: { id: true },
+      })));
+  if (!allowed) return { ok: false, reason: "unauthorized" };
+
+  const uniqueIds = [...new Set(certificationIds)];
+  const valid = await db.certification.findMany({
+    where: { id: { in: uniqueIds } },
+    select: { id: true },
+  });
+  if (valid.length !== uniqueIds.length) {
+    return { ok: false, reason: "One or more certifications no longer exist." };
+  }
+
+  await setAdminCertifications({
+    adminId,
+    certificationIds: uniqueIds,
+    actor: {
+      actorId: session.user.id,
+      actorLabel: certificationActorLabel(session.user),
+    },
+  });
+  revalidatePath("/admin/team");
+  revalidatePath("/admin/projects");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Per-project required-certification declaration
+// ---------------------------------------------------------------------------
+
+export async function setProjectCertificationRequirementsAction(
+  projectId: string,
+  certificationIds: string[]
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, reason: "unauthorized" };
+
+  const role = (session?.user as any)?.role;
+  const user = { id: session.user.id, role: role as "admin" | "super_admin" | "org_owner" };
+  const project = await db.project.findUnique({
+    where: { id: projectId },
+    select: { id: true, ownerId: true, slug: true },
+  });
+  if (!project || !canManageProject(user, project)) {
+    return { ok: false, reason: "unauthorized" };
+  }
+
+  const uniqueIds = [...new Set(certificationIds)];
+  const valid = await db.certification.findMany({
+    where: { id: { in: uniqueIds } },
+    select: { id: true },
+  });
+  if (valid.length !== uniqueIds.length) {
+    return { ok: false, reason: "One or more certifications no longer exist." };
+  }
+
+  await setProjectCertificationRequirements({
+    projectId,
+    certificationIds: uniqueIds,
+    actor: {
+      actorId: session.user.id,
+      actorLabel: certificationActorLabel(session.user),
+    },
+  });
+  revalidatePath("/admin/projects");
+  revalidatePath(`/admin/projects/${project.slug}/edit`);
   return { ok: true };
 }

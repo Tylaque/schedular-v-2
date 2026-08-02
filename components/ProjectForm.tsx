@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createProjectAction, updateProjectAction, inviteAssociateAction } from "@/lib/actions";
+import { AlertTriangle } from "lucide-react";
+import { createProjectAction, updateProjectAction, inviteAssociateAction, setProjectCertificationRequirementsAction } from "@/lib/actions";
 import type { Project } from "@/lib/slotHelpers";
 import { OwnerGraphStatus } from "@/components/OwnerGraphStatus";
+import AdminCertificationsEditor from "@/components/AdminCertificationsEditor";
 
 const STATUS_OPTIONS: {
   value: "draft" | "active" | "paused" | "closed" | "archived";
@@ -60,15 +62,22 @@ export default function ProjectForm({
   mode,
   initialProject,
   currentUserRole,
+  certifications = [],
+  initialRequirements = [],
+  certificationsByAdmin = {},
 }: {
   mode: "create" | "edit";
   initialProject?: Project;
   currentUserRole?: string;
+  certifications?: { id: string; name: string; description: string }[];
+  initialRequirements?: string[];
+  certificationsByAdmin?: Record<string, string[]>;
 }) {
   const router = useRouter();
   const isEdit = mode === "edit";
   const [allAdmins, setAllAdmins] = useState<AdminOption[]>([]);
   const [superAdmins, setSuperAdmins] = useState<SuperAdminOption[]>([]);
+  const [requiredCertIds, setRequiredCertIds] = useState<string[]>(initialRequirements);
 
   useEffect(() => {
     async function load() {
@@ -204,12 +213,18 @@ export default function ProjectForm({
       availabilityPeriodDays: data.availabilityPeriodDays,
       adminIds: data.admins,
       ownerId: data.ownerId || undefined,
+      certificationIds: requiredCertIds,
     };
 
     try {
       if (isEdit && initialProject) {
         const result = await updateProjectAction(initialProject.slug, { ...formPayload, status: data.status });
         if (result.ok) {
+          const reqResult = await setProjectCertificationRequirementsAction(initialProject.id, requiredCertIds);
+          if (!reqResult.ok) {
+            setSaveError(reqResult.reason === "unauthorized" ? "You do not have permission to set certification requirements." : "Project saved, but failed to save required certifications.");
+            return;
+          }
           if (result.reassigned > 0 || result.flagged > 0) {
             setOffboardingSummary({
               reassigned: result.reassigned,
@@ -498,6 +513,71 @@ export default function ProjectForm({
             });
           }}
         />
+
+        {allAdmins.filter((a) => data.admins.includes(a.id)).length > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2 dark:text-gray-400">Associate certifications</h3>
+            {allAdmins
+              .filter((a) => data.admins.includes(a.id))
+              .map((admin) => {
+                const held = certificationsByAdmin[admin.id] ?? [];
+                const missing = requiredCertIds.filter((id) => !held.includes(id));
+                return (
+                  <div key={admin.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0 dark:border-gray-800">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm text-gray-800 truncate dark:text-gray-200">{admin.name}</span>
+                      {requiredCertIds.length > 0 &&
+                        (missing.length > 0 ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-xs font-medium dark:bg-amber-900/40 dark:text-amber-300">
+                            <AlertTriangle className="w-3 h-3" /> Missing {missing.length} required cert
+                            {missing.length === 1 ? "" : "s"}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-xs font-medium dark:bg-emerald-900/40 dark:text-emerald-300">
+                            Certified
+                          </span>
+                        ))}
+                    </div>
+                    <AdminCertificationsEditor adminId={admin.id} catalog={certifications} selected={held} />
+                  </div>
+                );
+              })}
+          </div>
+        )}
+      </div>
+
+      {/* Required certifications */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm dark:bg-gray-900 dark:border-gray-700">
+        <h2 className="text-sm font-bold text-gray-900 mb-1 dark:text-gray-50">Required certifications</h2>
+        <p className="text-xs text-gray-500 mb-4 dark:text-gray-400">
+          Associates must hold all selected certifications to be eligible for booking on this project. Leave empty for no certification requirement.
+        </p>
+        {certifications.length === 0 ? (
+          <p className="text-sm text-gray-400 dark:text-gray-500">
+            No certifications in the catalog yet. The organisation owner can add them under Certifications.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {certifications.map((c) => (
+              <label
+                key={c.id}
+                className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50 rounded px-2 py-1.5 dark:text-gray-200 dark:hover:bg-gray-800"
+              >
+                <input
+                  type="checkbox"
+                  checked={requiredCertIds.includes(c.id)}
+                  onChange={() =>
+                    setRequiredCertIds((prev) =>
+                      prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id]
+                    )
+                  }
+                  className="rounded border-gray-300 text-brand-500 dark:border-gray-600"
+                />
+                {c.name}
+              </label>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Owner assignment */}

@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { auth } from "@/auth";
 import { getProjectBySlug } from "@/lib/data/projects";
 import { canManageProject } from "@/lib/authz";
+import { listCertifications, getProjectCertificationRequirements, getCertificationAssignments } from "@/lib/data/certifications";
 import ProjectForm from "@/components/ProjectForm";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,16 @@ export default async function EditProjectPage({
   const user = { id: session.user.id, role: (session.user as any).role as "admin" | "super_admin" | "org_owner" };
   if (!canManageProject(user, project)) return notFound();
 
+  const [certifications, requirements, assignments] = await Promise.all([
+    listCertifications(),
+    getProjectCertificationRequirements(project.id),
+    getCertificationAssignments(),
+  ]);
+  const certificationsByAdmin: Record<string, string[]> = {};
+  for (const a of assignments) {
+    (certificationsByAdmin[a.adminId] ??= []).push(a.certificationId);
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
         <Link
@@ -39,7 +50,14 @@ export default async function EditProjectPage({
             Manage participants
           </Link>
         </div>
-        <ProjectForm mode="edit" initialProject={project} currentUserRole={user.role} />
+        <ProjectForm
+          mode="edit"
+          initialProject={project}
+          currentUserRole={user.role}
+          certifications={certifications}
+          initialRequirements={requirements.map((r) => r.certificationId)}
+          certificationsByAdmin={certificationsByAdmin}
+        />
     </div>
   );
 }

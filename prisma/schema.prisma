@@ -102,7 +102,48 @@ model Admin {
   passwordResetTokens PasswordResetToken[]
   accounts           Account[]
   sessions           Session[]
+  certifications     AdminCertification[] @relation("CertificationHolder")
+  grantedCertifications AdminCertification[] @relation("CertificationGranter")
   createdAt          DateTime            @default(now())
+}
+
+model Certification {
+  id                 String   @id @default(cuid())
+  name               String   @unique
+  description        String   @default("")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  adminCertifications AdminCertification[]
+  projectRequirements  ProjectCertificationRequirement[]
+}
+
+model AdminCertification {
+  id              String        @id @default(cuid())
+  certification   Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  certificationId String
+  admin           Admin         @relation("CertificationHolder", fields: [adminId], references: [id], onDelete: Cascade)
+  adminId         String
+  grantedBy       Admin?        @relation("CertificationGranter", fields: [grantedById], references: [id], onDelete: SetNull)
+  grantedById     String?
+  grantedAt       DateTime      @default(now())
+
+  @@unique([adminId, certificationId])
+  @@index([adminId])
+  @@index([certificationId])
+}
+
+model ProjectCertificationRequirement {
+  id              String        @id @default(cuid())
+  certification   Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  certificationId String
+  project         Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId       String
+  createdAt       DateTime      @default(now())
+
+  @@unique([projectId, certificationId])
+  @@index([projectId])
+  @@index([certificationId])
 }
 
 model Account {
@@ -164,6 +205,7 @@ model Project {
   emailTemplates            EmailTemplate[]
   notificationLogs          NotificationLog[]
   auditLogs                 AuditLog[]
+  certificationRequirements ProjectCertificationRequirement[]
   ownerId                   String?
   owner                     Admin?         @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   createdAt                 DateTime       @default(now())
@@ -319,6 +361,11 @@ enum AuditAction {
   waitlist_joined
   role_changed
   org_ownership_transferred
+  certification_created
+  certification_updated
+  certification_deleted
+  admin_certifications_set
+  project_certification_requirements_set
 }
 
 model AuditLog {

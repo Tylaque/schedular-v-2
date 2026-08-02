@@ -1,8 +1,9 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getAdminDashboardData, countTodaySessions } from "@/lib/data/dashboard";
+import { getAdminCertifications } from "@/lib/data/certifications";
 import GreetingHeader from "@/components/GreetingHeader";
-import { FolderKanban, CalendarClock, Clock, CheckCircle2, Users } from "lucide-react";
+import { FolderKanban, CalendarClock, Clock, CheckCircle2, Users, BadgeCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ export default async function MyAreaPage() {
 
   const data = await getAdminDashboardData(session.user.id);
   const todayCount = await countTodaySessions({ adminId: session.user.id });
+  const certifications = await getAdminCertifications(session.user.id);
   if (!data) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -133,6 +135,35 @@ export default async function MyAreaPage() {
                     <span className="text-xs text-gray-400 ml-2 dark:text-gray-500">{s.projectName}</span>
                   </div>
                   <div className="text-xs text-gray-400 dark:text-gray-500">{s.dateKey} @ {s.time}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 mb-8 dark:border-gray-700 dark:bg-gray-900">
+          <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2 dark:text-gray-50">
+            <BadgeCheck className="w-4 h-4 text-gray-400 dark:text-gray-500" /> My Certifications
+          </h2>
+          {certifications.length === 0 ? (
+            <p className="text-sm text-gray-400 dark:text-gray-500">No certifications assigned yet.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {certifications.map((c) => (
+                <div
+                  key={c.id}
+                  className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 dark:border-gray-700"
+                >
+                  <BadgeCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-300" />
+                  <div>
+                    <span className="block text-sm font-medium text-gray-900 dark:text-gray-50">
+                      {c.certification.name}
+                    </span>
+                    <span className="block text-xs text-gray-400 dark:text-gray-500">
+                      {c.grantedBy ? `Granted by ${c.grantedBy.name}` : "Granted"}
+                      {c.certification.description ? ` — ${c.certification.description}` : ""}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>

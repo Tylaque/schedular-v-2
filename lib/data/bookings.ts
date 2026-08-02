@@ -5,6 +5,7 @@ import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
 import { logNotification } from "@/lib/data/notifications";
 import { createMeetingEvent, deleteMeetingEvent, updateMeetingEventTime } from "@/lib/graph/client";
 import { isAdminAvailableForSlot } from "@/lib/data/availability-ranges";
+import { isAdminCertifiedForProject } from "@/lib/data/certifications";
 import type { Prisma } from "@prisma/client";
 
 function parseMinutes(t: string): number {
@@ -138,9 +139,19 @@ export async function pickAvailableAdmin(
   const candidateIds = projectAdminRows.map((pa) => pa.adminId);
   if (candidateIds.length === 0) return null;
 
+  // Certification gate: only associates holding all of the project's required
+  // certifications (if any) can serve the slot. Zero requirements = anyone eligible.
+  const certifiedIds: string[] = [];
+  for (const adminId of candidateIds) {
+    if (await isAdminCertifiedForProject(projectId, adminId, client)) {
+      certifiedIds.push(adminId);
+    }
+  }
+  if (certifiedIds.length === 0) return null;
+
   // Check range-based availability for each candidate
   const rangeAvailable: string[] = [];
-  for (const adminId of candidateIds) {
+  for (const adminId of certifiedIds) {
     const available = await isAdminAvailableForSlot(
       adminId,
       dateKey,
@@ -641,6 +652,10 @@ export async function isAdminEligibleForSlot(
     select: { durationMinutes: true, bufferMinutes: true, maxSessionsPerAdminPerDay: true },
   });
   if (!project) return false;
+
+  // Certification gate: associate must hold all of the project's required
+  // certifications (if any). Zero requirements = eligible.
+  if (!(await isAdminCertifiedForProject(projectId, adminId, client))) return false;
 
   if (!skipAvailability) {
     const available = await isAdminAvailableForSlot(adminId, dateKey, time, project.durationMinutes);

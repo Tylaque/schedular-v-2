@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
 import { expireStaleOffers } from "@/lib/data/waitlist";
 import { isAdminAvailableForSlot, getAdminRanges } from "@/lib/data/availability-ranges";
+import { isAdminCertifiedForProject } from "@/lib/data/certifications";
 
 export async function getAdminAvailability(
   projectId: string,
@@ -107,6 +108,16 @@ export async function getConsolidatedAvailability(
   const adminIds = projectAdmins.map((pa) => pa.adminId);
   if (adminIds.length === 0) return {};
 
+  // Certification gate: only certified associates count toward bookable slots.
+  // Zero project requirements = all assigned associates are eligible.
+  const certifiedIds: string[] = [];
+  for (const adminId of adminIds) {
+    if (await isAdminCertifiedForProject(projectId, adminId)) {
+      certifiedIds.push(adminId);
+    }
+  }
+  if (certifiedIds.length === 0) return {};
+
   // Determine the date window we need to cover
   const now = new Date();
   const fromDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -114,10 +125,10 @@ export async function getConsolidatedAvailability(
   endDate.setDate(endDate.getDate() + project.availabilityPeriodDays);
   const toDate = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
 
-  // Load all ranges for all assigned admins in the date window
+  // Load all ranges for all certified admins in the date window
   const allRanges = await db.adminAvailabilityRange.findMany({
     where: {
-      adminId: { in: adminIds },
+      adminId: { in: certifiedIds },
       dateKey: { gte: fromDate, lte: toDate },
     },
     orderBy: [{ dateKey: "asc" }, { startTime: "asc" }],
@@ -172,9 +183,9 @@ export async function getConsolidatedAvailability(
         if (count >= project.sessionCapacity) continue;
         if (offeredSet.has(key)) continue;
 
-        // Check if at least one admin is range-available for this slot
+        // Check if at least one certified admin is range-available for this slot
         let slotBookable = false;
-        for (const adminId of adminIds) {
+        for (const adminId of certifiedIds) {
           if (await isAdminAvailableForSlot(adminId, dateKey, time, project.durationMinutes)) {
             slotBookable = true;
             break;

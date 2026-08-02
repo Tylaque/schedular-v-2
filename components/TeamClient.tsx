@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Shield, AlertTriangle, Search } from "lucide-react";
-import { changeAdminRoleAction, promoteToOrgOwnerAction } from "@/lib/actions";
+import { Shield, AlertTriangle, Search, UserPlus } from "lucide-react";
+import { changeAdminRoleAction, promoteToOrgOwnerAction, inviteAssociateAction } from "@/lib/actions";
 import type { TeamMember } from "@/lib/data/team";
 import Avatar from "@/components/Avatar";
+import AdminCertificationsEditor from "@/components/AdminCertificationsEditor";
 
 const ROLE_BADGE: Record<string, string> = {
   admin: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
@@ -17,9 +18,13 @@ const ROLE_OPTIONS = ["admin", "super_admin"] as const;
 export default function TeamClient({
   members,
   currentUserId,
+  certifications,
+  certificationsByAdmin,
 }: {
   members: TeamMember[];
   currentUserId: string;
+  certifications: { id: string; name: string; description: string }[];
+  certificationsByAdmin: Record<string, string[]>;
 }) {
   const [saving, setSaving] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -27,6 +32,39 @@ export default function TeamClient({
   const [confirmPhrase, setConfirmPhrase] = useState("");
   const [promoting, setPromoting] = useState(false);
   const [search, setSearch] = useState("");
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "super_admin">("admin");
+  const [inviteSending, setInviteSending] = useState(false);
+  const [membersList, setMembersList] = useState(members);
+
+  async function handleInvite() {
+    if (!inviteName.trim() || !inviteEmail.trim()) return;
+    setInviteSending(true);
+    setMsg(null);
+    try {
+      const invited = await inviteAssociateAction({ name: inviteName.trim(), email: inviteEmail.trim(), role: inviteRole });
+      const newMember: TeamMember = {
+        id: invited.id,
+        name: invited.name,
+        email: invited.email,
+        role: invited.role,
+        accountType: invited.accountType,
+        ownedProjectNames: [],
+        assignedProjectNames: [],
+      };
+      setMembersList((prev) => (prev.find((m) => m.id === invited.id) ? prev : [...prev, newMember]));
+      setInviteName("");
+      setInviteEmail("");
+      setInviteOpen(false);
+      setMsg({ type: "ok", text: `Invited ${invited.name}. They will receive an activation email.` });
+    } catch (err) {
+      setMsg({ type: "err", text: err instanceof Error ? err.message : "Failed to invite associate." });
+    } finally {
+      setInviteSending(false);
+    }
+  }
 
   async function handleRoleChange(memberId: string, newRole: "admin" | "super_admin") {
     setSaving(memberId);
@@ -76,17 +114,17 @@ export default function TeamClient({
     }
   }
 
-  const currentOwner = members.find((m) => m.role === "org_owner");
+  const currentOwner = membersList.find((m) => m.role === "org_owner");
 
   const filteredMembers = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return members;
-    return members.filter(
+    if (!q) return membersList;
+    return membersList.filter(
       (m) =>
         m.name.toLowerCase().includes(q) ||
         m.email.toLowerCase().includes(q),
     );
-  }, [members, search]);
+  }, [membersList, search]);
 
   return (
     <div>
@@ -102,7 +140,7 @@ export default function TeamClient({
         </div>
       )}
 
-      {members.length > 5 && (
+      {membersList.length > 5 && (
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
           <input
@@ -115,6 +153,60 @@ export default function TeamClient({
         </div>
       )}
 
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5 mb-6 dark:border-gray-700 dark:bg-gray-900">
+        {!inviteOpen ? (
+          <button
+            onClick={() => setInviteOpen(true)}
+            className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg px-4 py-2"
+          >
+            <UserPlus className="w-4 h-4" /> Invite Associate
+          </button>
+        ) : (
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900 mb-3 dark:text-gray-50">Invite a new associate</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                type="text"
+                value={inviteName}
+                onChange={(e) => setInviteName(e.target.value)}
+                placeholder="Full name"
+                className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white dark:border-gray-600 dark:bg-gray-800"
+              />
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="Email address"
+                className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white dark:border-gray-600 dark:bg-gray-800"
+              />
+            </div>
+            <div className="flex items-center gap-3 mt-3">
+              <select
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value as "admin" | "super_admin")}
+                className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white dark:border-gray-600 dark:bg-gray-800"
+              >
+                <option value="admin">Associate (Admin)</option>
+                <option value="super_admin">Super Admin</option>
+              </select>
+              <button
+                onClick={handleInvite}
+                disabled={inviteSending || !inviteName.trim() || !inviteEmail.trim()}
+                className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg px-4 py-2"
+              >
+                {inviteSending ? "Inviting..." : "Send Invite"}
+              </button>
+              <button
+                onClick={() => setInviteOpen(false)}
+                className="text-sm font-medium text-gray-500 hover:text-gray-700 px-3 py-2 dark:text-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-900">
         <table className="w-full text-sm">
           <thead>
@@ -124,6 +216,7 @@ export default function TeamClient({
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Role</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Account</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Projects</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Certifications</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Actions</th>
             </tr>
           </thead>
@@ -154,6 +247,13 @@ export default function TeamClient({
                       <span className="block">Assigned: {m.assignedProjectNames.join(", ")}</span>
                     )}
                     {m.ownedProjectNames.length === 0 && m.assignedProjectNames.length === 0 && "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <AdminCertificationsEditor
+                      adminId={m.id}
+                      catalog={certifications}
+                      selected={certificationsByAdmin[m.id] ?? []}
+                    />
                   </td>
                   <td className="px-4 py-3 text-right">
                     {isOrgOwner ? (
@@ -192,7 +292,7 @@ export default function TeamClient({
             })}
             {filteredMembers.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                   No team members match your search.
                 </td>
               </tr>
