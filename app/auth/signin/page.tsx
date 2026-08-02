@@ -99,6 +99,9 @@ export default function SignInPage() {
             </svg>
             Sign in with Microsoft
           </button>
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-2">
+            Microsoft sign-in is available to invited accounts only.
+          </p>
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">

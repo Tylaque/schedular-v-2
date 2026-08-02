@@ -33,7 +33,7 @@ export default function SignUpPage() {
           <div className="rounded-lg bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 p-4 mb-6">
             <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
               <strong>Already have an invite?</strong> Check your email for a setup link from your organisation
-              owner. If you have an organisational Microsoft account, you can sign in below.
+              owner. If the email you were invited with is a Microsoft account, you can sign in below instead.
             </p>
           </div>
 

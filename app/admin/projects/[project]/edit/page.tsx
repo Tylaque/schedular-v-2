@@ -39,7 +39,7 @@ export default async function EditProjectPage({
             Manage participants
           </Link>
         </div>
-        <ProjectForm mode="edit" initialProject={project} />
+        <ProjectForm mode="edit" initialProject={project} currentUserRole={user.role} />
     </div>
   );
 }

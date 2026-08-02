@@ -59,9 +59,11 @@ function futureDateString(days: number): string {
 export default function ProjectForm({
   mode,
   initialProject,
+  currentUserRole,
 }: {
   mode: "create" | "edit";
   initialProject?: Project;
+  currentUserRole?: string;
 }) {
   const router = useRouter();
   const isEdit = mode === "edit";
@@ -485,6 +487,7 @@ export default function ProjectForm({
 
         <InviteAssociateForm
           projectId={initialProject?.id}
+          currentUserRole={currentUserRole}
           onInvited={(newAdmin) => {
             if (!data.admins.includes(newAdmin.id)) {
               update("admins", [...data.admins, newAdmin.id]);
@@ -600,26 +603,32 @@ export default function ProjectForm({
 
 function InviteAssociateForm({
   projectId,
+  currentUserRole,
   onInvited,
 }: {
   projectId?: string;
+  currentUserRole?: string;
   onInvited: (admin: { id: string; name: string; initials: string; email: string; accountType: string | null; role: string }) => void;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"admin" | "super_admin">("admin");
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState("");
+
+  const canInviteSuperAdmin = currentUserRole === "org_owner";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr("");
     setSending(true);
     try {
-      const admin = await inviteAssociateAction({ name, email, projectId });
+      const admin = await inviteAssociateAction({ name, email, projectId, role });
       onInvited(admin);
       setName("");
       setEmail("");
+      setRole("admin");
       setDone(true);
       setTimeout(() => setDone(false), 4000);
     } catch (e: any) {
@@ -650,6 +659,17 @@ function InviteAssociateForm({
             onChange={(e) => setEmail(e.target.value)}
             className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
           />
+          {canInviteSuperAdmin && (
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as "admin" | "super_admin")}
+              className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white dark:border-gray-600 dark:bg-gray-800"
+              title="Role"
+            >
+              <option value="admin">Associate</option>
+              <option value="super_admin">Super Admin</option>
+            </select>
+          )}
           <button
             type="submit"
             disabled={sending}
@@ -658,6 +678,13 @@ function InviteAssociateForm({
             {sending ? "Sending..." : "Invite"}
           </button>
         </div>
+        {canInviteSuperAdmin && (
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            {role === "super_admin"
+              ? "Super Admins are invited via Microsoft sign-in with this email — no password setup is sent."
+              : "Associates can activate with an email/password setup link or Microsoft sign-in."}
+          </p>
+        )}
         {err && <p className="text-xs text-red-600 dark:text-red-300">{err}</p>}
         {done && <p className="text-xs text-green-600 dark:text-green-300">Invitation sent! The associate has been added to this project.</p>}
       </form>

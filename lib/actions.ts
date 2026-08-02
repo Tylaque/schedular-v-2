@@ -19,7 +19,7 @@ import { createTemplateVersion } from "@/lib/data/templates";
 import { sendTestEmail } from "@/lib/data/notifications";
 import { inviteAssociate } from "@/lib/data/admins";
 import { previewAdminUnavailable, commitAdminUnavailable, previewDateShift, commitDateShift } from "@/lib/data/bulk-reschedule";
-import { canViewAllProjects } from "@/lib/authz";
+import { canViewAllProjects, isOrgOwner } from "@/lib/authz";
 import { changeAdminRole, promoteToOrgOwner } from "@/lib/data/team";
 import { setAdminRangesForDate } from "@/lib/data/availability-ranges";
 import { sendInvitationsOnActivation } from "@/lib/data/participants";
@@ -299,6 +299,7 @@ export async function inviteAssociateAction(input: {
   name: string;
   email: string;
   projectId?: string;
+  role?: "admin" | "super_admin";
 }): Promise<{ id: string; name: string; initials: string; email: string; accountType: string | null; role: string }> {
   const session = await auth();
   if (!session?.user?.id) {
@@ -310,13 +311,20 @@ export async function inviteAssociateAction(input: {
     redirect("/admin/my-area");
   }
 
+  // Only the org_owner may invite someone directly as a super_admin; a
+  // super_admin inviting may only ever invite regular associates.
+  const requestedRole = input.role ?? "admin";
+  if (requestedRole === "super_admin" && !isOrgOwner(role)) {
+    throw new Error("Only the organisation owner can invite a Super Admin.");
+  }
+
   const hdrs = await headers();
   const ip = getClientIp(hdrs);
   if (!checkRateLimit(`invite:${ip}`, 10, 15 * 60 * 1000)) {
     throw new Error("Too many requests. Please try again later.");
   }
 
-  const admin = await inviteAssociate(input);
+  const admin = await inviteAssociate({ ...input, role: requestedRole });
   revalidatePath("/admin/projects");
   if (input.projectId) {
     revalidatePath(`/admin/projects/${input.projectId}/edit`);

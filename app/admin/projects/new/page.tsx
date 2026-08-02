@@ -1,8 +1,14 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import ProjectForm from "@/components/ProjectForm";
+import { auth } from "@/auth";
 
-export default function NewProjectPage() {
+export const dynamic = "force-dynamic";
+
+export default async function NewProjectPage() {
+  const session = await auth();
+  const currentUserRole = (session?.user as any)?.role;
+
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
         <Link
@@ -12,7 +18,7 @@ export default function NewProjectPage() {
           <ArrowLeft className="w-4 h-4" /> Back to projects
         </Link>
         <h1 className="text-xl font-bold text-gray-900 mb-6 dark:text-gray-50">Create project</h1>
-        <ProjectForm mode="create" />
+        <ProjectForm mode="create" currentUserRole={currentUserRole} />
     </div>
   );
 }

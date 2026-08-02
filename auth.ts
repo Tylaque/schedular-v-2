@@ -137,12 +137,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!admin || !admin.passwordHash) return null;
         const valid = await verifyPassword(credentials.password as string, admin.passwordHash);
         if (!valid) return null;
+        // super_admin/org_owner accounts must always sign in via Microsoft so
+        // they get a live Graph token tied to that identity. Reject password
+        // login even when the password itself is correct, using the SAME
+        // generic null rejection so no role information is leaked.
+        if (admin.role === "super_admin" || admin.role === "org_owner") return null;
         return { id: admin.id, name: admin.name, email: admin.email };
       },
     }),
   ],
   session: { strategy: "jwt" },
   callbacks: {
+    // Azure AD / Microsoft sign-in is invite-only: a Microsoft account is
+    // only allowed to sign in if an Admin row already exists for that email.
+    // Returning `false` makes @auth/core throw AccessDenied (which surfaces
+    // as a redirect to pages.error) BEFORE the adapter's createUser/linkAccount
+    // run, so an uninvited Microsoft account is never auto-provisioned.
+    async signIn({ user, account }: { user?: { email?: string | null } | null; account?: { provider?: string } | null }) {
+      if (account?.provider === "azure-ad") {
+        const email = (user?.email ?? "").trim();
+        if (!email) return false;
+        const { isInvitedAdminEmail } = await import("@/lib/data/auth-invite");
+        return isInvitedAdminEmail(email);
+      }
+      return true;
+    },
     async jwt({ token, account, profile }) {
       if (account) {
         token.access_token = account.access_token;
@@ -194,5 +213,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   pages: {
     signIn: "/auth/signin",
+    error: "/auth/error",
   },
 });
