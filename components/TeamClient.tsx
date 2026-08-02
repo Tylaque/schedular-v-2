@@ -7,9 +7,9 @@ import type { TeamMember } from "@/lib/data/team";
 import Avatar from "@/components/Avatar";
 
 const ROLE_BADGE: Record<string, string> = {
-  admin: "bg-gray-100 text-gray-600",
-  super_admin: "bg-blue-100 text-blue-700",
-  org_owner: "bg-purple-100 text-purple-700",
+  admin: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
+  super_admin: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  org_owner: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
 };
 
 const ROLE_OPTIONS = ["admin", "super_admin"] as const;
@@ -94,8 +94,8 @@ export default function TeamClient({
         <div
           className={`mb-4 p-3 rounded-lg text-sm ${
             msg.type === "ok"
-              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-              : "bg-red-50 text-red-700 border border-red-200"
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/40 dark:border-emerald-800 dark:text-emerald-300"
+              : "bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/40 dark:border-red-800 dark:text-red-300"
           }`}
         >
           {msg.text}
@@ -104,27 +104,27 @@ export default function TeamClient({
 
       {members.length > 5 && (
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search team by name or email..."
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-gray-600 dark:bg-gray-800"
           />
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-900">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Name</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Email</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Role</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Account</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Projects</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Actions</th>
+            <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-950">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Name</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Email</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Role</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Account</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Projects</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -132,21 +132,21 @@ export default function TeamClient({
               const isSelf = m.id === currentUserId;
               const isOrgOwner = m.role === "org_owner";
               return (
-                <tr key={m.id} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-gray-900">
+                <tr key={m.id} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors dark:border-gray-800 dark:hover:bg-gray-800">
+                  <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-50">
                     <div className="flex items-center gap-2">
                       <Avatar name={m.name} seed={m.email} size="sm" />
                       {m.name}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{m.email}</td>
+                  <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{m.email}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_BADGE[m.role] ?? ""}`}>
                       {m.role}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-500">{m.accountType ?? "—"}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{m.accountType ?? "—"}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs dark:text-gray-400">
                     {m.ownedProjectNames.length > 0 && (
                       <span className="block">Owns: {m.ownedProjectNames.join(", ")}</span>
                     )}
@@ -157,30 +157,30 @@ export default function TeamClient({
                   </td>
                   <td className="px-4 py-3 text-right">
                     {isOrgOwner ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600">
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 dark:text-purple-300">
                         <Shield className="w-3 h-3" /> Current Org Owner
                       </span>
                     ) : isSelf ? (
-                      <span className="text-xs text-gray-400">You</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">You</span>
                     ) : (
                       <div className="flex items-center justify-end gap-2">
                         <select
                           value={m.role}
                           onChange={(e) => handleRoleChange(m.id, e.target.value as "admin" | "super_admin")}
                           disabled={saving === m.id}
-                          className="text-xs border border-gray-300 rounded-lg px-2 py-1 bg-white text-gray-700"
+                          className="text-xs border border-gray-300 rounded-lg px-2 py-1 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
                         >
                           {ROLE_OPTIONS.map((r) => (
                             <option key={r} value={r}>{r}</option>
                           ))}
                         </select>
-                        {saving === m.id && <span className="text-xs text-gray-400">Saving...</span>}
+                        {saving === m.id && <span className="text-xs text-gray-400 dark:text-gray-500">Saving...</span>}
                         <button
                           onClick={() => {
                             setPromoteTarget(m);
                             setConfirmPhrase("");
                           }}
-                          className="text-xs text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1"
+                          className="text-xs text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1 dark:text-purple-300"
                         >
                           <Shield className="w-3 h-3" /> Promote
                         </button>
@@ -192,7 +192,7 @@ export default function TeamClient({
             })}
             {filteredMembers.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                   No team members match your search.
                 </td>
               </tr>
@@ -203,18 +203,18 @@ export default function TeamClient({
 
       {promoteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-2">Transfer Org Ownership</h2>
-            <p className="text-sm text-gray-600 mb-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6 dark:bg-gray-900">
+            <h2 className="text-lg font-bold text-gray-900 mb-2 dark:text-gray-50">Transfer Org Ownership</h2>
+            <p className="text-sm text-gray-600 mb-4 dark:text-gray-400">
               This will transfer Org Owner status to <strong>{promoteTarget.name}</strong> ({promoteTarget.email}) and demote you to <strong>Super Admin</strong>. You will no longer be Org Owner.
             </p>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-start gap-2">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-start gap-2 dark:bg-red-900/40 dark:border-red-800">
               <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-              <p className="text-xs text-red-700">
+              <p className="text-xs text-red-700 dark:text-red-300">
                 This is a significant, irreversible action for your account. Only the new org owner can transfer it back.
               </p>
             </div>
-            <p className="text-xs text-gray-500 mb-2">
+            <p className="text-xs text-gray-500 mb-2 dark:text-gray-400">
               Type <strong>{promoteTarget.email}</strong> to confirm:
             </p>
             <input
@@ -222,7 +222,7 @@ export default function TeamClient({
               value={confirmPhrase}
               onChange={(e) => setConfirmPhrase(e.target.value)}
               placeholder="Type the user's email to confirm"
-              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white mb-4"
+              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white mb-4 dark:border-gray-600 dark:bg-gray-800"
             />
             <div className="flex justify-end gap-3">
               <button
@@ -230,7 +230,7 @@ export default function TeamClient({
                   setPromoteTarget(null);
                   setConfirmPhrase("");
                 }}
-                className="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2"
+                className="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2 dark:text-gray-400"
               >
                 Cancel
               </button>

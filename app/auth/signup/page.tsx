@@ -7,12 +7,12 @@ import ThemeToggle from "@/components/ThemeToggle";
 
 export default function SignUpPage() {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="border-b border-gray-200 bg-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
+      <header className="border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-brand-500" />
-            <span className="font-bold text-gray-900">Scheduler</span>
+            <span className="font-bold text-gray-900 dark:text-gray-50">Scheduler</span>
           </Link>
           <nav className="flex items-center gap-4">
             <ThemeToggle />
@@ -25,13 +25,13 @@ export default function SignUpPage() {
 
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
-          <h1 className="text-2xl font-bold text-gray-900 text-center mb-1">Access by invitation only</h1>
-          <p className="text-sm text-gray-500 text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 text-center mb-1">Access by invitation only</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-8">
             Scheduler accounts are created by your organisation owner.
           </p>
 
-          <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 mb-6">
-            <p className="text-sm text-blue-800 leading-relaxed">
+          <div className="rounded-lg bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 p-4 mb-6">
+            <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
               <strong>Already have an invite?</strong> Check your email for a setup link from your organisation
               owner. If you have an organisational Microsoft account, you can sign in below.
             </p>
@@ -50,15 +50,15 @@ export default function SignUpPage() {
             Sign in with Microsoft
           </button>
 
-          <p className="text-xs text-gray-400 text-center mt-6">
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-6">
             Already have an account?{" "}
             <Link href="/auth/signin" className="text-brand-600 hover:text-brand-700 font-medium">
               Sign in
             </Link>
           </p>
 
-          <p className="text-xs text-gray-400 text-center mt-3">
-            <Link href="/auth/signin" className="text-gray-500 hover:text-gray-700 inline-flex items-center gap-1">
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-3">
+            <Link href="/auth/signin" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 inline-flex items-center gap-1">
               <ArrowLeft className="w-3 h-3" />
               Back to sign in
             </Link>

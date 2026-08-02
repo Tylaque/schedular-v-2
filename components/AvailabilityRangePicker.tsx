@@ -115,28 +115,28 @@ export default function AvailabilityRangePicker({ projects }: { projects: Projec
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-6">My Availability</h1>
+      <h1 className="text-xl font-bold text-gray-900 mb-6 dark:text-gray-50">My Availability</h1>
 
       {/* Date navigation */}
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => shiftDate(-1)}
-          className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600"
+          className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-400"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
         <div className="flex-1 text-center">
-          <p className="text-sm font-semibold text-gray-900">{dayLabel}</p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-50">{dayLabel}</p>
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="text-xs text-gray-500 mt-1 border-0 bg-transparent text-center cursor-pointer"
+            className="text-xs text-gray-500 mt-1 border-0 bg-transparent text-center cursor-pointer dark:text-gray-400"
           />
         </div>
         <button
           onClick={() => shiftDate(1)}
-          className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600"
+          className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-400"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -147,8 +147,8 @@ export default function AvailabilityRangePicker({ projects }: { projects: Projec
         <div
           className={`mb-4 p-3 rounded-lg text-sm ${
             msg.type === "ok"
-              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-              : "bg-red-50 text-red-700 border border-red-200"
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/40 dark:border-emerald-800 dark:text-emerald-300"
+              : "bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/40 dark:border-red-800 dark:text-red-300"
           }`}
         >
           {msg.text}
@@ -156,15 +156,15 @@ export default function AvailabilityRangePicker({ projects }: { projects: Projec
       )}
 
       {loading ? (
-        <div className="text-sm text-gray-400 py-8 text-center">Loading...</div>
+        <div className="text-sm text-gray-400 py-8 text-center dark:text-gray-500">Loading...</div>
       ) : (
         <>
           {/* Range editor */}
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5 mb-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">I&apos;m free during:</h2>
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5 mb-6 dark:border-gray-700 dark:bg-gray-900">
+            <h2 className="text-sm font-semibold text-gray-900 mb-4 dark:text-gray-50">I&apos;m free during:</h2>
 
             {ranges.length === 0 ? (
-              <p className="text-sm text-gray-400 mb-4">
+              <p className="text-sm text-gray-400 mb-4 dark:text-gray-500">
                 No availability set for this day. Click &quot;Add time range&quot; to declare when you&apos;re free.
               </p>
             ) : (
@@ -174,7 +174,7 @@ export default function AvailabilityRangePicker({ projects }: { projects: Projec
                     <select
                       value={r.startTime}
                       onChange={(e) => updateRange(i, "startTime", e.target.value)}
-                      className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700"
+                      className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
                     >
                       {TIME_OPTIONS.map((t) => (
                         <option key={`s-${t}`} value={t}>
@@ -182,11 +182,11 @@ export default function AvailabilityRangePicker({ projects }: { projects: Projec
                         </option>
                       ))}
                     </select>
-                    <span className="text-sm text-gray-400">to</span>
+                    <span className="text-sm text-gray-400 dark:text-gray-500">to</span>
                     <select
                       value={r.endTime}
                       onChange={(e) => updateRange(i, "endTime", e.target.value)}
-                      className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700"
+                      className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
                     >
                       {TIME_OPTIONS.map((t) => (
                         <option key={`e-${t}`} value={t}>
@@ -196,7 +196,7 @@ export default function AvailabilityRangePicker({ projects }: { projects: Projec
                     </select>
                     <button
                       onClick={() => removeRange(i)}
-                      className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                      className="p-2 text-gray-400 hover:text-red-500 transition-colors dark:text-gray-500"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -217,23 +217,23 @@ export default function AvailabilityRangePicker({ projects }: { projects: Projec
 
           {/* Cross-project eligibility summary */}
           {projects.length > 0 && (
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5 mb-6">
-              <h2 className="text-sm font-semibold text-gray-900 mb-3">Cross-project eligibility</h2>
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5 mb-6 dark:border-gray-700 dark:bg-gray-900">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3 dark:text-gray-50">Cross-project eligibility</h2>
               {ranges.length === 0 ? (
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-gray-400 dark:text-gray-500">
                   Set your availability above to see which projects you could be booked for.
                 </p>
               ) : (
                 <>
                   {eligibleProjects.length > 0 && (
                     <div className="mb-3">
-                      <p className="text-xs font-medium text-emerald-600 uppercase mb-2">Available for</p>
+                      <p className="text-xs font-medium text-emerald-600 uppercase mb-2 dark:text-emerald-300">Available for</p>
                       <div className="space-y-1">
                         {eligibleProjects.map((p) => (
                           <div key={p.id} className="flex items-center gap-2 text-sm">
                             <Check className="w-3.5 h-3.5 text-emerald-500" />
-                            <span className="text-gray-700">{p.name}</span>
-                            <span className="text-xs text-gray-400">({p.durationMinutes}-min sessions)</span>
+                            <span className="text-gray-700 dark:text-gray-200">{p.name}</span>
+                            <span className="text-xs text-gray-400 dark:text-gray-500">({p.durationMinutes}-min sessions)</span>
                           </div>
                         ))}
                       </div>
@@ -241,13 +241,13 @@ export default function AvailabilityRangePicker({ projects }: { projects: Projec
                   )}
                   {nonEligibleProjects.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-gray-400 uppercase mb-2">Not long enough for</p>
+                      <p className="text-xs font-medium text-gray-400 uppercase mb-2 dark:text-gray-500">Not long enough for</p>
                       <div className="space-y-1">
                         {nonEligibleProjects.map((p) => (
                           <div key={p.id} className="flex items-center gap-2 text-sm">
-                            <X className="w-3.5 h-3.5 text-gray-300" />
-                            <span className="text-gray-400">{p.name}</span>
-                            <span className="text-xs text-gray-300">({p.durationMinutes}-min sessions need a range of at least {p.durationMinutes} min)</span>
+                            <X className="w-3.5 h-3.5 text-gray-300 dark:text-gray-400" />
+                            <span className="text-gray-400 dark:text-gray-500">{p.name}</span>
+                            <span className="text-xs text-gray-300 dark:text-gray-400">({p.durationMinutes}-min sessions need a range of at least {p.durationMinutes} min)</span>
                           </div>
                         ))}
                       </div>
@@ -263,7 +263,7 @@ export default function AvailabilityRangePicker({ projects }: { projects: Projec
             <button
               disabled={saving}
               onClick={handleSave}
-              className="w-full bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg py-2.5"
+              className="w-full bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg py-2.5 dark:disabled:bg-gray-700"
             >
               {saving ? "Saving..." : "Save availability"}
             </button>

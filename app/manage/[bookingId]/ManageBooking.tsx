@@ -113,38 +113,38 @@ export default function ManageBooking({
     : "past";
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-start justify-center p-4 pt-12">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-start justify-center p-4 pt-12">
       <div className="w-full max-w-2xl space-y-4">
 
         {message && (
-          <div className={`flex items-center gap-2 rounded-lg p-3 text-sm ${message.type === "success" ? "bg-green-50 border border-green-200 text-green-700" : "bg-red-50 border border-red-200 text-red-700"}`}>
+          <div className={`flex items-center gap-2 rounded-lg p-3 text-sm ${message.type === "success" ? "bg-green-50 border border-green-200 text-green-700 dark:bg-green-900/40 dark:border-green-800 dark:text-green-300" : "bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/40 dark:border-red-800 dark:text-red-300"}`}>
             {message.type === "success" ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
             {message.text}
           </div>
         )}
 
-        <div className="bg-white rounded-xl shadow-sm border p-6 space-y-5">
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border p-6 space-y-5">
           <div className="text-xs font-semibold tracking-wide text-brand-500 uppercase">{project.company}</div>
-          <h1 className="text-xl font-bold text-gray-900">Manage your booking</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Manage your booking</h1>
 
-          <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-            <p className="text-sm text-gray-700"><span className="font-medium">Project:</span> {project.name}</p>
-            <p className="text-sm text-gray-700"><span className="font-medium">Name:</span> {booking.participantName}</p>
-            <p className="text-sm text-gray-700"><span className="font-medium">Email:</span> {booking.participantEmail}</p>
-            <p className="text-sm text-gray-700">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2">
+            <p className="text-sm text-gray-700 dark:text-gray-200"><span className="font-medium">Project:</span> {project.name}</p>
+            <p className="text-sm text-gray-700 dark:text-gray-200"><span className="font-medium">Name:</span> {booking.participantName}</p>
+            <p className="text-sm text-gray-700 dark:text-gray-200"><span className="font-medium">Email:</span> {booking.participantEmail}</p>
+            <p className="text-sm text-gray-700 dark:text-gray-200">
               <span className="font-medium">Session:</span> {formatDate(booking.dateKey)} at {formatTime(booking.time)}
             </p>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-gray-700 dark:text-gray-200">
               <span className="font-medium">Duration:</span> {project.durationMinutes} min
             </p>
           </div>
 
           {inPast ? (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+            <div className="bg-yellow-50 border border-yellow-200 dark:bg-yellow-900/40 dark:border-yellow-800 dark:text-yellow-300 rounded-lg p-3 text-sm text-yellow-800">
               This session has already taken place. No changes can be made.
             </div>
           ) : !windowOpen ? (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+            <div className="bg-yellow-50 border border-yellow-200 dark:bg-yellow-900/40 dark:border-yellow-800 dark:text-yellow-300 rounded-lg p-3 text-sm text-yellow-800">
               The self-service window has closed ({project.selfServiceWindowHours}h before the session).
               Please contact the administrator for changes.
             </div>
@@ -152,19 +152,19 @@ export default function ManageBooking({
 
           {windowOpen && !message?.type.startsWith("success") && !emailVerified && (
             <div className="border-t pt-4 space-y-3">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 To cancel or reschedule, please confirm your email address.
               </p>
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
                   <input
                     type="email"
                     value={verifyEmail}
                     onChange={(e) => { setVerifyEmail(e.target.value); setVerifyError(null); }}
                     onKeyDown={(e) => e.key === "Enter" && handleVerifyEmail()}
                     placeholder="Enter your booking email"
-                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                   />
                 </div>
                 <button
@@ -177,30 +177,30 @@ export default function ManageBooking({
                 </button>
               </div>
               {verifyError && (
-                <p className="text-sm text-red-600">{verifyError}</p>
+                <p className="text-sm text-red-600 dark:text-red-300">{verifyError}</p>
               )}
             </div>
           )}
 
           {windowOpen && !message?.type.startsWith("success") && emailVerified && (
             <div className="space-y-4 pt-2">
-              <div className="text-sm text-gray-500">
-                Self-service window closes in <span className="font-semibold text-gray-700">{formatHoursLeft}</span>.
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                Self-service window closes in <span className="font-semibold text-gray-700 dark:text-gray-200">{formatHoursLeft}</span>.
               </div>
 
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowConfirmCancel(true)}
                   disabled={cancelling}
-                  className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/40 disabled:opacity-50"
                 >
                   Cancel booking
                 </button>
               </div>
 
               {showConfirmCancel && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
-                  <p className="text-sm text-red-700">Are you sure you want to cancel this booking?</p>
+                <div className="bg-red-50 border border-red-200 dark:bg-red-900/40 dark:border-red-800 rounded-lg p-3 space-y-2">
+                  <p className="text-sm text-red-700 dark:text-red-300">Are you sure you want to cancel this booking?</p>
                   <div className="flex gap-2">
                     <button
                       onClick={handleCancel}
@@ -212,7 +212,7 @@ export default function ManageBooking({
                     </button>
                     <button
                       onClick={() => setShowConfirmCancel(false)}
-                      className="px-3 py-1.5 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
                       Keep booking
                     </button>
@@ -221,7 +221,7 @@ export default function ManageBooking({
               )}
 
               <div className="border-t pt-4">
-                <h2 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
                   <CalendarDays className="w-4 h-4 text-brand-500" />
                   Reschedule to a new time
                 </h2>

@@ -79,16 +79,16 @@ export function PasswordSetupForm({ token, type }: { token: string; type: SetupT
   }
 
   if (tokenState.status === "loading") {
-    return <p className="text-sm text-gray-500 text-center">Validating your link...</p>;
+    return <p className="text-sm text-gray-500 dark:text-gray-400 text-center">Validating your link...</p>;
   }
 
   if (tokenState.status === "valid" && !done) {
     return (
       <>
-        <h1 className="text-2xl font-bold text-gray-900 text-center mb-1">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 text-center mb-1">
           {isSetup ? "Set your password" : "Reset your password"}
         </h1>
-        <p className="text-sm text-gray-500 text-center mb-8">
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-8">
           {isSetup
             ? `Hi ${tokenState.name} — choose a password for your account.`
             : `Hi ${tokenState.name} — choose a new password for your account.`}
@@ -96,7 +96,7 @@ export function PasswordSetupForm({ token, type }: { token: string; type: SetupT
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               New password
             </label>
             <input
@@ -107,11 +107,11 @@ export function PasswordSetupForm({ token, type }: { token: string; type: SetupT
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="At least 8 characters"
-              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
           </div>
           <div>
-            <label htmlFor="confirm" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="confirm" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               Confirm password
             </label>
             <input
@@ -122,10 +122,10 @@ export function PasswordSetupForm({ token, type }: { token: string; type: SetupT
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder="Re-enter your password"
-              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-300">{error}</p>}
           <button
             type="submit"
             disabled={submitting}
@@ -142,13 +142,13 @@ export function PasswordSetupForm({ token, type }: { token: string; type: SetupT
   if (done) {
     return (
       <div className="text-center">
-        <div className="rounded-lg bg-green-50 border border-green-200 p-4 mb-6 flex items-start gap-3">
-          <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
+        <div className="rounded-lg bg-green-50 dark:bg-green-900/40 border border-green-200 dark:border-green-800 p-4 mb-6 flex items-start gap-3">
+          <CheckCircle className="w-5 h-5 text-green-500 dark:text-green-300 mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-green-800">
+            <p className="text-sm font-semibold text-green-800 dark:text-green-300">
               {isSetup ? "Password set successfully" : "Password reset successfully"}
             </p>
-            <p className="text-sm text-green-700 mt-1">
+            <p className="text-sm text-green-700 dark:text-green-300 mt-1">
               You can now sign in with your email and new password.
             </p>
           </div>
@@ -166,15 +166,15 @@ export function PasswordSetupForm({ token, type }: { token: string; type: SetupT
   if (tokenState.status === "invalid" || tokenState.status === "used" || tokenState.status === "expired") {
     return (
       <div className="text-center">
-        <div className="rounded-lg bg-red-50 border border-red-200 p-4 mb-6 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+        <div className="rounded-lg bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 p-4 mb-6 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-300 mt-0.5 shrink-0" />
           <div className="text-left">
-            <p className="text-sm font-semibold text-red-800">
+            <p className="text-sm font-semibold text-red-800 dark:text-red-300">
               {tokenState.status === "used" && (isSetup ? "This setup link has already been used" : "This reset link has already been used")}
               {tokenState.status === "expired" && (isSetup ? "This setup link has expired" : "This reset link has expired")}
               {tokenState.status === "invalid" && (isSetup ? "Invalid setup link" : "Invalid reset link")}
             </p>
-            <p className="text-sm text-red-700 mt-1">
+            <p className="text-sm text-red-700 dark:text-red-300 mt-1">
               {tokenState.status === "used" && (isSetup
                 ? "This link can only be used once. Contact your organisation owner to send a new invitation."
                 : "This link can only be used once. Request a new password reset link.")}
@@ -208,7 +208,7 @@ export function PasswordSetupForm({ token, type }: { token: string; type: SetupT
   }
 
   if (tokenState.status === "error") {
-    return <p className="text-sm text-red-600 text-center">{tokenState.message}</p>;
+    return <p className="text-sm text-red-600 dark:text-red-300 text-center">{tokenState.message}</p>;
   }
 
   return null;

@@ -29,12 +29,12 @@ type DateShiftItem = {
 type CommitResult = { succeeded: number; failed: { bookingId: string; reason: string }[] };
 
 const RESOLUTION_BADGE: Record<string, string> = {
-  reassign_admin: "bg-green-100 text-green-700",
-  same_admin_available: "bg-green-100 text-green-700",
-  reassign_needed: "bg-amber-100 text-amber-700",
-  needs_manual_attention: "bg-red-100 text-red-700",
-  slot_full_at_target: "bg-red-100 text-red-700",
-  no_admin_available_at_target: "bg-red-100 text-red-700",
+  reassign_admin: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+  same_admin_available: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+  reassign_needed: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  needs_manual_attention: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  slot_full_at_target: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  no_admin_available_at_target: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
 };
 
 const RESOLUTION_LABEL: Record<string, string> = {
@@ -149,21 +149,21 @@ export default function BulkReschedulePage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-gray-900">Bulk Reschedule</h1>
-          <p className="text-sm text-gray-500 mt-1">Reschedule multiple bookings at once.</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Bulk Reschedule</h1>
+          <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">Reschedule multiple bookings at once.</p>
         </div>
 
         {/* Mode toggle */}
         <div className="flex gap-2 mb-6">
           <button
             onClick={() => { setMode("admin-unavailable"); setPreview(null); setCommitResult(null); }}
-            className={`text-sm font-semibold rounded-lg px-4 py-2 ${mode === "admin-unavailable" ? "bg-brand-500 text-white" : "bg-white border border-gray-300 text-gray-700"}`}
+            className={`text-sm font-semibold rounded-lg px-4 py-2 ${mode === "admin-unavailable" ? "bg-brand-500 text-white" : "bg-white border border-gray-300 text-gray-700 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200"}`}
           >
             Admin Unavailable
           </button>
           <button
             onClick={() => { setMode("date-shift"); setPreview(null); setCommitResult(null); }}
-            className={`text-sm font-semibold rounded-lg px-4 py-2 ${mode === "date-shift" ? "bg-brand-500 text-white" : "bg-white border border-gray-300 text-gray-700"}`}
+            className={`text-sm font-semibold rounded-lg px-4 py-2 ${mode === "date-shift" ? "bg-brand-500 text-white" : "bg-white border border-gray-300 text-gray-700 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200"}`}
           >
             Shift Date Range
           </button>
@@ -171,23 +171,23 @@ export default function BulkReschedulePage() {
 
         {/* Mode A form */}
         {mode === "admin-unavailable" && (
-          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex flex-wrap gap-3 items-end shadow-sm">
+          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex flex-wrap gap-3 items-end shadow-sm dark:bg-gray-900 dark:border-gray-700">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Admin</label>
-              <select value={aAdminId} onChange={(e) => setAAdminId(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm min-w-[200px]">
+              <label className="block text-xs font-medium text-gray-500 mb-1 dark:text-gray-400">Admin</label>
+              <select value={aAdminId} onChange={(e) => setAAdminId(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm min-w-[200px] dark:border-gray-600">
                 <option value="">Select admin...</option>
                 {admins.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">From date</label>
-              <input type="date" value={aFrom} onChange={(e) => setAFrom(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm" />
+              <label className="block text-xs font-medium text-gray-500 mb-1 dark:text-gray-400">From date</label>
+              <input type="date" value={aFrom} onChange={(e) => setAFrom(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm dark:border-gray-600" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">To date</label>
-              <input type="date" value={aTo} onChange={(e) => setATo(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm" />
+              <label className="block text-xs font-medium text-gray-500 mb-1 dark:text-gray-400">To date</label>
+              <input type="date" value={aTo} onChange={(e) => setATo(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm dark:border-gray-600" />
             </div>
-            <button disabled={!isPreview || loading} onClick={runPreview} className="bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 text-white text-xs font-semibold rounded-lg px-4 py-1.5">
+            <button disabled={!isPreview || loading} onClick={runPreview} className="bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 text-white text-xs font-semibold rounded-lg px-4 py-1.5 dark:disabled:bg-gray-700">
               {loading ? "Loading..." : "Preview changes"}
             </button>
           </div>
@@ -195,27 +195,27 @@ export default function BulkReschedulePage() {
 
         {/* Mode B form */}
         {mode === "date-shift" && (
-          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex flex-wrap gap-3 items-end shadow-sm">
+          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex flex-wrap gap-3 items-end shadow-sm dark:bg-gray-900 dark:border-gray-700">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Project</label>
-              <select value={bProjectId} onChange={(e) => setBProjectId(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm min-w-[200px]">
+              <label className="block text-xs font-medium text-gray-500 mb-1 dark:text-gray-400">Project</label>
+              <select value={bProjectId} onChange={(e) => setBProjectId(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm min-w-[200px] dark:border-gray-600">
                 <option value="">Select project...</option>
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">From date</label>
-              <input type="date" value={bFrom} onChange={(e) => setBFrom(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm" />
+              <label className="block text-xs font-medium text-gray-500 mb-1 dark:text-gray-400">From date</label>
+              <input type="date" value={bFrom} onChange={(e) => setBFrom(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm dark:border-gray-600" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">To date</label>
-              <input type="date" value={bTo} onChange={(e) => setBTo(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm" />
+              <label className="block text-xs font-medium text-gray-500 mb-1 dark:text-gray-400">To date</label>
+              <input type="date" value={bTo} onChange={(e) => setBTo(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm dark:border-gray-600" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Day offset</label>
-              <input type="number" value={bOffset} onChange={(e) => setBOffset(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-20" />
+              <label className="block text-xs font-medium text-gray-500 mb-1 dark:text-gray-400">Day offset</label>
+              <input type="number" value={bOffset} onChange={(e) => setBOffset(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-20 dark:border-gray-600" />
             </div>
-            <button disabled={!isPreview || loading} onClick={runPreview} className="bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 text-white text-xs font-semibold rounded-lg px-4 py-1.5">
+            <button disabled={!isPreview || loading} onClick={runPreview} className="bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 text-white text-xs font-semibold rounded-lg px-4 py-1.5 dark:disabled:bg-gray-700">
               {loading ? "Loading..." : "Preview changes"}
             </button>
           </div>
@@ -224,39 +224,39 @@ export default function BulkReschedulePage() {
         {/* Preview results */}
         {preview && (
           <div className="mb-6">
-            <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm dark:bg-gray-900 dark:border-gray-700">
               <p className="text-sm font-medium mb-1">
                 {autoCount} of {previewItems.length} bookings can be automatically resolved;
-                {" "}<span className="text-red-600 font-semibold">{manualCount} need manual attention</span>.
+                {" "}<span className="text-red-600 font-semibold dark:text-red-300">{manualCount} need manual attention</span>.
               </p>
             </div>
 
-            <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white shadow-sm">
+            <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Date</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Time</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Participant</th>
-                    {mode === "date-shift" && <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">New Date</th>}
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Resolution</th>
-                    {mode === "admin-unavailable" && <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">New Admin</th>}
-                    {mode === "date-shift" && <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">New Admin</th>}
+                  <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-950">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Date</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Time</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Participant</th>
+                    {mode === "date-shift" && <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">New Date</th>}
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Resolution</th>
+                    {mode === "admin-unavailable" && <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">New Admin</th>}
+                    {mode === "date-shift" && <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">New Admin</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {previewItems.map((item: any) => (
-                    <tr key={item.bookingId} className="border-b border-gray-200 last:border-b-0">
-                      <td className="px-4 py-3 text-gray-500">{item.dateKey ?? item.oldDateKey}</td>
-                      <td className="px-4 py-3 text-gray-500">{item.time}</td>
-                      <td className="px-4 py-3 text-gray-700">{item.participantName}</td>
-                      {mode === "date-shift" && <td className="px-4 py-3 text-gray-500">{item.newDateKey}</td>}
+                    <tr key={item.bookingId} className="border-b border-gray-200 last:border-b-0 dark:border-gray-700">
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{item.dateKey ?? item.oldDateKey}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{item.time}</td>
+                      <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{item.participantName}</td>
+                      {mode === "date-shift" && <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{item.newDateKey}</td>}
                       <td className="px-4 py-3">
-                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${RESOLUTION_BADGE[item.resolution] ?? "bg-gray-100 text-gray-700"}`}>
+                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${RESOLUTION_BADGE[item.resolution] ?? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200"}`}>
                           {RESOLUTION_LABEL[item.resolution] ?? item.resolution}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-700">{item.newAdminName ?? item.resultingAdminName ?? "—"}</td>
+                      <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{item.newAdminName ?? item.resultingAdminName ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -266,7 +266,7 @@ export default function BulkReschedulePage() {
             <button
               disabled={committing || manualCount === previewItems.length}
               onClick={runCommit}
-              className="mt-4 bg-gray-800 hover:bg-gray-900 disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg px-5 py-2"
+              className="mt-4 bg-gray-800 hover:bg-gray-900 disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg px-5 py-2 dark:disabled:bg-gray-700"
             >
               {committing ? "Applying..." : "Confirm and apply"}
             </button>
@@ -275,27 +275,27 @@ export default function BulkReschedulePage() {
 
         {/* Commit results */}
         {commitResult && (
-          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm dark:bg-gray-900 dark:border-gray-700">
             <h3 className="text-base font-semibold mb-2">Results</h3>
             <p className="text-sm mb-3">
-              <span className="text-green-600 font-semibold">{commitResult.succeeded} succeeded</span>
+              <span className="text-green-600 font-semibold dark:text-green-300">{commitResult.succeeded} succeeded</span>
               {commitResult.failed.length > 0 && (
-                <>, <span className="text-red-600 font-semibold">{commitResult.failed.length} failed</span></>
+                <>, <span className="text-red-600 font-semibold dark:text-red-300">{commitResult.failed.length} failed</span></>
               )}
             </p>
             {commitResult.failed.length > 0 && (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Booking ID</th>
-                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Reason</th>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Booking ID</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Reason</th>
                   </tr>
                 </thead>
                 <tbody>
                   {commitResult.failed.map((f) => (
-                    <tr key={f.bookingId} className="border-b border-gray-200 last:border-b-0">
-                      <td className="px-3 py-2 text-gray-500 text-xs font-mono">{f.bookingId}</td>
-                      <td className="px-3 py-2 text-red-600 text-xs">{f.reason}</td>
+                    <tr key={f.bookingId} className="border-b border-gray-200 last:border-b-0 dark:border-gray-700">
+                      <td className="px-3 py-2 text-gray-500 text-xs font-mono dark:text-gray-400">{f.bookingId}</td>
+                      <td className="px-3 py-2 text-red-600 text-xs dark:text-red-300">{f.reason}</td>
                     </tr>
                   ))}
                 </tbody>

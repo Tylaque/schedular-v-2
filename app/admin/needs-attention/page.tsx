@@ -55,11 +55,11 @@ export default async function NeedsAttentionPage() {
     <div className="max-w-5xl mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2 dark:text-gray-50">
             <AlertTriangle className="w-5 h-5 text-amber-500" />
             Needs Attention
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">
             Bookings that require manual reassignment after an admin was removed from a project.
           </p>
         </div>
@@ -71,9 +71,9 @@ export default async function NeedsAttentionPage() {
         </Link>
       </div>
       {flaggedWithEligible.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-12 text-center shadow-sm">
-          <AlertTriangle className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-          <p className="text-sm text-gray-500">No bookings need manual attention.</p>
+        <div className="bg-white border border-gray-200 rounded-lg p-12 text-center shadow-sm dark:bg-gray-900 dark:border-gray-700">
+          <AlertTriangle className="w-8 h-8 text-gray-300 mx-auto mb-3 dark:text-gray-400" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">No bookings need manual attention.</p>
         </div>
       ) : (
         <NeedsAttentionClient flagged={flaggedWithEligible} />

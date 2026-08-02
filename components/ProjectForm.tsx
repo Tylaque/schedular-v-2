@@ -11,11 +11,11 @@ const STATUS_OPTIONS: {
   label: string;
   badge: string;
 }[] = [
-  { value: "draft", label: "Draft", badge: "bg-gray-100 text-gray-600" },
-  { value: "active", label: "Active", badge: "bg-emerald-100 text-emerald-700" },
-  { value: "paused", label: "Paused", badge: "bg-amber-100 text-amber-700" },
-  { value: "closed", label: "Closed", badge: "bg-red-100 text-red-700" },
-  { value: "archived", label: "Archived", badge: "bg-gray-100 text-gray-400" },
+  { value: "draft", label: "Draft", badge: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300" },
+  { value: "active", label: "Active", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
+  { value: "paused", label: "Paused", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
+  { value: "closed", label: "Closed", badge: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
+  { value: "archived", label: "Archived", badge: "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500" },
 ];
 
 const COLOR_SWATCHES = ["#4338CA", "#059669", "#D97706", "#DC2626", "#7C3AED", "#0891B2"];
@@ -231,51 +231,51 @@ export default function ProjectForm({
   return (
     <div className="flex flex-col gap-6">
       {/* Basics */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-        <h2 className="text-sm font-bold text-gray-900 mb-4">Basics</h2>
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm dark:bg-gray-900 dark:border-gray-700">
+        <h2 className="text-sm font-bold text-gray-900 mb-4 dark:text-gray-50">Basics</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
-            <label className="text-xs font-medium text-gray-500">Name *</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Name *</label>
             <input
               value={data.name}
               onChange={(e) => update("name", e.target.value)}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
               placeholder="e.g. Senior PM Interview"
             />
-            {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name}</p>}
+            {errors.name && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.name}</p>}
           </div>
           <div className="sm:col-span-2">
-            <label className="text-xs font-medium text-gray-500">Company</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Company</label>
             <input
               value={data.company}
               onChange={(e) => update("company", e.target.value)}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
               placeholder="e.g. Northwind Labs"
             />
-            {errors.company && <p className="text-xs text-red-600 mt-1">{errors.company}</p>}
+            {errors.company && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.company}</p>}
           </div>
           <div className="sm:col-span-2">
-            <label className="text-xs font-medium text-gray-500">Description</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Description</label>
             <textarea
               value={data.description}
               onChange={(e) => update("description", e.target.value)}
               rows={3}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 resize-none"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 resize-none dark:border-gray-600"
               placeholder="Describe the project for participants and admins."
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500">Logo initial</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Logo initial</label>
             <input
               value={data.logoInitial}
               onChange={(e) => update("logoInitial", e.target.value)}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
               placeholder="NL"
               maxLength={2}
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500">Brand color</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Brand color</label>
             <div className="flex gap-2 mt-2">
               {COLOR_SWATCHES.map((c) => (
                 <button
@@ -293,11 +293,11 @@ export default function ProjectForm({
             </div>
           </div>
           <div className="sm:col-span-2">
-            <label className="text-xs font-medium text-gray-500">Sender name</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Sender name</label>
             <input
               value={data.senderName}
               onChange={(e) => update("senderName", e.target.value)}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
               placeholder="e.g. Northwind Labs"
             />
           </div>
@@ -305,12 +305,12 @@ export default function ProjectForm({
       </div>
 
       {/* Scheduling rules */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-        <h2 className="text-sm font-bold text-gray-900 mb-4">Scheduling rules</h2>
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm dark:bg-gray-900 dark:border-gray-700">
+        <h2 className="text-sm font-bold text-gray-900 mb-4 dark:text-gray-50">Scheduling rules</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-medium text-gray-500">
-              Session duration <span className="text-gray-400">(5–480 min)</span>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+              Session duration <span className="text-gray-400 dark:text-gray-500">(5–480 min)</span>
             </label>
             <input
               type="number"
@@ -318,13 +318,13 @@ export default function ProjectForm({
               max={480}
               value={data.durationMinutes}
               onChange={(e) => update("durationMinutes", Number(e.target.value))}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
             />
-            {errors.durationMinutes && <p className="text-xs text-red-600 mt-1">{errors.durationMinutes}</p>}
+            {errors.durationMinutes && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.durationMinutes}</p>}
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500">
-              Availability period <span className="text-gray-400">(1–365 days)</span>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+              Availability period <span className="text-gray-400 dark:text-gray-500">(1–365 days)</span>
             </label>
             <input
               type="number"
@@ -332,38 +332,38 @@ export default function ProjectForm({
               max={365}
               value={data.availabilityPeriodDays}
               onChange={(e) => update("availabilityPeriodDays", Number(e.target.value))}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
             />
-            {errors.availabilityPeriodDays && <p className="text-xs text-red-600 mt-1">{errors.availabilityPeriodDays}</p>}
+            {errors.availabilityPeriodDays && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.availabilityPeriodDays}</p>}
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500">Daily start time</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Daily start time</label>
             <input
               type="time"
               value={data.dailyStart}
               onChange={(e) => update("dailyStart", e.target.value)}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500">Daily end time</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Daily end time</label>
             <input
               type="time"
               value={data.dailyEnd}
               onChange={(e) => update("dailyEnd", e.target.value)}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
             />
-            {errors.dailyEnd && <p className="text-xs text-red-600 mt-1">{errors.dailyEnd}</p>}
+            {errors.dailyEnd && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.dailyEnd}</p>}
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500">Include weekends</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Include weekends</label>
             <div className="mt-2">
               <button
                 type="button"
                 onClick={() => update("includeWeekends", !data.includeWeekends)}
                 className={
                   "relative inline-flex h-5 w-9 items-center rounded-full transition-colors " +
-                  (data.includeWeekends ? "bg-brand-500" : "bg-gray-300")
+                  (data.includeWeekends ? "bg-brand-500" : "bg-gray-300 dark:bg-gray-700")
                 }
                 role="switch"
                 aria-checked={data.includeWeekends}
@@ -376,94 +376,94 @@ export default function ProjectForm({
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500">Timezone</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Timezone</label>
             <input
               value={data.timezone}
               onChange={(e) => update("timezone", e.target.value)}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
               placeholder="Africa/Nairobi"
             />
-            {errors.timezone && <p className="text-xs text-red-600 mt-1">{errors.timezone}</p>}
+            {errors.timezone && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.timezone}</p>}
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500">Booking deadline (days before end)</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Booking deadline (days before end)</label>
             <input
               type="number"
               min={0}
               value={data.bookingDeadlineDays}
               onChange={(e) => update("bookingDeadlineDays", Number(e.target.value))}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
             />
-            {errors.bookingDeadlineDays && <p className="text-xs text-red-600 mt-1">{errors.bookingDeadlineDays}</p>}
+            {errors.bookingDeadlineDays && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.bookingDeadlineDays}</p>}
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500">Minimum notice (hours)</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Minimum notice (hours)</label>
             <input
               type="number"
               min={0}
               value={data.minNoticeHours}
               onChange={(e) => update("minNoticeHours", Number(e.target.value))}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
             />
-            {errors.minNoticeHours && <p className="text-xs text-red-600 mt-1">{errors.minNoticeHours}</p>}
+            {errors.minNoticeHours && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.minNoticeHours}</p>}
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500">Buffer (minutes)</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Buffer (minutes)</label>
             <input
               type="number"
               min={0}
               value={data.bufferMinutes}
               onChange={(e) => update("bufferMinutes", Number(e.target.value))}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
             />
-            {errors.bufferMinutes && <p className="text-xs text-red-600 mt-1">{errors.bufferMinutes}</p>}
+            {errors.bufferMinutes && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.bufferMinutes}</p>}
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500">Max sessions / admin / day</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Max sessions / admin / day</label>
             <input
               type="number"
               min={1}
               value={data.maxSessionsPerAdminPerDay}
               onChange={(e) => update("maxSessionsPerAdminPerDay", Number(e.target.value))}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
             />
-            {errors.maxSessionsPerAdminPerDay && <p className="text-xs text-red-600 mt-1">{errors.maxSessionsPerAdminPerDay}</p>}
+            {errors.maxSessionsPerAdminPerDay && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.maxSessionsPerAdminPerDay}</p>}
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500">Session capacity</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Session capacity</label>
             <input
               type="number"
               min={1}
               value={data.sessionCapacity}
               onChange={(e) => update("sessionCapacity", Number(e.target.value))}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
             />
-            {errors.sessionCapacity && <p className="text-xs text-red-600 mt-1">{errors.sessionCapacity}</p>}
+            {errors.sessionCapacity && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.sessionCapacity}</p>}
           </div>
           <div className="sm:col-span-2">
-            <label className="text-xs font-medium text-gray-500">Availability lock date</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Availability lock date</label>
             <input
               type="date"
               value={data.availabilityLockDate}
               onChange={(e) => update("availabilityLockDate", e.target.value)}
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
             />
-            {errors.availabilityLockDate && <p className="text-xs text-red-600 mt-1">{errors.availabilityLockDate}</p>}
+            {errors.availabilityLockDate && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.availabilityLockDate}</p>}
           </div>
         </div>
       </div>
 
       {/* Admin assignment */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-        <h2 className="text-sm font-bold text-gray-900 mb-4">Admin assignment</h2>
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm dark:bg-gray-900 dark:border-gray-700">
+        <h2 className="text-sm font-bold text-gray-900 mb-4 dark:text-gray-50">Admin assignment</h2>
         {allAdmins.length === 0 && (
-          <p className="text-sm text-gray-400">Loading admins...</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">Loading admins...</p>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
           {allAdmins.map((admin) => (
             <label
               key={admin.id}
-              className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50 rounded px-2 py-1.5"
+              className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50 rounded px-2 py-1.5 dark:text-gray-200 dark:hover:bg-gray-800"
             >
               <input
                 type="checkbox"
@@ -475,7 +475,7 @@ export default function ProjectForm({
                     update("admins", data.admins.filter((id) => id !== admin.id));
                   }
                 }}
-                className="rounded border-gray-300 text-brand-500"
+                className="rounded border-gray-300 text-brand-500 dark:border-gray-600"
               />
               {admin.name}
 
@@ -498,15 +498,15 @@ export default function ProjectForm({
       </div>
 
       {/* Owner assignment */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-        <h2 className="text-sm font-bold text-gray-900 mb-4">Project owner</h2>
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm dark:bg-gray-900 dark:border-gray-700">
+        <h2 className="text-sm font-bold text-gray-900 mb-4 dark:text-gray-50">Project owner</h2>
         {superAdmins.length === 0 && (
-          <p className="text-sm text-gray-400">Loading owners...</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">Loading owners...</p>
         )}
         <select
           value={data.ownerId}
           onChange={(e) => update("ownerId", e.target.value)}
-          className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white"
+          className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white dark:border-gray-600 dark:bg-gray-800"
         >
           <option value="">Unassigned</option>
           {superAdmins.map((a) => (
@@ -521,12 +521,12 @@ export default function ProjectForm({
       </div>
 
       {/* Status */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-        <h2 className="text-sm font-bold text-gray-900 mb-4">Status</h2>
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm dark:bg-gray-900 dark:border-gray-700">
+        <h2 className="text-sm font-bold text-gray-900 mb-4 dark:text-gray-50">Status</h2>
         <select
           value={data.status}
           onChange={(e) => update("status", e.target.value as typeof data.status)}
-          className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white"
+          className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white dark:border-gray-600 dark:bg-gray-800"
         >
           {STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -552,8 +552,8 @@ export default function ProjectForm({
       {offboardingSummary && (
         <div className={`rounded-lg border p-4 ${
           offboardingSummary.flagged > 0
-            ? "bg-amber-50 border-amber-200 text-amber-800"
-            : "bg-green-50 border-green-200 text-green-800"
+            ? "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/40 dark:border-amber-800 dark:text-amber-300"
+            : "bg-green-50 border-green-200 text-green-800 dark:bg-green-900/40 dark:border-green-800 dark:text-green-300"
         }`}>
           <p className="text-sm font-semibold mb-1">
             {offboardingSummary.reassigned > 0 && `${offboardingSummary.reassigned} session(s) automatically reassigned to other associates.`}
@@ -576,7 +576,7 @@ export default function ProjectForm({
 
       {/* Save error */}
       {saveError && (
-        <div className="bg-red-100 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">{saveError}</div>
+        <div className="bg-red-100 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700 dark:bg-red-900/40 dark:border-red-800 dark:text-red-300">{saveError}</div>
       )}
 
       {/* Actions */}
@@ -589,7 +589,7 @@ export default function ProjectForm({
         </button>
         <button
           onClick={() => router.push("/admin/projects")}
-          className="border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium px-6 py-2.5"
+          className="border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium px-6 py-2.5 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
         >
           Cancel
         </button>
@@ -630,8 +630,8 @@ function InviteAssociateForm({
   }
 
   return (
-    <div className="mt-4 pt-4 border-t border-gray-200">
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Invite a new associate</h3>
+    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 dark:text-gray-400">Invite a new associate</h3>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <input
@@ -640,7 +640,7 @@ function InviteAssociateForm({
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+            className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
           />
           <input
             type="email"
@@ -648,7 +648,7 @@ function InviteAssociateForm({
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+            className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
           />
           <button
             type="submit"
@@ -658,8 +658,8 @@ function InviteAssociateForm({
             {sending ? "Sending..." : "Invite"}
           </button>
         </div>
-        {err && <p className="text-xs text-red-600">{err}</p>}
-        {done && <p className="text-xs text-green-600">Invitation sent! The associate has been added to this project.</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-300">{err}</p>}
+        {done && <p className="text-xs text-green-600 dark:text-green-300">Invitation sent! The associate has been added to this project.</p>}
       </form>
     </div>
   );

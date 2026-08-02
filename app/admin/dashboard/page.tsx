@@ -16,11 +16,11 @@ import {
 export const dynamic = "force-dynamic";
 
 const STATUS_BADGE: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-600",
-  active: "bg-emerald-100 text-emerald-700",
-  paused: "bg-amber-100 text-amber-700",
-  closed: "bg-red-100 text-red-700",
-  archived: "bg-gray-100 text-gray-400",
+  draft: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
+  active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  paused: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  closed: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  archived: "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500",
 };
 
 function StatCard({
@@ -35,13 +35,13 @@ function StatCard({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
-      <div className="flex items-center gap-2 text-gray-400 mb-1">
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 dark:border-gray-700 dark:bg-gray-900">
+      <div className="flex items-center gap-2 text-gray-400 mb-1 dark:text-gray-500">
         {icon}
         <span className="text-xs font-medium">{label}</span>
       </div>
       {value !== undefined && (
-        <div className="text-2xl font-bold text-gray-900">{value}</div>
+        <div className="text-2xl font-bold text-gray-900 dark:text-gray-50">{value}</div>
       )}
       {children}
     </div>
@@ -68,15 +68,15 @@ export default async function AdminDashboardPage() {
       {flaggedCount > 0 && (
         <Link
           href="/admin/needs-attention"
-          className="block mb-6 rounded-xl border-2 border-amber-300 bg-amber-50 p-4 hover:bg-amber-100 transition-colors"
+          className="block mb-6 rounded-xl border-2 border-amber-300 bg-amber-50 p-4 hover:bg-amber-100 transition-colors dark:border-amber-800 dark:bg-amber-900/40 dark:hover:bg-amber-900/60"
         >
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-amber-800">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
                 {flaggedCount} booking{flaggedCount !== 1 ? "s" : ""} need{flaggedCount === 1 ? "s" : ""} manual attention
               </p>
-              <p className="text-xs text-amber-600 mt-0.5">
+              <p className="text-xs text-amber-600 mt-0.5 dark:text-amber-300">
                 Click to view and reassign flagged bookings.
               </p>
             </div>
@@ -102,7 +102,7 @@ export default async function AdminDashboardPage() {
         <StatCard icon={<CheckCircle2 className="w-4 h-4" />} label="Booked Sessions" value={stats.bookedSessions} />
         <StatCard icon={<Clock className="w-4 h-4" />} label="Upcoming" value={stats.upcomingSessions} />
         <StatCard
-          icon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+          icon={<CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-300" />}
           label="Completed"
           value={stats.completedSessions}
         />
@@ -110,33 +110,33 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Admin utilization */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 mb-8">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Admin Utilization</h2>
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 mb-8 dark:border-gray-700 dark:bg-gray-900">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4 dark:text-gray-50">Admin Utilization</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Admin</th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Availability slots</th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Confirmed bookings</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide w-1/3">Rate</th>
+              <tr className="border-b border-gray-200 dark:border-gray-700">
+                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide dark:text-gray-400">Admin</th>
+                <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide dark:text-gray-400">Availability slots</th>
+                <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide dark:text-gray-400">Confirmed bookings</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide dark:text-gray-400 w-1/3">Rate</th>
               </tr>
             </thead>
             <tbody>
               {utilization.map((u) => (
-                <tr key={u.adminId} className="border-b border-gray-100 last:border-b-0">
-                  <td className="px-3 py-2.5 font-medium text-gray-900">{u.adminName}</td>
-                  <td className="px-3 py-2.5 text-right text-gray-600">{u.submittedAvailabilityCount}</td>
-                  <td className="px-3 py-2.5 text-right text-gray-600">{u.confirmedBookingsCount}</td>
+                <tr key={u.adminId} className="border-b border-gray-100 last:border-b-0 dark:border-gray-800">
+                  <td className="px-3 py-2.5 font-medium text-gray-900 dark:text-gray-50">{u.adminName}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-600 dark:text-gray-400">{u.submittedAvailabilityCount}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-600 dark:text-gray-400">{u.confirmedBookingsCount}</td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden dark:bg-gray-800">
                         <div
                           className="h-full bg-brand-500 rounded-full transition-all"
                           style={{ width: `${Math.round(u.utilizationRate * 100)}%` }}
                         />
                       </div>
-                      <span className="text-xs text-gray-500 w-10 text-right">
+                      <span className="text-xs text-gray-500 w-10 text-right dark:text-gray-400">
                         {Math.round(u.utilizationRate * 100)}%
                       </span>
                     </div>
@@ -149,14 +149,14 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Project progress */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Project Progress</h2>
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 dark:border-gray-700 dark:bg-gray-900">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4 dark:text-gray-50">Project Progress</h2>
         <div className="space-y-4">
           {progress.map((p) => (
-            <div key={p.projectId} className="border border-gray-100 rounded-lg p-3">
+            <div key={p.projectId} className="border border-gray-100 rounded-lg p-3 dark:border-gray-800">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900 text-sm">{p.projectName}</span>
+                  <span className="font-medium text-gray-900 text-sm dark:text-gray-50">{p.projectName}</span>
                   <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[p.status] ?? ""}`}>
                     {p.status}
                   </span>
@@ -164,11 +164,11 @@ export default async function AdminDashboardPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-1 dark:text-gray-400">
                     <span>Period elapsed</span>
                     <span>{p.periodElapsedPercent}%</span>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden dark:bg-gray-800">
                     <div
                       className="h-full bg-brand-500 rounded-full"
                       style={{ width: `${p.periodElapsedPercent}%` }}
@@ -176,11 +176,11 @@ export default async function AdminDashboardPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-1 dark:text-gray-400">
                     <span>Participants scheduled</span>
                     <span>{p.participantsScheduledPercent}%</span>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden dark:bg-gray-800">
                     <div
                       className="h-full bg-brand-500 rounded-full"
                       style={{ width: `${p.participantsScheduledPercent}%` }}

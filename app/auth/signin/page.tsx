@@ -46,12 +46,12 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="border-b border-gray-200 bg-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
+      <header className="border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-brand-500" />
-            <span className="font-bold text-gray-900">Scheduler</span>
+            <span className="font-bold text-gray-900 dark:text-gray-50">Scheduler</span>
           </Link>
           <nav className="flex items-center gap-4">
             <ThemeToggle />
@@ -64,8 +64,8 @@ export default function SignInPage() {
 
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
-          <h1 className="text-2xl font-bold text-gray-900 text-center mb-1">Welcome back</h1>
-          <p className="text-sm text-gray-500 text-center mb-8">Sign in to your Scheduler account.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 text-center mb-1">Welcome back</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-8">Sign in to your Scheduler account.</p>
 
           <button
             onClick={async () => {
@@ -102,16 +102,16 @@ export default function SignInPage() {
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
+              <div className="w-full border-t border-gray-200 dark:border-gray-700" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-gray-50 px-2 text-gray-400">or</span>
+              <span className="bg-gray-50 dark:bg-gray-950 px-2 text-gray-400 dark:text-gray-500">or</span>
             </div>
           </div>
 
           <form onSubmit={handleCredentialsSignIn} className="space-y-3">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                 Email address
               </label>
               <input
@@ -121,11 +121,11 @@ export default function SignInPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                 Password
               </label>
               <input
@@ -135,10 +135,10 @@ export default function SignInPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-red-600 dark:text-red-300">{error}</p>}
             <button
               type="submit"
               disabled={loading}

@@ -23,7 +23,7 @@ export default function TemplateListView({
         const val = e.target.value;
         router.push(val ? `/admin/templates?projectId=${val}` : "/admin/templates");
       }}
-      className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700"
+      className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
     >
       <option value="">Global defaults</option>
       {projects.map((p) => (

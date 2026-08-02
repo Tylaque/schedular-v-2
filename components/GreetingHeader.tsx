@@ -24,11 +24,11 @@ export default function GreetingHeader({
 
   return (
     <div className="mb-6">
-      <p className="text-2xl font-bold text-gray-900">
+      <p className="text-2xl font-bold text-gray-900 dark:text-gray-50">
         {greeting}, {firstName}
       </p>
-      <p className="text-sm text-gray-500 mt-1">{dateLabel}</p>
-      <p className="text-sm text-gray-500 mt-1">
+      <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">{dateLabel}</p>
+      <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">
         {todayCount > 0 ? (
           <>
             here&apos;s what&apos;s scheduled today —{" "}

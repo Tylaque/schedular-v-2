@@ -55,25 +55,25 @@ export default function TemplateForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-4xl mx-auto p-6">
         <button
           onClick={() => router.push("/admin/templates")}
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4 dark:text-gray-400 dark:hover:text-gray-200"
         >
           <ArrowLeft className="w-4 h-4" /> Back to templates
         </button>
 
-        <h1 className="text-xl font-bold text-gray-900 mb-6">New email template</h1>
+        <h1 className="text-xl font-bold text-gray-900 mb-6 dark:text-gray-50">New email template</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-gray-500">Category</label>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Category</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700"
+                className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c.value} value={c.value}>{c.label}</option>
@@ -81,11 +81,11 @@ export default function TemplateForm() {
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500">Audience</label>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Audience</label>
               <select
                 value={audience}
                 onChange={(e) => setAudience(e.target.value)}
-                className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700"
+                className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
               >
                 {AUDIENCES.map((a) => (
                   <option key={a.value} value={a.value}>{a.label}</option>
@@ -95,23 +95,23 @@ export default function TemplateForm() {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-gray-500">Subject</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Subject</label>
             <input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="Enter email subject line"
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
             />
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-gray-500">Body (HTML)</label>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Body (HTML)</label>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">Insert token:</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">Insert token:</span>
                 <select
                   onChange={(e) => { if (e.target.value) insertToken(e.target.value); e.target.value = ""; }}
-                  className="text-xs border border-gray-300 rounded px-2 py-1 bg-white text-gray-700"
+                  className="text-xs border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
                 >
                   <option value="">-- select --</option>
                   {PLACEHOLDER_TOKENS.map((t) => (
@@ -125,13 +125,13 @@ export default function TemplateForm() {
               onChange={(e) => setBodyHtml(e.target.value)}
               placeholder="<div>Your HTML email body...</div>"
               rows={16}
-              className="w-full mt-1 text-sm font-mono border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm font-mono border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
             />
           </div>
 
           {renderedPreview && (
-            <div className="border border-gray-200 rounded-lg bg-white shadow-sm">
-              <div className="px-4 py-3 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <div className="border border-gray-200 rounded-lg bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+              <div className="px-4 py-3 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide dark:border-gray-700 dark:text-gray-400">
                 Preview — Subject: {renderedPreview.subject}
               </div>
               <div className="p-4" dangerouslySetInnerHTML={{ __html: renderedPreview.bodyHtml }} />
@@ -142,7 +142,7 @@ export default function TemplateForm() {
             <button
               type="button"
               onClick={() => setShowPreview(!showPreview)}
-              className="border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg px-4 py-2 text-sm font-medium flex items-center gap-2"
+              className="border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg px-4 py-2 text-sm font-medium flex items-center gap-2 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
             >
               {showPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               {showPreview ? "Hide preview" : "Show preview"}
@@ -150,7 +150,7 @@ export default function TemplateForm() {
             <button
               type="submit"
               disabled={!subject || !bodyHtml || saving}
-              className="bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg px-6 py-2.5"
+              className="bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg px-6 py-2.5 dark:disabled:bg-gray-700"
             >
               {saving ? "Saving..." : "Save template"}
             </button>

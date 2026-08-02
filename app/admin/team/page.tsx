@@ -20,7 +20,7 @@ export default async function TeamPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <h1 className="text-xl font-bold text-gray-900 mb-6">Team Management</h1>
+      <h1 className="text-xl font-bold text-gray-900 mb-6 dark:text-gray-50">Team Management</h1>
       <TeamClient members={members} currentUserId={session.user.id} />
     </div>
   );

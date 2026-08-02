@@ -120,7 +120,7 @@ export default function AdminSidebar({ role, flaggedCount = 0 }: AdminSidebarPro
                   href={item.href}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     active
-                      ? "bg-brand-50 text-brand-600"
+                      ? "bg-brand-50 text-brand-600 dark:bg-brand-700/40 dark:text-brand-100"
                       : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
                   }`}
                 >
@@ -146,7 +146,7 @@ export default function AdminSidebar({ role, flaggedCount = 0 }: AdminSidebarPro
                 onClick={() => toggleGroup(group.label)}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   groupActive && !isOpen
-                    ? "bg-brand-50 text-brand-600"
+                    ? "bg-brand-50 text-brand-600 dark:bg-brand-700/40 dark:text-brand-100"
                     : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
                 }`}
               >
@@ -173,7 +173,7 @@ export default function AdminSidebar({ role, flaggedCount = 0 }: AdminSidebarPro
                           href={item.href}
                           className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
                             active
-                              ? "bg-brand-50 text-brand-600 font-medium"
+                              ? "bg-brand-50 text-brand-600 font-medium dark:bg-brand-700/40 dark:text-brand-100"
                               : "text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
                           }`}
                         >

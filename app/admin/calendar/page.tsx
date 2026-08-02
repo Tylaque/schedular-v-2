@@ -14,8 +14,8 @@ export default async function CalendarPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-xl font-bold text-gray-900 mb-6">Calendar</h1>
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+      <h1 className="text-xl font-bold text-gray-900 mb-6 dark:text-gray-50">Calendar</h1>
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 dark:border-gray-700 dark:bg-gray-900">
         <CalendarView
           projects={projects.map((p) => ({ id: p.id, name: p.name }))}
           admins={admins.map((a) => ({ id: a.id, name: a.name }))}

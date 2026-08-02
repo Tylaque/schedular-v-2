@@ -62,7 +62,7 @@ function CancelBookingButton({ bookingId }: { bookingId: string }) {
     <button
       onClick={handleCancel}
       disabled={loading}
-      className="text-xs text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
+      className="text-xs text-red-600 hover:text-red-800 font-medium disabled:opacity-50 dark:text-red-300"
     >
       {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Cancel"}
     </button>
@@ -162,7 +162,7 @@ export default function CalendarView({
 
     return (
       <div>
-        <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-400 mb-1">
+        <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-400 mb-1 dark:text-gray-500">
           {DAYS_SHORT.map((d) => (<div key={d}>{d}</div>))}
         </div>
         <div className="grid grid-cols-7 gap-1">
@@ -184,10 +184,10 @@ export default function CalendarView({
                   (isSelected
                     ? "bg-brand-500 text-white font-semibold"
                     : isToday
-                    ? "bg-brand-50 text-brand-700 font-semibold"
+                    ? "bg-brand-50 text-brand-700 font-semibold dark:bg-brand-700/40 dark:text-brand-100"
                     : dayEvents.length > 0
-                    ? "text-gray-700 hover:bg-brand-50 font-medium"
-                    : "text-gray-300")
+                    ? "text-gray-700 hover:bg-brand-50 font-medium dark:text-gray-200"
+                    : "text-gray-300 dark:text-gray-400")
                 }
               >
                 <span>{d.getDate()}</span>
@@ -209,7 +209,7 @@ export default function CalendarView({
     const days = getWeekDays(cursorDate);
     return (
       <div>
-        <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-400 mb-1">
+        <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-400 mb-1 dark:text-gray-500">
           {DAYS_SHORT.map((d) => (<div key={d}>{d}</div>))}
         </div>
         <div className="grid grid-cols-7 gap-1">
@@ -224,15 +224,15 @@ export default function CalendarView({
                 className={
                   "rounded-lg text-sm p-1 min-h-[120px] " +
                   (isSelected
-                    ? "bg-brand-50 border border-brand-200"
+                    ? "bg-brand-50 border border-brand-200 dark:bg-brand-700/40 dark:border-brand-700"
                     : isToday
-                    ? "bg-brand-50/50"
-                    : "bg-white")
+                    ? "bg-brand-50/50 dark:bg-brand-700/20"
+                    : "bg-white dark:bg-gray-900")
                 }
               >
                 <div className={
                   "text-xs font-medium text-center mb-1 " +
-                  (isToday ? "text-brand-700" : "text-gray-500")
+                  (isToday ? "text-brand-700" : "text-gray-500 dark:text-gray-400")
                 }>
                   {d.getDate()}
                 </div>
@@ -247,7 +247,7 @@ export default function CalendarView({
                     </div>
                   ))}
                   {dayEvents.length > 4 && (
-                    <div className="text-[10px] text-gray-400 text-center">+{dayEvents.length - 4} more</div>
+                    <div className="text-[10px] text-gray-400 text-center dark:text-gray-500">+{dayEvents.length - 4} more</div>
                   )}
                 </div>
               </div>
@@ -265,26 +265,26 @@ export default function CalendarView({
     const dayEvents = eventsByDateKey.get(dk) ?? [];
     return (
       <div>
-        <div className="text-lg font-semibold text-gray-900 mb-4 text-center">
+        <div className="text-lg font-semibold text-gray-900 mb-4 text-center dark:text-gray-50">
           {d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
         </div>
         {dayEvents.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No events on this date.</p>
+          <p className="text-sm text-gray-400 text-center py-8 dark:text-gray-500">No events on this date.</p>
         ) : (
           <div className="space-y-2">
                 {dayEvents.map((ev) => (
-              <div key={ev.id} className="border border-gray-200 rounded-lg p-3 flex items-center justify-between">
+              <div key={ev.id} className="border border-gray-200 rounded-lg p-3 flex items-center justify-between dark:border-gray-700">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-gray-900">{ev.time}</span>
-                    <span className="text-sm text-gray-500">{ev.projectName}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-50">{ev.time}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{ev.projectName}</span>
                   </div>
-                  <div className="text-xs text-gray-400 mt-0.5">
+                  <div className="text-xs text-gray-400 mt-0.5 dark:text-gray-500">
                     {ev.adminName} · {ev.participantName}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700">
+                  <span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
                     {ev.status}
                   </span>
                   {ev.status === "confirmed" && (
@@ -321,7 +321,7 @@ export default function CalendarView({
                 "text-sm rounded-lg px-3 py-1.5 font-medium " +
                 (viewMode === mode
                   ? "bg-brand-500 text-white"
-                  : "border border-gray-300 text-gray-700 hover:bg-gray-50")
+                  : "border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800")
               }
             >
               {mode === "day" ? "Day" : mode === "week" ? "Week" : "Month"}
@@ -329,11 +329,11 @@ export default function CalendarView({
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate(-1)} className="p-1 rounded hover:bg-gray-100 text-gray-500">
+          <button onClick={() => navigate(-1)} className="p-1 rounded hover:bg-gray-100 text-gray-500 dark:hover:bg-gray-800 dark:text-gray-400">
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-sm font-semibold text-gray-900 min-w-[140px] text-center">{headerLabel}</span>
-          <button onClick={() => navigate(1)} className="p-1 rounded hover:bg-gray-100 text-gray-500">
+          <span className="text-sm font-semibold text-gray-900 min-w-[140px] text-center dark:text-gray-50">{headerLabel}</span>
+          <button onClick={() => navigate(1)} className="p-1 rounded hover:bg-gray-100 text-gray-500 dark:hover:bg-gray-800 dark:text-gray-400">
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -344,7 +344,7 @@ export default function CalendarView({
         <select
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700"
+          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
         >
           <option value="">All projects</option>
           {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
@@ -352,27 +352,27 @@ export default function CalendarView({
         <select
           value={adminId}
           onChange={(e) => setAdminId(e.target.value)}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700"
+          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
         >
           <option value="">All admins</option>
           {admins.map((a) => (<option key={a.id} value={a.id}>{a.name}</option>))}
         </select>
         <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
           <input
             value={participantSearch}
             onChange={(e) => setParticipantSearch(e.target.value)}
             placeholder="Search participant..."
-            className="w-full text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5"
+            className="w-full text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 dark:border-gray-600"
           />
         </div>
       </div>
 
-      {loading && <p className="text-sm text-gray-400 text-center py-8">Loading...</p>}
+      {loading && <p className="text-sm text-gray-400 text-center py-8 dark:text-gray-500">Loading...</p>}
 
       {!loading && events.length === 0 && (
         <div className="text-center py-16">
-          <p className="text-sm text-gray-400">No matching events found.</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">No matching events found.</p>
         </div>
       )}
 

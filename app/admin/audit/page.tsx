@@ -21,17 +21,17 @@ const ACTION_LABEL: Record<string, string> = {
 };
 
 const ACTION_BADGE: Record<string, string> = {
-  project_created: "bg-emerald-100 text-emerald-700",
-  project_updated: "bg-blue-100 text-blue-700",
-  admin_availability_submitted: "bg-purple-100 text-purple-700",
-  booking_created: "bg-green-100 text-green-700",
-  booking_cancelled: "bg-red-100 text-red-700",
-  booking_rescheduled: "bg-amber-100 text-amber-700",
-  template_created: "bg-indigo-100 text-indigo-700",
-  template_updated: "bg-sky-100 text-sky-700",
-  notification_sent: "bg-gray-100 text-gray-700",
-  role_changed: "bg-blue-100 text-blue-700",
-  org_ownership_transferred: "bg-purple-100 text-purple-700",
+  project_created: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  project_updated: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  admin_availability_submitted: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+  booking_created: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+  booking_cancelled: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  booking_rescheduled: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  template_created: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
+  template_updated: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
+  notification_sent: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200",
+  role_changed: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  org_ownership_transferred: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
 };
 
 export default async function AuditPage({
@@ -56,24 +56,24 @@ export default async function AuditPage({
   return (
     <div className="max-w-6xl mx-auto p-6">
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-gray-900">Audit Log
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Audit Log
             {logs.length > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-gray-100 text-xs font-semibold text-gray-500 leading-none ml-2 align-middle">
+              <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-gray-100 text-xs font-semibold text-gray-500 leading-none ml-2 align-middle dark:bg-gray-800 dark:text-gray-400">
                 {logs.length}
               </span>
             )}
           </h1>
-          <p className="text-sm text-gray-500 mt-1">Captures every mutation across the platform.</p>
+          <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">Captures every mutation across the platform.</p>
         </div>
 
         {/* Filters */}
-        <form method="get" className="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex flex-wrap gap-3 items-end shadow-sm">
+        <form method="get" className="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex flex-wrap gap-3 items-end shadow-sm dark:bg-gray-900 dark:border-gray-700">
           <div>
-            <label htmlFor="project" className="block text-xs font-medium text-gray-500 mb-1">Project</label>
+            <label htmlFor="project" className="block text-xs font-medium text-gray-500 mb-1 dark:text-gray-400">Project</label>
             <select
               id="project"
               name="projectId"
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm dark:border-gray-600"
               defaultValue={searchParams.projectId ?? ""}
             >
               <option value="">All projects</option>
@@ -83,11 +83,11 @@ export default async function AuditPage({
             </select>
           </div>
           <div>
-            <label htmlFor="action" className="block text-xs font-medium text-gray-500 mb-1">Action</label>
+            <label htmlFor="action" className="block text-xs font-medium text-gray-500 mb-1 dark:text-gray-400">Action</label>
             <select
               id="action"
               name="action"
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm dark:border-gray-600"
               defaultValue={searchParams.action ?? ""}
             >
               <option value="">All actions</option>
@@ -102,45 +102,45 @@ export default async function AuditPage({
         </form>
 
         {/* Table */}
-        <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white shadow-sm">
+        <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Timestamp</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Action</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Actor</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Entity</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Details</th>
+              <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-950">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Timestamp</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Action</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Actor</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Entity</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Details</th>
               </tr>
             </thead>
             <tbody>
               {logs.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
                     No audit entries match these filters.
                   </td>
                 </tr>
               )}
               {logs.map((log) => (
-                <tr key={log.id} className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                <tr key={log.id} className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50 transition-colors dark:border-gray-700 dark:hover:bg-gray-800">
+                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap dark:text-gray-400">
                     {new Date(log.createdAt).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" })}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${ACTION_BADGE[log.action] ?? "bg-gray-100 text-gray-700"}`}>
+                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${ACTION_BADGE[log.action] ?? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200"}`}>
                       {ACTION_LABEL[log.action] ?? log.action}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-700">{log.actorLabel}</td>
-                  <td className="px-4 py-3 text-gray-700 font-mono text-xs">{log.entityType}:{log.entityId.slice(0, 8)}…</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs max-w-xs truncate">
+                  <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{log.actorLabel}</td>
+                  <td className="px-4 py-3 text-gray-700 font-mono text-xs dark:text-gray-200">{log.entityType}:{log.entityId.slice(0, 8)}…</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs max-w-xs truncate dark:text-gray-400">
                     {log.afterState ? (
                       <span title={JSON.stringify(log.afterState)}>
                         {JSON.stringify(log.afterState).slice(0, 80)}
                         {JSON.stringify(log.afterState).length > 80 ? "…" : ""}
                       </span>
                     ) : (
-                      <span className="text-gray-300">—</span>
+                      <span className="text-gray-300 dark:text-gray-400">—</span>
                     )}
                   </td>
                 </tr>

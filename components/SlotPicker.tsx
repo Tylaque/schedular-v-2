@@ -35,8 +35,8 @@ export function TimeSlotList({ times, selectedTime, onSelectTime, currentTime }:
               selectedTime === t
                 ? "bg-brand-500 text-white font-semibold"
                 : isCurrent
-                ? "text-gray-300 cursor-not-allowed"
-                : "border border-gray-200 text-gray-700 hover:border-brand-100 hover:bg-brand-50"
+                ? "text-gray-300 dark:text-gray-400 cursor-not-allowed"
+                : "border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-brand-100 hover:bg-brand-50"
             }`}
           >
             {formatTime(t)}
@@ -81,13 +81,13 @@ export default function SlotPicker({
               onClick={() => { onSelectDate(dk); onSelectTime(null); }}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                 selectedDateKey === dk
-                  ? "bg-brand-50 border border-brand-300 text-brand-700"
-                  : "hover:bg-gray-50 border border-transparent text-gray-700"
+                  ? "bg-brand-50 border border-brand-300 text-brand-700 dark:bg-brand-700/40 dark:border-brand-700 dark:text-brand-100"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent text-gray-700 dark:text-gray-200"
               }`}
             >
               <span className="font-medium">{formatDate(dk)}</span>
-              {isCurrent && <span className="ml-2 text-xs text-gray-400">(current)</span>}
-              <span className="ml-2 text-xs text-gray-400">{availability[dk].length} slots</span>
+              {isCurrent && <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">(current)</span>}
+              <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">{availability[dk].length} slots</span>
             </button>
           );
         })}
@@ -96,7 +96,7 @@ export default function SlotPicker({
       <div>
         {selectedDateKey ? (
           <div className="space-y-1">
-            <p className="text-xs font-medium text-gray-500 mb-1">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
               {formatDate(selectedDateKey)}
             </p>
             {timesForSelected.length > 0 ? (
@@ -107,11 +107,11 @@ export default function SlotPicker({
                 currentTime={selectedDateKey === currentDateKey ? currentTime : undefined}
               />
             ) : (
-              <p className="text-xs text-gray-400">No slots available</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">No slots available</p>
             )}
           </div>
         ) : (
-          <p className="text-xs text-gray-400">Select a date</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">Select a date</p>
         )}
       </div>
     </div>

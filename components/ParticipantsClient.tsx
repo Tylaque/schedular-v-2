@@ -154,14 +154,14 @@ export default function ParticipantsClient({
   }
 
   const STATUS_BADGE: Record<string, string> = {
-    invited: "bg-yellow-100 text-yellow-700",
-    link_sent: "bg-blue-100 text-blue-700",
-    booked: "bg-green-100 text-green-700",
-    reminded: "bg-orange-100 text-orange-700",
-    completed: "bg-emerald-100 text-emerald-700",
-    no_show: "bg-red-100 text-red-700",
-    cancelled: "bg-gray-100 text-gray-500",
-    waitlisted: "bg-purple-100 text-purple-700",
+    invited: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
+    link_sent: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+    booked: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+    reminded: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+    completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    no_show: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+    cancelled: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
+    waitlisted: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
   };
 
   const pendingCount = participants.filter((p) =>
@@ -174,8 +174,8 @@ export default function ParticipantsClient({
         <div
           className={`mb-4 rounded-lg p-3 text-sm ${
             msg.type === "ok"
-              ? "bg-green-50 border border-green-200 text-green-700"
-              : "bg-red-50 border border-red-200 text-red-700"
+              ? "bg-green-50 border border-green-200 text-green-700 dark:bg-green-900/40 dark:border-green-800 dark:text-green-300"
+              : "bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/40 dark:border-red-800 dark:text-red-300"
           }`}
         >
           {msg.text}
@@ -185,11 +185,11 @@ export default function ParticipantsClient({
       <div className="flex flex-wrap gap-3 mb-6">
         <button
           onClick={() => window.open("/api/participants/template", "_blank")}
-          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-700"
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-200"
         >
           <Download className="w-4 h-4" /> Download template
         </button>
-        <label className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-700 cursor-pointer">
+        <label className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-700 cursor-pointer dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-200">
           <Upload className="w-4 h-4" /> {uploading ? "Uploading..." : "Import file"}
           <input
             ref={fileRef}
@@ -203,7 +203,7 @@ export default function ParticipantsClient({
         <button
           onClick={handleSendInvites}
           disabled={sending || pendingCount === 0}
-          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 text-white"
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 text-white dark:disabled:bg-gray-700"
         >
           {sending ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -214,35 +214,35 @@ export default function ParticipantsClient({
         </button>
       </div>
 
-      <div className="border border-gray-200 rounded-lg mb-6 bg-white shadow-sm">
-        <div className="p-4 border-b border-gray-200">
-          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+      <div className="border border-gray-200 rounded-lg mb-6 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2 dark:text-gray-50">
             <UserPlus className="w-4 h-4 text-brand-500" /> Add participant
           </h3>
         </div>
         <div className="p-4 flex gap-3 items-end">
           <div className="flex-1">
-            <label className="text-xs font-medium text-gray-500">Name</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Name</label>
             <input
               value={addName}
               onChange={(e) => setAddName(e.target.value)}
               placeholder="Jane Doe"
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
             />
           </div>
           <div className="flex-1">
-            <label className="text-xs font-medium text-gray-500">Email</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Email</label>
             <input
               value={addEmail}
               onChange={(e) => setAddEmail(e.target.value)}
               placeholder="jane@email.com"
-              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
             />
           </div>
           <button
             onClick={handleAdd}
             disabled={adding || !addName.trim() || !addEmail.trim()}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 text-white flex items-center gap-2"
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 text-white flex items-center gap-2 dark:disabled:bg-gray-700"
           >
             {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
             Add
@@ -251,16 +251,16 @@ export default function ParticipantsClient({
       </div>
 
       {importResult && importResult.errors.length > 0 && (
-        <div className="border border-red-200 rounded-lg mb-6 bg-white">
+        <div className="border border-red-200 rounded-lg mb-6 bg-white dark:bg-gray-900">
           <div className="p-4 border-b border-red-100">
-            <h3 className="text-sm font-semibold text-red-700">
+            <h3 className="text-sm font-semibold text-red-700 dark:text-red-300">
               Import errors ({importResult.errors.length})
             </h3>
           </div>
           <div className="p-4 overflow-x-auto">
             <table className="text-sm w-full">
               <thead>
-                <tr className="text-left text-gray-500">
+                <tr className="text-left text-gray-500 dark:text-gray-400">
                   <th className="pb-2 pr-4">Row</th>
                   <th className="pb-2 pr-4">Name</th>
                   <th className="pb-2 pr-4">Email</th>
@@ -269,11 +269,11 @@ export default function ParticipantsClient({
               </thead>
               <tbody>
                 {importResult.errors.map((err, i) => (
-                  <tr key={i} className="border-t border-gray-100">
-                    <td className="py-2 pr-4 text-gray-500">{err.row}</td>
+                  <tr key={i} className="border-t border-gray-100 dark:border-gray-800">
+                    <td className="py-2 pr-4 text-gray-500 dark:text-gray-400">{err.row}</td>
                     <td className="py-2 pr-4">{err.name}</td>
                     <td className="py-2 pr-4">{err.email}</td>
-                    <td className="py-2 text-red-600">{err.reason}</td>
+                    <td className="py-2 text-red-600 dark:text-red-300">{err.reason}</td>
                   </tr>
                 ))}
               </tbody>
@@ -282,21 +282,21 @@ export default function ParticipantsClient({
         </div>
       )}
 
-      <div className="border border-gray-200 rounded-lg bg-white overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-gray-200">
-          <h3 className="text-sm font-semibold text-gray-900">
+      <div className="border border-gray-200 rounded-lg bg-white overflow-hidden shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
             Participants ({participants.length})
           </h3>
         </div>
         {participants.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-400">
+          <div className="p-8 text-center text-sm text-gray-400 dark:text-gray-500">
             No participants yet. Add one above or import from a file.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 text-left text-gray-500">
+                <tr className="border-b border-gray-100 text-left text-gray-500 dark:border-gray-800 dark:text-gray-400">
                   <th className="px-4 py-3 font-medium">Name</th>
                   <th className="px-4 py-3 font-medium">Email</th>
                   <th className="px-4 py-3 font-medium">Status</th>
@@ -306,19 +306,19 @@ export default function ParticipantsClient({
               </thead>
               <tbody>
                 {participants.map((p) => (
-                  <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{p.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{p.email}</td>
+                  <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-50">{p.name}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{p.email}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          STATUS_BADGE[p.status] ?? "bg-gray-100 text-gray-600"
+                          STATUS_BADGE[p.status] ?? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
                         }`}
                       >
                         {p.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
+                    <td className="px-4 py-3 text-gray-500 text-xs dark:text-gray-400">
                       {p.lastInvitedAt
                         ? new Date(p.lastInvitedAt).toLocaleDateString()
                         : "—"}
@@ -327,7 +327,7 @@ export default function ParticipantsClient({
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => copyLink(p.id)}
-                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 dark:hover:bg-gray-800 dark:text-gray-500 dark:hover:text-gray-400"
                           title="Copy booking link"
                         >
                           {copiedId === p.id ? (
@@ -338,7 +338,7 @@ export default function ParticipantsClient({
                         </button>
                         <button
                           onClick={() => handleRemove(p.id)}
-                          className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"
+                          className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 dark:hover:bg-red-900/40 dark:text-gray-500"
                           title="Remove"
                         >
                           <Trash2 className="w-4 h-4" />

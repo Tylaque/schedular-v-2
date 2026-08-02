@@ -114,18 +114,18 @@ export default function AvailabilityGrid({ project }: { project: Project }) {
   const selectedCount = selections.size;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-5xl mx-auto p-6">
         {/* Page header */}
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-gray-900">Submit your availability</h1>
-          <p className="text-sm text-gray-500 mt-1">{project.name}</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Submit your availability</h1>
+          <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">{project.name}</p>
         </div>
 
         {/* Locked banner */}
         {locked && (
-          <div className="flex items-center gap-2 bg-gray-100 border border-gray-200 rounded-lg px-4 py-3 mb-4 text-sm text-gray-700">
-            <Lock className="w-4 h-4 text-gray-400 shrink-0" />
+          <div className="flex items-center gap-2 bg-gray-100 border border-gray-200 rounded-lg px-4 py-3 mb-4 text-sm text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200">
+            <Lock className="w-4 h-4 text-gray-400 shrink-0 dark:text-gray-500" />
             <span>
               Availability is locked for this project. Contact your Super Admin to make changes.
             </span>
@@ -134,12 +134,12 @@ export default function AvailabilityGrid({ project }: { project: Project }) {
 
         {/* Success banner */}
         {showSuccess && (
-          <div className="flex items-center gap-2 bg-emerald-100 border border-emerald-200 rounded-lg px-4 py-3 mb-4 text-sm text-emerald-700">
-            <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="flex items-center gap-2 bg-emerald-100 border border-emerald-200 rounded-lg px-4 py-3 mb-4 text-sm text-emerald-700 dark:bg-emerald-900/40 dark:border-emerald-800 dark:text-emerald-300">
+            <Check className="w-4 h-4 text-emerald-600 shrink-0 dark:text-emerald-300" />
             <span className="flex-1">Availability saved successfully.</span>
             <button
               onClick={() => setShowSuccess(false)}
-              className="text-emerald-600 hover:text-emerald-800"
+              className="text-emerald-600 hover:text-emerald-800 dark:text-emerald-300"
               aria-label="Dismiss"
             >
               <X className="w-4 h-4" />
@@ -149,11 +149,11 @@ export default function AvailabilityGrid({ project }: { project: Project }) {
 
         {/* Admin switcher */}
         <div className="flex items-center gap-3 mb-6">
-          <label className="text-xs font-medium text-gray-500">Logged in as</label>
+          <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Logged in as</label>
           <select
             value={selectedAdminId}
             onChange={(e) => setSelectedAdminId(e.target.value)}
-            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700"
+            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
           >
             {project.admins.map((a) => (
               <option key={a.id} value={a.id}>
@@ -164,20 +164,20 @@ export default function AvailabilityGrid({ project }: { project: Project }) {
         </div>
 
         {/* Grid wrapper - horizontal scroll on narrow viewports */}
-        <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white shadow-sm">
+        <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr>
-                <th className="sticky left-0 z-10 bg-white border-b border-r border-gray-200 px-2 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[80px] text-left">
+                <th className="sticky left-0 z-10 bg-white border-b border-r border-gray-200 px-2 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[80px] text-left dark:bg-gray-900 dark:border-gray-700 dark:text-gray-400">
                   Time
                 </th>
                 {grid.map((day) => (
                   <th
                     key={day.dateKey}
-                    className="border-b border-r border-gray-200 px-2 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[90px]"
+                    className="border-b border-r border-gray-200 px-2 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[90px] dark:border-gray-700 dark:text-gray-400"
                   >
                     <div>{day.date.toLocaleDateString("en-US", { weekday: "short" })}</div>
-                    <div className="text-gray-900 font-bold">
+                    <div className="text-gray-900 font-bold dark:text-gray-50">
                       {day.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </div>
                   </th>
@@ -187,14 +187,14 @@ export default function AvailabilityGrid({ project }: { project: Project }) {
             <tbody>
               {grid[0]?.times.map((time) => (
                 <tr key={time}>
-                  <td className="sticky left-0 z-10 bg-white border-b border-r border-gray-200 px-2 py-1.5 text-xs text-gray-500 font-medium whitespace-nowrap">
+                  <td className="sticky left-0 z-10 bg-white border-b border-r border-gray-200 px-2 py-1.5 text-xs text-gray-500 font-medium whitespace-nowrap dark:bg-gray-900 dark:border-gray-700 dark:text-gray-400">
                     {time}
                   </td>
                   {grid.map((day) => {
                     const key = `${day.dateKey}|${time}`;
                     const selected = selections.has(key);
                     return (
-                      <td key={day.dateKey} className="border-b border-r border-gray-200 p-0">
+                      <td key={day.dateKey} className="border-b border-r border-gray-200 p-0 dark:border-gray-700">
                         <button
                           aria-pressed={selected}
                           disabled={locked}
@@ -203,10 +203,10 @@ export default function AvailabilityGrid({ project }: { project: Project }) {
                           className={
                             "w-full h-8 text-xs transition-colors select-none " +
                             (locked
-                              ? "cursor-not-allowed bg-gray-50"
+                              ? "cursor-not-allowed bg-gray-50 dark:bg-gray-950"
                               : selected
                               ? "bg-brand-500 text-white hover:bg-brand-600"
-                              : "bg-white text-gray-400 hover:bg-brand-50")
+                              : "bg-white text-gray-400 hover:bg-brand-50 dark:bg-gray-900 dark:text-gray-500")
                           }
                         />
                       </td>
@@ -219,9 +219,9 @@ export default function AvailabilityGrid({ project }: { project: Project }) {
         </div>
 
         {/* Summary strip */}
-        <div className="mt-4 text-sm text-gray-700">
+        <div className="mt-4 text-sm text-gray-700 dark:text-gray-200">
           {selectedCount} slot{selectedCount !== 1 ? "s" : ""} selected
-          {hasUnsaved && <span className="text-gray-400 ml-1">(unsaved changes)</span>}
+          {hasUnsaved && <span className="text-gray-400 ml-1 dark:text-gray-500">(unsaved changes)</span>}
         </div>
 
         {/* Sticky save button */}
@@ -229,7 +229,7 @@ export default function AvailabilityGrid({ project }: { project: Project }) {
           <button
             disabled={locked || !hasUnsaved}
             onClick={handleSave}
-            className="w-full bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg py-2.5"
+            className="w-full bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg py-2.5 dark:disabled:bg-gray-700"
           >
             Save availability
           </button>

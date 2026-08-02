@@ -11,12 +11,12 @@ export default function SetPasswordPage() {
   const token = params?.token as string;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="border-b border-gray-200 bg-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
+      <header className="border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-brand-500" />
-            <span className="font-bold text-gray-900">Scheduler</span>
+            <span className="font-bold text-gray-900 dark:text-gray-50">Scheduler</span>
           </Link>
           <ThemeToggle />
         </div>
