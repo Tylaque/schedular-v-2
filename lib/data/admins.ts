@@ -14,13 +14,16 @@ export type AdminRecord = {
 };
 
 export async function listAllAdmins(): Promise<AdminRecord[]> {
-  const rows = await db.admin.findMany({ orderBy: { name: "asc" } });
+  const rows = await db.admin.findMany({
+    where: { isActive: true },
+    orderBy: { name: "asc" },
+  });
   return rows.map((a) => ({ id: a.id, name: a.name, initials: a.initials, email: a.email, accountType: a.accountType, role: a.role }));
 }
 
 export async function listSuperAdmins(): Promise<AdminRecord[]> {
   const rows = await db.admin.findMany({
-    where: { role: { in: ["super_admin", "org_owner"] } },
+    where: { role: { in: ["super_admin", "org_owner"] }, isActive: true },
     orderBy: { name: "asc" },
   });
   return rows.map((a) => ({ id: a.id, name: a.name, initials: a.initials, email: a.email, accountType: a.accountType, role: a.role }));
@@ -38,6 +41,9 @@ export async function inviteAssociate(input: {
   let created = false;
 
   if (admin) {
+    if (!admin.isActive) {
+      throw new Error("This associate has been deactivated and cannot be invited or assigned. Reactivate them on the Team page first.");
+    }
     if (!admin.name || admin.name === admin.email.split("@")[0]) {
       const initials = input.name
         .split(/\s+/)

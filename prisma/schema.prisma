@@ -105,6 +105,9 @@ model Admin {
   sessions           Session[]
   certifications     AdminCertification[] @relation("CertificationHolder")
   grantedCertifications AdminCertification[] @relation("CertificationGranter")
+  isActive           Boolean            @default(true)
+  deactivatedAt      DateTime?
+  deactivatedBy      String?
   createdAt          DateTime            @default(now())
 }
 
@@ -369,6 +372,8 @@ enum AuditAction {
   certification_deleted
   admin_certifications_set
   project_certification_requirements_set
+  admin_deactivated
+  admin_reactivated
 }
 
 model AuditLog {

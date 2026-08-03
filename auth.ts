@@ -135,6 +135,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const { db } = await import("@/lib/db");
         const admin = await db.admin.findUnique({ where: { email } });
         if (!admin || !admin.passwordHash) return null;
+        // Deactivated accounts cannot sign in via any path. Same generic null
+        // as a bad password so no account state is leaked to the attempt.
+        if (!admin.isActive) return null;
         const valid = await verifyPassword(credentials.password as string, admin.passwordHash);
         if (!valid) return null;
         // super_admin/org_owner accounts must always sign in via Microsoft so
@@ -157,8 +160,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account?.provider === "azure-ad") {
         const email = (user?.email ?? "").trim();
         if (!email) return false;
-        const { isInvitedAdminEmail } = await import("@/lib/data/auth-invite");
-        return isInvitedAdminEmail(email);
+        const { getAzureSignInGate } = await import("@/lib/data/auth-invite");
+        const gate = await getAzureSignInGate(email);
+        if (!gate.invited) return false;
+        // A deactivated account is a real, known user hitting a real barrier —
+        // redirect them to a specific message instead of the generic
+        // AccessDenied (which is reserved for unknown emails to avoid leaking
+        // who's invited).
+        if (gate.deactivated) return "/auth/error?error=account_deactivated";
+        return true;
       }
       return true;
     },

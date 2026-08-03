@@ -131,9 +131,9 @@ export async function pickAvailableAdmin(
   });
   if (!project) return null;
 
-  // Get all admins assigned to this project
+  // Get all active admins assigned to this project
   const projectAdminRows = await client.projectAdmin.findMany({
-    where: { projectId },
+    where: { projectId, admin: { isActive: true } },
     select: { adminId: true },
   });
   const candidateIds = projectAdminRows.map((pa) => pa.adminId);
@@ -652,6 +652,13 @@ export async function isAdminEligibleForSlot(
     select: { durationMinutes: true, bufferMinutes: true, maxSessionsPerAdminPerDay: true },
   });
   if (!project) return false;
+
+  // Deactivated associates are never eligible for new/reassigned bookings.
+  const candidate = await client.admin.findUnique({
+    where: { id: adminId },
+    select: { isActive: true },
+  });
+  if (!candidate?.isActive) return false;
 
   // Certification gate: associate must hold all of the project's required
   // certifications (if any). Zero requirements = eligible.

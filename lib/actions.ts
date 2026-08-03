@@ -21,7 +21,7 @@ import { sendTestEmail } from "@/lib/data/notifications";
 import { inviteAssociate } from "@/lib/data/admins";
 import { previewAdminUnavailable, commitAdminUnavailable, previewDateShift, commitDateShift } from "@/lib/data/bulk-reschedule";
 import { canViewAllProjects, isOrgOwner, isSuperAdmin } from "@/lib/authz";
-import { changeAdminRole, promoteToOrgOwner } from "@/lib/data/team";
+import { changeAdminRole, promoteToOrgOwner, deactivateAdmin, reactivateAdmin } from "@/lib/data/team";
 import { setAdminRangesForDate } from "@/lib/data/availability-ranges";
 import { sendInvitationsOnActivation } from "@/lib/data/participants";
 import { updateParticipantStatus } from "@/lib/data/participants";
@@ -459,6 +459,56 @@ export async function promoteToOrgOwnerAction(
     targetAdminId,
     confirmationPhrase
   );
+  if (result.ok) {
+    revalidatePath("/admin/team");
+  }
+  return result;
+}
+
+export async function deactivateAdminAction(
+  targetAdminId: string
+): Promise<
+  | {
+      ok: true;
+      offboarding: { reassigned: number; flagged: number };
+      projectsRemoved: number;
+    }
+  | {
+      ok: false;
+      reason:
+        | "not_authorized"
+        | "target_not_found"
+        | "cannot_deactivate_self"
+        | "cannot_deactivate_sole_org_owner";
+    }
+> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false, reason: "not_authorized" };
+  }
+  const result = await deactivateAdmin(session.user.id, targetAdminId);
+  if (result.ok) {
+    revalidatePath("/admin/team");
+    return {
+      ok: true,
+      offboarding: {
+        reassigned: result.offboarding.reassigned.length,
+        flagged: result.offboarding.flagged.length,
+      },
+      projectsRemoved: result.projectsRemoved.length,
+    };
+  }
+  return result;
+}
+
+export async function reactivateAdminAction(
+  targetAdminId: string
+): Promise<{ ok: true } | { ok: false; reason: "not_authorized" | "target_not_found" }> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false, reason: "not_authorized" };
+  }
+  const result = await reactivateAdmin(session.user.id, targetAdminId);
   if (result.ok) {
     revalidatePath("/admin/team");
   }

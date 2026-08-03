@@ -19,3 +19,24 @@ export async function isInvitedAdminEmail(email: string): Promise<boolean> {
   }
   return !!existing;
 }
+
+export type SignInGate = { invited: boolean; deactivated: boolean };
+
+/**
+ * One-shot gate used by the Azure AD signIn callback: is this email an invited
+ * admin, and (if so) has that account been soft-deactivated?
+ *
+ * Deactivated is a distinct outcome from "not invited": the person is a real,
+ * known user hitting a real barrier, so the caller can show them an explicit
+ * "account deactivated" message rather than the generic AccessDenied used for
+ * unknown emails (which must stay generic to avoid leaking who's invited).
+ */
+export async function getAzureSignInGate(email: string): Promise<SignInGate> {
+  const normalized = email.trim().toLowerCase();
+  const admin = await db.admin.findFirst({
+    where: { email: { equals: normalized, mode: "insensitive" } },
+    select: { isActive: true },
+  });
+  if (!admin) return { invited: false, deactivated: false };
+  return { invited: true, deactivated: !admin.isActive };
+}

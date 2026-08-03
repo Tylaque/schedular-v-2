@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Shield, AlertTriangle, Search, UserPlus } from "lucide-react";
-import { changeAdminRoleAction, promoteToOrgOwnerAction, inviteAssociateAction } from "@/lib/actions";
+import { Shield, AlertTriangle, Search, UserPlus, UserX, RotateCcw } from "lucide-react";
+import { changeAdminRoleAction, promoteToOrgOwnerAction, inviteAssociateAction, deactivateAdminAction, reactivateAdminAction } from "@/lib/actions";
 import type { TeamMember } from "@/lib/data/team";
 import Avatar from "@/components/Avatar";
 import AdminCertificationsEditor from "@/components/AdminCertificationsEditor";
@@ -41,6 +41,8 @@ export default function TeamClient({
   const [inviteRole, setInviteRole] = useState<"admin" | "super_admin">("admin");
   const [inviteSending, setInviteSending] = useState(false);
   const [membersList, setMembersList] = useState(members);
+  const [deactivateTarget, setDeactivateTarget] = useState<TeamMember | null>(null);
+  const [deactivating, setDeactivating] = useState(false);
 
   async function handleInvite() {
     if (!inviteName.trim() || !inviteEmail.trim()) return;
@@ -56,6 +58,9 @@ export default function TeamClient({
         accountType: invited.accountType,
         ownedProjectNames: [],
         assignedProjectNames: [],
+        isActive: true,
+        deactivatedAt: null,
+        deactivatedBy: null,
       };
       setMembersList((prev) => (prev.find((m) => m.id === invited.id) ? prev : [...prev, newMember]));
       setInviteName("");
@@ -118,6 +123,65 @@ export default function TeamClient({
   }
 
   const currentOwner = membersList.find((m) => m.role === "org_owner");
+
+  async function handleDeactivate() {
+    if (!deactivateTarget) return;
+    setDeactivating(true);
+    setMsg(null);
+    try {
+      const result = await deactivateAdminAction(deactivateTarget.id);
+      if (result.ok) {
+        setMembersList((prev) =>
+          prev.map((m) =>
+            m.id === deactivateTarget.id ? { ...m, isActive: false, deactivatedAt: new Date().toISOString(), deactivatedBy: currentUserId, assignedProjectNames: [] } : m
+          )
+        );
+        const offboardNote = result.offboarding.reassigned + result.offboarding.flagged;
+        setMsg({
+          type: "ok",
+          text: `${deactivateTarget.name} deactivated. Removed from ${result.projectsRemoved} project(s); ${offboardNote} future booking(s) handled by off-boarding.`,
+        });
+        setDeactivateTarget(null);
+      } else {
+        const reasons: Record<string, string> = {
+          not_authorized: "Only org owners and super admins can deactivate associates.",
+          target_not_found: "User not found.",
+          cannot_deactivate_self: "You cannot deactivate yourself. Another org owner/super admin must do it.",
+          cannot_deactivate_sole_org_owner: "The org owner cannot be deactivated — the system must always have an org owner.",
+        };
+        setMsg({ type: "err", text: reasons[result.reason] ?? "Failed to deactivate." });
+        setDeactivateTarget(null);
+      }
+    } catch {
+      setMsg({ type: "err", text: "An error occurred. Please try again." });
+    } finally {
+      setDeactivating(false);
+    }
+  }
+
+  async function handleReactivate(member: TeamMember) {
+    setSaving(member.id);
+    setMsg(null);
+    try {
+      const result = await reactivateAdminAction(member.id);
+      if (result.ok) {
+        setMembersList((prev) => prev.map((m) => (m.id === member.id ? { ...m, isActive: true, deactivatedAt: null, deactivatedBy: null } : m)));
+        setMsg({ type: "ok", text: `${member.name} reactivated. Their old project assignments were NOT restored — re-assign them if needed.` });
+      } else {
+        const reasons: Record<string, string> = {
+          not_authorized: "Only org owners and super admins can reactivate associates.",
+          target_not_found: "User not found.",
+        };
+        setMsg({ type: "err", text: reasons[result.reason] ?? "Failed to reactivate." });
+      }
+    } catch {
+      setMsg({ type: "err", text: "An error occurred. Please try again." });
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  const canManage = currentUserRole === "org_owner" || currentUserRole === "super_admin";
 
   const filteredMembers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -242,12 +306,24 @@ export default function TeamClient({
             {filteredMembers.map((m) => {
               const isSelf = m.id === currentUserId;
               const isOrgOwner = m.role === "org_owner";
+              const deactivated = !m.isActive;
               return (
-                <tr key={m.id} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors dark:border-gray-800 dark:hover:bg-gray-800">
+                <tr
+                  key={m.id}
+                  className={
+                    "border-b border-gray-100 last:border-b-0 transition-colors dark:border-gray-800 " +
+                    (deactivated ? "bg-gray-50 opacity-70 dark:bg-gray-950" : "hover:bg-gray-50 dark:hover:bg-gray-800")
+                  }
+                >
                   <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-50">
                     <div className="flex items-center gap-2">
                       <Avatar name={m.name} seed={m.email} size="sm" />
-                      {m.name}
+                      <span className={deactivated ? "line-through" : ""}>{m.name}</span>
+                      {deactivated && (
+                        <span className="inline-flex items-center rounded-full bg-gray-200 text-gray-600 px-2 py-0.5 text-xs font-medium dark:bg-gray-700 dark:text-gray-300">
+                          Deactivated
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{m.email}</td>
@@ -280,6 +356,19 @@ export default function TeamClient({
                       </span>
                     ) : isSelf ? (
                       <span className="text-xs text-gray-400 dark:text-gray-500">You</span>
+                    ) : deactivated ? (
+                      canManage && (
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleReactivate(m)}
+                            disabled={saving === m.id}
+                            className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-800 font-medium dark:text-emerald-400"
+                          >
+                            <RotateCcw className="w-3 h-3" /> Reactivate
+                          </button>
+                          {saving === m.id && <span className="text-xs text-gray-400 dark:text-gray-500">Saving...</span>}
+                        </div>
+                      )
                     ) : (
                       <div className="flex items-center justify-end gap-2">
                         <select
@@ -302,6 +391,14 @@ export default function TeamClient({
                             className="text-xs text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1 dark:text-purple-300"
                           >
                             <Shield className="w-3 h-3" /> Promote
+                          </button>
+                        )}
+                        {canManage && (
+                          <button
+                            onClick={() => setDeactivateTarget(m)}
+                            className="text-xs text-red-600 hover:text-red-800 font-medium flex items-center gap-1 dark:text-red-400"
+                          >
+                            <UserX className="w-3 h-3" /> Deactivate
                           </button>
                         )}
                       </div>
@@ -360,6 +457,45 @@ export default function TeamClient({
                 className="text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300 rounded-lg px-4 py-2 transition-colors"
               >
                 {promoting ? "Transferring..." : "Confirm Transfer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deactivateTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6 dark:bg-gray-900">
+            <h2 className="text-lg font-bold text-gray-900 mb-2 dark:text-gray-50">Deactivate {deactivateTarget.name}</h2>
+            <p className="text-sm text-gray-600 mb-4 dark:text-gray-400">
+              Deactivating <strong>{deactivateTarget.name}</strong> ({deactivateTarget.email}) will:
+            </p>
+            <ul className="text-xs text-gray-600 space-y-1.5 mb-4 list-disc pl-4 dark:text-gray-400">
+              <li>Remove them from all project assignments and off-board their future bookings.</li>
+              <li>Block them from signing in until reactivated.</li>
+              <li>Keep their booking history, audits, and certifications intact.</li>
+              <li>Reactivating later does not restore their old project assignments.</li>
+            </ul>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 flex items-start gap-2 dark:bg-amber-900/40 dark:border-amber-800">
+              <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                This is reversible via Reactivate, but their future bookings will be re-assigned to other available associates.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeactivateTarget(null)}
+                disabled={deactivating}
+                className="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2 dark:text-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeactivate}
+                disabled={deactivating}
+                className="text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300 rounded-lg px-4 py-2 transition-colors"
+              >
+                {deactivating ? "Deactivating..." : "Confirm Deactivate"}
               </button>
             </div>
           </div>

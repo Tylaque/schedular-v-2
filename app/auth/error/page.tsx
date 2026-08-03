@@ -10,6 +10,7 @@ export default function AuthErrorPage({
 }) {
   const error = searchParams.error;
   const denied = error === "AccessDenied";
+  const deactivated = error === "account_deactivated";
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
@@ -29,16 +30,23 @@ export default function AuthErrorPage({
               <ShieldAlert className="w-6 h-6 text-red-600 dark:text-red-300" />
             </div>
             <h1 className="text-lg font-bold text-gray-900 dark:text-gray-50 mb-2">
-              {denied ? "Access denied" : "Sign-in failed"}
+              {deactivated ? "Account deactivated" : denied ? "Access denied" : "Sign-in failed"}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-              {denied
-                ? "This Microsoft account has not been invited to access Scheduler. Access is by invitation only."
-                : "Something went wrong while signing you in. Please try again or contact your organisation owner."}
+              {deactivated
+                ? "This account has been deactivated and can no longer sign in. Contact your organisation owner for access."
+                : denied
+                  ? "This Microsoft account has not been invited to access Scheduler. Access is by invitation only."
+                  : "Something went wrong while signing you in. Please try again or contact your organisation owner."}
             </p>
             {denied && (
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
                 If you expected access, ask your organisation owner to invite the email address you used to sign in.
+              </p>
+            )}
+            {deactivated && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
+                If you believe this is a mistake, ask your organisation owner to reactivate your account on the Team page.
               </p>
             )}
             <div className="mt-6 flex flex-col gap-2">
