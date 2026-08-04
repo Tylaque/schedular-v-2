@@ -27,6 +27,7 @@ export type Project = {
   branding: { logoInitial: string; primaryColor: string; senderName: string };
   availabilityPeriodDays: number;
   ownerId: string | null;
+  meetingPlatformPreference: "zoom" | "teams" | "auto";
 };
 
 export type SlotGridDay = {
@@ -114,7 +115,7 @@ function dateKey(d: Date) {
  * Uses Intl.DateTimeFormat with shortOffset which correctly handles DST transitions.
  * Falls back to 0 (UTC) if resolution fails.
  */
-function getOffsetMinutesForDate(dateKey: string, timezone: string): number {
+export function getOffsetMinutesForDate(dateKey: string, timezone: string): number {
   try {
     const [y, m, d] = dateKey.split("-").map(Number);
     const utcDate = new Date(Date.UTC(y, m - 1, d, 12, 0));

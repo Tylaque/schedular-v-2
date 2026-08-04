@@ -329,6 +329,30 @@ Scheduler &mdash; Multi-project scheduling platform
 <p>Best,<br/>{{company_name}}</p>
 </div>`,
     },
+    {
+      category: "zoom_fallback_to_teams",
+      audience: "super_admin",
+      subject: "Zoom unavailable — {{project_name}} session booked on Teams",
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+<p>Hi {{admin_name}},</p>
+<p>We couldn't place a Zoom meeting for the <strong>{{project_name}}</strong> session on {{session_date}} at {{session_time}} ({{participant_name}}), so a <strong>Microsoft Teams</strong> meeting was created instead.</p>
+<p>This usually means the Zoom account pool was full or the Zoom API briefly failed. No action is needed unless you want to review your Zoom pool.</p>
+<p>Manage this booking: <a href="{{manage_booking_link}}">{{manage_booking_link}}</a></p>
+<p>Best,<br/>Scheduler</p>
+</div>`,
+    },
+    {
+      category: "zoom_pool_full_no_fallback",
+      audience: "super_admin",
+      subject: "Action needed — no meeting link for {{project_name}} ({{session_date}})",
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+<p>Hi {{admin_name}},</p>
+<p>The <strong>{{project_name}}</strong> session on {{session_date}} at {{session_time}} ({{participant_name}}) could not receive a Zoom meeting: every licensed Zoom account is busy and this project does not fall back to Teams.</p>
+<p>The participant was confirmed without a meeting link. Please either add a licensed Zoom account to the pool or switch this project to "Automatic" meeting selection.</p>
+<p>Manage this booking: <a href="{{manage_booking_link}}">{{manage_booking_link}}</a></p>
+<p>Best,<br/>Scheduler</p>
+</div>`,
+    },
   ];
 
   for (const t of TEMPLATES) {

@@ -45,6 +45,7 @@ type FormData = {
   senderName: string;
   availabilityPeriodDays: number;
   availabilityLockDate: string;
+  meetingPlatformPreference: "zoom" | "teams" | "auto";
 };
 
 type ValidationErrors = Partial<Record<keyof FormData, string>>;
@@ -121,6 +122,7 @@ export default function ProjectForm({
         senderName: initialProject.branding.senderName,
         availabilityPeriodDays: initialProject.availabilityPeriodDays,
         availabilityLockDate: `${initialProject.availabilityLockDate.getFullYear()}-${String(initialProject.availabilityLockDate.getMonth() + 1).padStart(2, "0")}-${String(initialProject.availabilityLockDate.getDate()).padStart(2, "0")}`,
+        meetingPlatformPreference: initialProject.meetingPlatformPreference ?? "auto",
       };
     }
     return {
@@ -146,6 +148,7 @@ export default function ProjectForm({
       senderName: "",
       availabilityPeriodDays: 14,
       availabilityLockDate: futureDateString(30),
+      meetingPlatformPreference: "auto",
     };
   }
 
@@ -248,6 +251,7 @@ export default function ProjectForm({
       adminIds: data.admins,
       ownerId: data.ownerId || undefined,
       certificationIds: requiredCertIds,
+      meetingPlatformPreference: data.meetingPlatformPreference,
     };
 
     try {
@@ -526,6 +530,38 @@ export default function ProjectForm({
             />
             {errors.availabilityLockDate && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.availabilityLockDate}</p>}
           </div>
+        </div>
+      </div>
+
+      {/* Meeting platform */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm dark:bg-gray-900 dark:border-gray-700">
+        <h2 className="text-sm font-bold text-gray-900 mb-1 dark:text-gray-50">Meeting platform</h2>
+        <p className="text-xs text-gray-500 mb-4 dark:text-gray-400">
+          How sessions are hosted. Automatic tries Zoom first, falling back to Microsoft Teams if the Zoom pool is
+          unavailable. Zoom-only never falls back. Teams-only skips Zoom entirely.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {(
+            [
+              { value: "auto", title: "Automatic", desc: "Zoom first, Teams fallback." },
+              { value: "zoom", title: "Zoom only", desc: "Never falls back to Teams." },
+              { value: "teams", title: "Teams only", desc: "Microsoft Teams meetings." },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => update("meetingPlatformPreference", opt.value)}
+              className={`rounded-lg border p-3 text-left transition-colors ${
+                data.meetingPlatformPreference === opt.value
+                  ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
+                  : "border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600"
+              }`}
+            >
+              <span className="block text-sm font-semibold text-gray-900 dark:text-gray-50">{opt.title}</span>
+              <span className="block text-xs text-gray-500 mt-1 dark:text-gray-400">{opt.desc}</span>
+            </button>
+          ))}
         </div>
       </div>
 

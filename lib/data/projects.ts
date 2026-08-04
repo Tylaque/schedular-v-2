@@ -26,6 +26,7 @@ export type ProjectWithAdmins = {
   admins: { id: string; name: string; initials: string }[];
   ownerId: string | null;
   ownerName: string | null;
+  meetingPlatformPreference: "zoom" | "teams" | "auto";
   createdAt: Date;
   updatedAt: Date;
 };
@@ -56,6 +57,7 @@ function toProjectWithAdmins(row: {
   admins?: { admin: { id: string; name: string; initials: string } }[];
   ownerId: string | null;
   owner?: { name: string } | null;
+  meetingPlatformPreference: "zoom" | "teams" | "auto";
   createdAt: Date;
   updatedAt: Date;
 }): ProjectWithAdmins {
@@ -86,6 +88,7 @@ function toProjectWithAdmins(row: {
     },
     ownerId: row.ownerId,
     ownerName: row.owner?.name ?? null,
+    meetingPlatformPreference: row.meetingPlatformPreference,
     admins: (row.admins ?? []).map((pa) => ({
       id: pa.admin.id,
       name: pa.admin.name,
@@ -139,6 +142,7 @@ export async function createProject(input: {
   adminIds: string[];
   ownerId?: string;
   autoCompleteBookings?: boolean;
+  meetingPlatformPreference?: "zoom" | "teams" | "auto";
 }): Promise<ProjectWithAdmins> {
   let slug = slugify(input.name);
 
@@ -172,6 +176,7 @@ export async function createProject(input: {
       brandingLogoInitial: input.branding.logoInitial,
       brandingPrimaryColor: input.branding.primaryColor,
       brandingSenderName: input.branding.senderName,
+      meetingPlatformPreference: input.meetingPlatformPreference ?? "auto",
       ownerId: input.ownerId ?? null,
       admins: {
         create: input.adminIds.map((adminId) => ({ adminId })),
@@ -222,6 +227,7 @@ export async function updateProject(
     adminIds: string[];
     ownerId?: string;
     autoCompleteBookings?: boolean;
+    meetingPlatformPreference?: "zoom" | "teams" | "auto";
   }
 ): Promise<{ project: ProjectWithAdmins; offboarding: OffboardingSummary }> {
   const existing = await db.project.findUnique({ where: { slug } });
@@ -293,6 +299,9 @@ export async function updateProject(
     }
     if (updates.autoCompleteBookings !== undefined) {
       updateData.autoCompleteBookings = updates.autoCompleteBookings;
+    }
+    if (updates.meetingPlatformPreference !== undefined) {
+      updateData.meetingPlatformPreference = updates.meetingPlatformPreference;
     }
 
     return tx.project.update({

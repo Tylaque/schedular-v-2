@@ -36,6 +36,8 @@ import {
   setProjectCertificationRequirements,
 } from "@/lib/data/certifications";
 import type { CertificationRecord } from "@/lib/data/certifications";
+import { createZoomAccount, setZoomAccountActive, deleteZoomAccount, syncZoomAccountsFromDirectory, listZoomPoolAccounts } from "@/lib/data/zoom";
+import { listZoomPoolUsers, zoomPoolConfigured, getZoomPoolCredentials } from "@/lib/zoom/client";
 
 export async function saveAvailabilityAction(
   projectId: string,
@@ -76,6 +78,7 @@ export async function createProjectAction(formData: {
   ownerId?: string;
   certificationIds?: string[];
   autoCompleteBookings?: boolean;
+  meetingPlatformPreference?: "zoom" | "teams" | "auto";
 }) {
   const session = await auth();
   if (!session?.user?.id) return;
@@ -157,6 +160,7 @@ export async function updateProjectAction(
     adminIds: string[];
     ownerId?: string;
     autoCompleteBookings?: boolean;
+    meetingPlatformPreference?: "zoom" | "teams" | "auto";
   }
 ): Promise<{
   ok: true;
@@ -823,4 +827,114 @@ export async function setProjectCertificationRequirementsAction(
   revalidatePath("/admin/projects");
   revalidatePath(`/admin/projects/${project.slug}/edit`);
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Zoom account pool — super_admin / org_owner only
+// ---------------------------------------------------------------------------
+
+function canManageZoomPool(role: string): boolean {
+  return isOrgOwner(role) || isSuperAdmin(role);
+}
+
+export async function createZoomAccountAction(input: {
+  label: string;
+  zoomUserId: string;
+  zoomEmail: string;
+}): Promise<{ ok: true; id: string } | { ok: false; reason: string }> {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  if (!session?.user?.id || !canManageZoomPool(role)) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  if (!input.label?.trim() || !input.zoomUserId?.trim() || !input.zoomEmail?.trim()) {
+    return { ok: false, reason: "All fields are required." };
+  }
+  try {
+    const account = await createZoomAccount({
+      label: input.label.trim(),
+      zoomUserId: input.zoomUserId.trim(),
+      zoomEmail: input.zoomEmail.trim().toLowerCase(),
+    });
+    revalidatePath("/admin/zoom-pool");
+    return { ok: true, id: account.id };
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return { ok: false, reason: "A pool account with that Zoom user ID or email already exists." };
+    }
+    return { ok: false, reason: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+export async function setZoomAccountActiveAction(
+  id: string,
+  isActive: boolean
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  if (!session?.user?.id || !canManageZoomPool(role)) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  try {
+    await setZoomAccountActive(id, isActive);
+    revalidatePath("/admin/zoom-pool");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+export async function deleteZoomAccountAction(
+  id: string
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  if (!session?.user?.id || !canManageZoomPool(role)) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  const bookings = await db.booking.count({ where: { zoomAccountId: id } });
+  if (bookings > 0) {
+    return { ok: false, reason: "This account has booking history — disable it instead of deleting." };
+  }
+  try {
+    await deleteZoomAccount(id);
+    revalidatePath("/admin/zoom-pool");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+export async function syncZoomPoolAction(): Promise<
+  { ok: true; synced: number } | { ok: false; reason: string }
+> {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  if (!session?.user?.id || !canManageZoomPool(role)) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  if (!zoomPoolConfigured()) {
+    return { ok: false, reason: "Zoom Server-to-Server app is not configured (missing ZOOM_ACCOUNT_ID / ZOOM_CLIENT_ID / ZOOM_CLIENT_SECRET)." };
+  }
+  try {
+    const users = await listZoomPoolUsers(getZoomPoolCredentials());
+    const synced = await syncZoomAccountsFromDirectory(users);
+    revalidatePath("/admin/zoom-pool");
+    return { ok: true, synced };
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+export async function getZoomPoolStatusAction(): Promise<{
+  configured: boolean;
+  accountCount: number;
+  activeCount: number;
+}> {
+  const accounts = await listZoomPoolAccounts();
+  return {
+    configured: zoomPoolConfigured(),
+    accountCount: accounts.length,
+    activeCount: accounts.filter((a) => a.isActive).length,
+  };
 }

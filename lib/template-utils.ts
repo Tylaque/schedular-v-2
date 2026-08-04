@@ -20,6 +20,8 @@ export const ALL_CATEGORIES: EmailCategoryTuple[] = [
   { value: "reschedule_notice", label: "Reschedule Notice", defaultAudience: "participant" },
   { value: "cancellation_notice", label: "Cancellation Notice", defaultAudience: "participant" },
   { value: "waitlist_offer", label: "Waitlist Offer", defaultAudience: "participant" },
+  { value: "zoom_fallback_to_teams", label: "Zoom → Teams Fallback (Owner)", defaultAudience: "super_admin" },
+  { value: "zoom_pool_full_no_fallback", label: "Zoom Unavailable, No Fallback (Owner)", defaultAudience: "super_admin" },
 ];
 
 export const PLACEHOLDER_TOKENS = [

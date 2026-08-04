@@ -48,6 +48,23 @@ enum TeamsProvisionStatus {
   failed_unknown
 }
 
+enum MeetingPlatform {
+  zoom
+  teams
+}
+
+enum MeetingPlatformPreference {
+  zoom
+  teams
+  auto
+}
+
+enum ZoomProvisionStatus {
+  pending
+  provisioned
+  failed
+}
+
 enum EmailCategory {
   admin_invitation
   availability_request
@@ -58,6 +75,8 @@ enum EmailCategory {
   reschedule_notice
   cancellation_notice
   waitlist_offer
+  zoom_fallback_to_teams
+  zoom_pool_full_no_fallback
 }
 
 enum EmailAudience {
@@ -213,6 +232,7 @@ model Project {
   certificationRequirements ProjectCertificationRequirement[]
   ownerId                   String?
   owner                     Admin?         @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  meetingPlatformPreference MeetingPlatformPreference @default(auto)
   createdAt                 DateTime       @default(now())
   updatedAt                 DateTime       @updatedAt
 }
@@ -257,6 +277,27 @@ model AdminAvailabilityRange {
   @@index([adminId, dateKey])
 }
 
+// Shared Zoom account pool (Server-to-Server OAuth model).
+//
+// The org owns a fixed set of licensed Zoom accounts ("pool accounts"). One
+// account-level app credential set (ZOOM_ACCOUNT_ID / ZOOM_CLIENT_ID /
+// ZOOM_CLIENT_SECRET) authenticates the whole pool via Zoom's
+// Server-to-Server OAuth (grant_type=account_credentials). Pool rows only
+// reference the licensed Zoom users — they do NOT hold per-account tokens.
+// isActive soft-disables a pool account (same pattern as associate
+// deactivation) without deleting any booking history.
+model ZoomAccount {
+  id         String   @id @default(cuid())
+  label      String
+  zoomUserId String   @unique
+  zoomEmail  String   @unique
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  bookings Booking[]
+}
+
 model Participant {
   id           String            @id @default(cuid())
   project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -292,7 +333,15 @@ model Booking {
   rescheduledTo    Booking?      @relation("BookingReschedule")
   needsManualAttention Boolean    @default(false)
   manualAttentionReason String?
-  createdAt        DateTime      @default(now())
+  meetingPlatform       MeetingPlatform?
+  zoomAccount           ZoomAccount? @relation(fields: [zoomAccountId], references: [id], onDelete: SetNull)
+  zoomAccountId         String?
+  zoomMeetingId         String?
+  zoomJoinUrl           String?
+  zoomProvisionStatus   ZoomProvisionStatus?
+  zoomErrorDetail       String?
+  meetingFallbackReason String?
+  createdAt             DateTime      @default(now())
 
   // No @@unique here — the old partial unique index (Booking_project_slot_confirmed_unique)
   // was dropped in migration 20260724200000 because it silently blocked sessionCapacity > 1.
@@ -374,6 +423,9 @@ enum AuditAction {
   project_certification_requirements_set
   admin_deactivated
   admin_reactivated
+  zoom_fallback_to_teams
+  zoom_pool_full_no_fallback
+  zoom_provision_failed
 }
 
 model AuditLog {

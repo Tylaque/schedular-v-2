@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Globe, CalendarDays, Loader2, CheckCircle, XCircle, Mail } from "lucide-react";
+import { Clock, Globe, CalendarDays, Loader2, CheckCircle, XCircle, Mail, Video } from "lucide-react";
 import { participantCancelAction, participantRescheduleAction, verifyManageEmail } from "./actions";
 import SlotPicker, { formatDate, formatTime } from "@/components/SlotPicker";
 
@@ -14,6 +14,12 @@ type Booking = {
   time: string;
   adminId: string;
   projectId: string;
+  meetingPlatform: "zoom" | "teams" | null;
+  teamsJoinUrl: string | null;
+  zoomJoinUrl: string | null;
+  teamsProvisionStatus: string | null;
+  zoomProvisionStatus: string | null;
+  meetingFallbackReason: string | null;
 };
 
 type Project = {
@@ -137,6 +143,36 @@ export default function ManageBooking({
             <p className="text-sm text-gray-700 dark:text-gray-200">
               <span className="font-medium">Duration:</span> {project.durationMinutes} min
             </p>
+
+            {booking.meetingPlatform === "zoom" && booking.zoomJoinUrl && (
+              <div className="mt-2">
+                <a
+                  href={booking.zoomJoinUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+                >
+                  <Video className="w-4 h-4" /> Join Zoom meeting
+                </a>
+              </div>
+            )}
+            {booking.meetingPlatform === "teams" && booking.teamsJoinUrl && (
+              <div className="mt-2">
+                <a
+                  href={booking.teamsJoinUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  <Video className="w-4 h-4" /> Join Microsoft Teams meeting
+                </a>
+              </div>
+            )}
+            {booking.meetingPlatform && !booking.teamsJoinUrl && !booking.zoomJoinUrl && (
+              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                No join link available yet{booking.meetingFallbackReason === "zoom_pool_full_no_fallback" ? " — the Zoom pool was full and this project does not fall back to Teams." : "."}
+              </p>
+            )}
           </div>
 
           {inPast ? (
