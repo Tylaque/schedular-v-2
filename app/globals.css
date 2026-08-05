@@ -24,3 +24,96 @@ body {
   background: #030712;
   color: #f9fafb;
 }
+
+@keyframes designSkeletonPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Redesigned Projects screen.
+   Consumes lib/design-tokens.ts: the component injects every --dt-* value
+   from the tokens object (colors/spacing/radius/shadow/motion), so no design
+   values are hardcoded here. */
+.project-card {
+  background: var(--dt-card-bg);
+  border: 1px solid var(--dt-card-border);
+  border-radius: var(--dt-card-radius);
+  box-shadow: var(--dt-card-shadow);
+  padding: var(--dt-card-padding);
+  transition: box-shadow var(--dt-motion), border-color var(--dt-motion),
+    background-color var(--dt-motion);
+}
+
+.project-card:hover {
+  background: var(--dt-card-bg-hover);
+  border-color: var(--dt-card-border-hover);
+  box-shadow: var(--dt-card-shadow-hover);
+}
+
+.project-card:focus-within {
+  outline: none;
+  box-shadow: var(--dt-focus-ring);
+}
+
+/* Dark mode for the redesigned screens.
+   The app's dark mode is a `.dark` class on <html> (ThemeProvider toggles
+   it; other screens use Tailwind `dark:` variants off that class). These
+   screens are driven by --dt-* custom properties: components inject BOTH
+   the light and the `--dt-*-dark` values inline from lib/design-tokens.ts,
+   and the rules below re-point the active properties to the dark values
+   when `.dark` is set — the same CSS-class mechanism as the body split
+   above (:19/:24). No JS-side color selection. */
+
+.dt-text-primary { color: var(--dt-text-primary); }
+.dt-text-secondary { color: var(--dt-text-secondary); }
+.dt-text-muted { color: var(--dt-text-muted); }
+.dark .dt-text-primary { color: var(--dt-text-primary-dark); }
+.dark .dt-text-secondary { color: var(--dt-text-secondary-dark); }
+.dark .dt-text-muted { color: var(--dt-text-muted-dark); }
+
+.dt-search {
+  background: var(--dt-control-bg);
+  border: 1px solid var(--dt-control-border);
+}
+.dark .dt-search {
+  background: var(--dt-control-bg-dark);
+  border-color: var(--dt-control-border-dark);
+}
+
+.dt-chip {
+  background: var(--dt-chip-bg);
+  border: 1px solid var(--dt-chip-border);
+}
+.dark .dt-chip {
+  background: var(--dt-chip-bg-dark);
+  border-color: var(--dt-chip-border-dark);
+}
+
+.dt-pill {
+  background: var(--dt-pill-bg);
+  color: var(--dt-pill-text);
+}
+.dark .dt-pill {
+  background: var(--dt-pill-bg-dark);
+  color: var(--dt-pill-text-dark);
+}
+
+.dt-skeleton {
+  background: var(--dt-skeleton-bg);
+  animation: designSkeletonPulse 1.6s ease-in-out infinite;
+}
+.dark .dt-skeleton {
+  background: var(--dt-skeleton-bg-dark);
+}
+
+.dark .project-card {
+  --dt-card-bg: var(--dt-card-bg-dark);
+  --dt-card-bg-hover: var(--dt-card-bg-hover-dark);
+  --dt-card-border: var(--dt-card-border-dark);
+  --dt-card-border-hover: var(--dt-card-border-hover-dark);
+}

@@ -67,7 +67,7 @@ async function main() {
     create: {
       slug: "test-owner-project",
       name: "Test Owner Project",
-      company: "Northwind Labs",
+      company: "Career Connections",
       description: "Project owned by the local org_owner test account.",
       durationMinutes: 45,
       availabilityPeriodDays: 14,
@@ -84,7 +84,7 @@ async function main() {
       availabilityLockDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       brandingLogoInitial: "TO",
       brandingPrimaryColor: "#4338CA",
-      brandingSenderName: "Northwind Labs",
+      brandingSenderName: "Career Connections",
       ownerId: "test-owner-1",
     },
   });

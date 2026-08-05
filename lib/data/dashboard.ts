@@ -216,6 +216,7 @@ type AdminDashboardBooking = {
   displayStatus: string;
   projectName: string;
   participantName: string;
+  meetingPlatform: "zoom" | "teams" | null;
 };
 
 export async function getAdminDashboardData(adminId: string) {
@@ -239,6 +240,7 @@ export async function getAdminDashboardData(adminId: string) {
       dateKey: true,
       time: true,
       status: true,
+      meetingPlatform: true,
       participantName: true,
       project: {
         select: { name: true, timezone: true, autoCompleteBookings: true },
@@ -261,6 +263,7 @@ export async function getAdminDashboardData(adminId: string) {
     }),
     projectName: b.project.name,
     participantName: b.participantName,
+    meetingPlatform: b.meetingPlatform,
   }));
 
   const upcomingSessions = sessions.filter((s) => s.displayStatus === "confirmed");

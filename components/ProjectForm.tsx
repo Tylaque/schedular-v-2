@@ -305,7 +305,7 @@ export default function ProjectForm({
               value={data.company}
               onChange={(e) => update("company", e.target.value)}
               className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
-              placeholder="e.g. Northwind Labs"
+              placeholder="e.g. Career Connections"
             />
             {errors.company && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.company}</p>}
           </div>
@@ -325,7 +325,7 @@ export default function ProjectForm({
               value={data.logoInitial}
               onChange={(e) => update("logoInitial", e.target.value)}
               className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
-              placeholder="NL"
+              placeholder="CC"
               maxLength={2}
             />
           </div>
@@ -353,7 +353,7 @@ export default function ProjectForm({
               value={data.senderName}
               onChange={(e) => update("senderName", e.target.value)}
               className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
-              placeholder="e.g. Northwind Labs"
+              placeholder="e.g. Career Connections"
             />
           </div>
         </div>

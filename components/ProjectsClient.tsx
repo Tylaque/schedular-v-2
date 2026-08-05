@@ -1,149 +1,293 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Search, User, Users, CalendarClock } from "lucide-react";
 import type { ProjectWithAdmins } from "@/lib/data/projects";
-import { GraphStatusBadge } from "@/components/GraphStatusBadge";
+import {
+  designTokens,
+  dtScreenVars,
+  pageTitleStyle,
+  pageSubtitleStyle,
+  cardTitleStyle,
+  bodyTextStyle,
+  metaTextStyle,
+  primaryButton,
+  primaryButtonHover,
+  statusChip,
+  statusDot,
+  avatarTile,
+  editLink,
+  editLinkHover,
+} from "@/lib/design-tokens";
+import { PlatformChip } from "@/components/shared/PlatformChip";
+import type { PlatformKey } from "@/components/shared/PlatformChip";
 
-const STATUS_BADGE: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
-  active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-  paused: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  closed: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-  archived: "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500",
+type OwnerStatus = { connected: boolean; reason?: string | null } | null;
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: "Draft",
+  active: "Active",
+  paused: "Paused",
+  closed: "Closed",
+  archived: "Archived",
 };
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span
-      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[status] ?? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"}`}
-    >
-      {status}
+    <span style={statusChip(status)}>
+      <span style={statusDot(status)} />
+      {STATUS_LABEL[status] ?? status}
     </span>
+  );
+}
+
+function MetaRow({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <span
+      className="dt-text-secondary"
+      style={{ display: "inline-flex", alignItems: "center", gap: 6, ...metaTextStyle, color: undefined }}
+    >
+      {icon}
+      {children}
+    </span>
+  );
+}
+
+function EditLink({ href }: { href: string }) {
+  const [active, setActive] = useState(false);
+  return (
+    <Link
+      href={href}
+      onMouseEnter={() => setActive(true)}
+      onMouseLeave={() => setActive(false)}
+      onFocus={() => setActive(true)}
+      onBlur={() => setActive(false)}
+      style={active ? editLinkHover : { ...editLink, color: "var(--dt-link)" }}
+      className="shrink-0"
+    >
+      Edit
+    </Link>
+  );
+}
+
+function NewProjectButton() {
+  const [hover, setHover] = useState(false);
+  return (
+    <Link
+      href="/admin/projects/new"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={hover ? { ...primaryButton, ...primaryButtonHover } : primaryButton}
+      className="shrink-0"
+    >
+      New project
+    </Link>
+  );
+}
+
+function platformStates(
+  p: ProjectWithAdmins,
+  ownerStatus: OwnerStatus,
+  zoomPoolConfigured: boolean,
+): { label: string; connected: boolean; platform: PlatformKey }[] {
+  const teamsConnected = ownerStatus?.connected === true;
+  const zoomConnected = zoomPoolConfigured;
+  if (p.meetingPlatformPreference === "teams") {
+    return [{ label: "Teams", connected: teamsConnected, platform: "teams" }];
+  }
+  if (p.meetingPlatformPreference === "zoom") {
+    return [{ label: "Zoom", connected: zoomConnected, platform: "zoom" }];
+  }
+  return [
+    { label: "Zoom", connected: zoomConnected, platform: "zoom" },
+    { label: "Teams", connected: teamsConnected, platform: "teams" },
+  ];
+}
+
+function ProjectCard({
+  project,
+  ownerStatus,
+  zoomPoolConfigured,
+}: {
+  project: ProjectWithAdmins;
+  ownerStatus: OwnerStatus;
+  zoomPoolConfigured: boolean;
+}) {
+  const chips = platformStates(project, ownerStatus, zoomPoolConfigured);
+  const lockDate = project.availabilityLockDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  return (
+    <article className="project-card flex items-start gap-4">
+      <div
+        style={{ ...avatarTile, backgroundColor: project.branding.primaryColor }}
+        aria-hidden="true"
+      >
+        {project.branding.logoInitial}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h3 className="truncate dt-text-primary" style={{ ...cardTitleStyle, color: undefined }}>
+            {project.name}
+          </h3>
+          <StatusBadge status={project.status} />
+        </div>
+        <p className="mt-0.5 truncate dt-text-secondary" style={{ ...bodyTextStyle, color: undefined }}>
+          {project.company}
+        </p>
+
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: `${designTokens.spacing.section}px ${designTokens.spacing.section + 4}px`,
+            marginTop: designTokens.spacing.cardGap,
+          }}
+        >
+          <MetaRow icon={<User style={{ width: 14, height: 14 }} />}>
+            {project.ownerName ?? "—"}
+          </MetaRow>
+          <MetaRow icon={<Users style={{ width: 14, height: 14 }} />}>
+            {project.admins.length} admin{project.admins.length === 1 ? "" : "s"}
+          </MetaRow>
+          <MetaRow icon={<CalendarClock style={{ width: 14, height: 14 }} />}>
+            {lockDate}
+          </MetaRow>
+        </div>
+
+        {chips.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: designTokens.spacing.chipGap,
+              marginTop: designTokens.spacing.section,
+            }}
+          >
+            {chips.map((c) => (
+              <PlatformChip key={c.platform} {...c} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <EditLink href={`/admin/projects/${project.slug}/edit`} />
+    </article>
   );
 }
 
 export default function ProjectsClient({
   projects,
   ownerStatusMap,
+  zoomPoolConfigured,
 }: {
   projects: ProjectWithAdmins[];
-  ownerStatusMap: Map<string, { connected: boolean; reason?: string | null } | null>;
+  ownerStatusMap: Map<string, OwnerStatus>;
+  zoomPoolConfigured: boolean;
 }) {
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(
-    () =>
-      projects.filter((p) =>
-        p.name.toLowerCase().includes(search.toLowerCase()),
-      ),
+    () => projects.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())),
     [projects, search],
   );
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-5xl mx-auto p-6" style={dtScreenVars()}>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2 dark:text-gray-50">
+          <h1 className="flex items-center gap-2 dt-text-primary" style={{ ...pageTitleStyle, color: undefined }}>
             Projects
             {projects.length > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-gray-100 text-xs font-semibold text-gray-500 leading-none dark:bg-gray-800 dark:text-gray-400">
+              <span
+                className="dt-pill"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: 24,
+                  height: 24,
+                  padding: "0 8px",
+                  borderRadius: 999,
+                  fontSize: designTokens.type.caption.size,
+                  fontWeight: designTokens.type.caption.weight,
+                }}
+              >
                 {projects.length}
               </span>
             )}
           </h1>
-          <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">Manage your scheduling projects.</p>
+          <p className="mt-1 dt-text-secondary" style={{ ...pageSubtitleStyle, color: undefined }}>
+            Manage your scheduling projects.
+          </p>
         </div>
-        <Link
-          href="/admin/projects/new"
-          className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg px-4 py-2.5"
-        >
-          New project
-        </Link>
+        <NewProjectButton />
       </div>
 
       {projects.length === 0 && (
         <div className="text-center py-16">
-          <p className="text-sm text-gray-500 mb-4 dark:text-gray-400">No projects yet.</p>
-          <Link
-            href="/admin/projects/new"
-            className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg px-4 py-2.5"
-          >
-            New project
-          </Link>
+          <p className="mb-4 dt-text-secondary" style={{ ...bodyTextStyle, color: undefined }}>
+            No projects yet.
+          </p>
+          <NewProjectButton />
         </div>
       )}
 
       {projects.length > 0 && (
         <div>
           {projects.length > 5 && (
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+            <div style={{ position: "relative", marginBottom: designTokens.spacing.section }}>
+              <Search
+                className="dt-text-muted"
+                style={{
+                  position: "absolute",
+                  left: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 16,
+                  height: 16,
+                }}
+              />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search projects by name..."
-                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg bg-white dark:border-gray-600 dark:bg-gray-800"
+                className="dt-search dt-text-primary"
+                style={{
+                  width: "100%",
+                  padding: "9px 12px 9px 34px",
+                  fontSize: designTokens.type.body.size,
+                  borderRadius: designTokens.radius.control,
+                }}
               />
             </div>
           )}
 
           {filtered.length === 0 && search && (
             <div className="text-center py-8">
-              <p className="text-sm text-gray-400 dark:text-gray-500">No projects match &quot;{search}&quot;.</p>
+              <p className="dt-text-muted" style={{ ...metaTextStyle, color: undefined }}>
+                No projects match &quot;{search}&quot;.
+              </p>
             </div>
           )}
 
           {filtered.length > 0 && (
-            <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-950">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide dark:text-gray-400">Name</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide dark:text-gray-400">Status</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide dark:text-gray-400">Owner</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide dark:text-gray-400">Admins</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide dark:text-gray-400">Lock date</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide dark:text-gray-400">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((p) => (
-                    <tr key={p.slug} className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50 transition-colors dark:border-gray-700 dark:hover:bg-gray-800">
-                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-50">{p.name}</td>
-                      <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-gray-500 dark:text-gray-400">{p.ownerName ?? "—"}</span>
-                          {(() => {
-                            const s = p.ownerId ? ownerStatusMap.get(p.ownerId) : undefined;
-                            const badgeStatus = s?.connected ? "connected" : (s?.reason ?? null);
-                            return badgeStatus ? <GraphStatusBadge status={badgeStatus as any} /> : null;
-                          })()}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{p.admins.length}</td>
-                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                        {p.availabilityLockDate.toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Link
-                          href={`/admin/projects/${p.slug}/edit`}
-                          className="text-brand-600 hover:text-brand-700 font-medium"
-                        >
-                          Edit
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ display: "grid", gap: designTokens.spacing.cardGap }}>
+              {filtered.map((p) => (
+                <ProjectCard
+                  key={p.slug}
+                  project={p}
+                  ownerStatus={p.ownerId ? ownerStatusMap.get(p.ownerId) ?? null : null}
+                  zoomPoolConfigured={zoomPoolConfigured}
+                />
+              ))}
             </div>
           )}
         </div>

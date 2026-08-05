@@ -93,7 +93,7 @@ async function main() {
     where: { slug: projectSlug },
     update: {
       name: "Senior PM — Round 1 Interview",
-      company: "Northwind Labs",
+      company: "Career Connections",
       description:
         "A 45-minute conversation with a member of our product team covering your background, a product-sense exercise, and Q&A.",
       durationMinutes: 45,
@@ -109,16 +109,16 @@ async function main() {
       sessionCapacity: 1,
       status: "active",
       availabilityLockDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      brandingLogoInitial: "NL",
+      brandingLogoInitial: "CC",
       brandingPrimaryColor: "#4338CA",
-      brandingSenderName: "Northwind Labs",
+      brandingSenderName: "Career Connections",
       ownerId: "a7",
     },
     create: {
       id: projectId,
       slug: projectSlug,
       name: "Senior PM — Round 1 Interview",
-      company: "Northwind Labs",
+      company: "Career Connections",
       description:
         "A 45-minute conversation with a member of our product team covering your background, a product-sense exercise, and Q&A.",
       durationMinutes: 45,
@@ -134,9 +134,9 @@ async function main() {
       sessionCapacity: 1,
       status: "active",
       availabilityLockDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      brandingLogoInitial: "NL",
+      brandingLogoInitial: "CC",
       brandingPrimaryColor: "#4338CA",
-      brandingSenderName: "Northwind Labs",
+      brandingSenderName: "Career Connections",
       ownerId: "a7",
     },
   });

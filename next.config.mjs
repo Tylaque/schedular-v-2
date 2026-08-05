@@ -26,8 +26,12 @@ const nextConfig = {
           value: [
             "default-src 'self'",
             // 'unsafe-inline' required for Next.js hydration/routing scripts.
-            // 'unsafe-eval' NOT needed — no eval() usage anywhere.
-            "script-src 'self' 'unsafe-inline'",
+            // 'unsafe-eval' is only added in development: the Next.js dev
+            // Fast Refresh runtime instantiates modules via eval. Production
+            // builds never use eval, so production stays 'unsafe-inline'-only.
+            process.env.NODE_ENV === "development"
+              ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+              : "script-src 'self' 'unsafe-inline'",
             // 'unsafe-inline' required for Tailwind CSS class-based styles
             // that Next.js injects as <style> tags during hydration.
             "style-src 'self' 'unsafe-inline'",

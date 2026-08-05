@@ -50,7 +50,7 @@ export const MOCK_PREVIEW_CONTEXT: Record<string, string> = {
   booking_link: "http://localhost:3000/book/senior-pm-interview",
   manage_booking_link: "http://localhost:3000/manage/cmrbookingid123",
   company_logo: "",
-  company_name: "Northwind Labs",
+  company_name: "Career Connections",
 };
 
 export function renderTemplate(

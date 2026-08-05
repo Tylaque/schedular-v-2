@@ -229,7 +229,7 @@ npx prisma db seed
 ## Seeded demo data
 
 - **Admins**: 10 mock people (Priya Nair, Marcus Webb, Jo Ellery, Sam Torres, Lina Chen, Omar Hassan, Kate Brooks, Raj Patel, Fiona O'Sullivan, Derek Kim)
-- **Project**: "Senior PM — Round 1 Interview" (Northwind Labs) — 45 min slots, weekdays only, 09:00–16:00
+- **Project**: "Senior PM — Round 1 Interview" (Career Connections) — 45 min slots, weekdays only, 09:00–16:00
 - **Availability**: Priya Nair has 12 pre-seeded availability slots across four days
 
 ## Architecture
