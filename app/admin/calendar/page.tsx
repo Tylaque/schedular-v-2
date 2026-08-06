@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import CalendarView from "@/components/CalendarView";
 import { listProjects } from "@/lib/data/projects";
 import { listAllAdmins } from "@/lib/data/admins";
+import { dtScreenVars, pageTitleStyle, pageSubtitleStyle } from "@/lib/design-tokens";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +14,14 @@ export default async function CalendarPage() {
   const admins = await listAllAdmins();
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-xl font-bold text-gray-900 mb-6 dark:text-gray-50">Calendar</h1>
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 dark:border-gray-700 dark:bg-gray-900">
+    <div className="max-w-6xl mx-auto p-6" style={dtScreenVars()}>
+      <div style={{ marginBottom: 20 }}>
+        <h1 className="dt-text-primary" style={pageTitleStyle}>Calendar</h1>
+        <p className="dt-text-secondary" style={{ ...pageSubtitleStyle, marginTop: 6 }}>
+          Bookings across your projects.
+        </p>
+      </div>
+      <div className="project-card project-card-static">
         <CalendarView
           projects={projects.map((p) => ({ id: p.id, name: p.name }))}
           admins={admins.map((a) => ({ id: a.id, name: a.name }))}

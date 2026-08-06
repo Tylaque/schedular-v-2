@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BadgeCheck, ChevronDown, ChevronUp } from "lucide-react";
 import { setAdminCertificationsAction } from "@/lib/actions";
+import { designTokens } from "@/lib/design-tokens";
 
 export default function AdminCertificationsEditor({
   adminId,
@@ -57,32 +58,45 @@ export default function AdminCertificationsEditor({
           setDraft(current);
           setErr(null);
         }}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 hover:text-gray-900 border border-gray-300 rounded-lg px-2 py-1 bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:text-gray-100"
+        className="dt-chip dt-text-secondary"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          borderRadius: designTokens.radius.control,
+          padding: "4px 10px",
+          fontSize: designTokens.type.caption.size,
+          fontWeight: designTokens.type.caption.weight,
+          lineHeight: 1,
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+        }}
         title="Manage certifications"
       >
-        <BadgeCheck className="w-3.5 h-3.5 text-brand-500" />
+        <BadgeCheck style={{ width: 14, height: 14, color: designTokens.color.brand[500] }} />
         Certifications ({current.length})
-        {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        {open ? <ChevronUp style={{ width: 12, height: 12 }} /> : <ChevronDown style={{ width: 12, height: 12 }} />}
       </button>
 
       {open && (
-        <div className="absolute z-40 mt-2 right-0 w-72 max-w-[90vw] rounded-xl border border-gray-200 bg-white shadow-xl p-4 dark:border-gray-700 dark:bg-gray-900">
-          <p className="text-xs font-semibold text-gray-900 mb-2 dark:text-gray-50">Certifications</p>
+        <div className="project-card project-card-static" style={{ position: "absolute", zIndex: 40, top: "calc(100% + 8px)", right: 0, width: 288, maxWidth: "90vw", padding: 16 }}>
+          <p className="dt-text-primary" style={{ fontSize: designTokens.type.caption.size, fontWeight: 600, marginBottom: 8 }}>Certifications</p>
           {selectedNames.length > 0 && (
-            <p className="text-xs text-gray-500 mb-2 dark:text-gray-400">
+            <p className="dt-text-secondary" style={{ fontSize: designTokens.type.caption.size, marginBottom: 8 }}>
               Currently: {selectedNames.join(", ")}
             </p>
           )}
           <div className="max-h-56 overflow-y-auto space-y-1.5 mb-3">
             {catalog.length === 0 && (
-              <p className="text-xs text-gray-400 dark:text-gray-500">
+              <p className="dt-text-muted" style={{ fontSize: designTokens.type.caption.size }}>
                 No certifications in the catalog yet.
               </p>
             )}
             {catalog.map((c) => (
               <label
                 key={c.id}
-                className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50 rounded px-1.5 py-1 dark:text-gray-200 dark:hover:bg-gray-800"
+                className="flex items-center gap-2 dt-text-primary"
+                style={{ fontSize: designTokens.type.body.size, cursor: "pointer", borderRadius: designTokens.radius.control, padding: "4px 6px" }}
               >
                 <input
                   type="checkbox"
@@ -94,18 +108,29 @@ export default function AdminCertificationsEditor({
               </label>
             ))}
           </div>
-          {err && <p className="text-xs text-red-600 mb-2 dark:text-red-400">{err}</p>}
+          {err && <p className="dt-danger-text" style={{ fontSize: designTokens.type.caption.size, marginBottom: 8 }}>{err}</p>}
           <div className="flex justify-end gap-2">
             <button
               onClick={cancel}
-              className="text-xs font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 dark:text-gray-400"
+              className="dt-text-secondary"
+              style={{ fontSize: designTokens.type.caption.size, fontWeight: 500, background: "none", border: "none", cursor: "pointer", padding: "6px 12px" }}
             >
               Cancel
             </button>
             <button
               onClick={save}
               disabled={saving}
-              className="text-xs font-semibold text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-50 rounded-lg px-3 py-1.5"
+              className="dt-brand"
+              style={{
+                fontSize: designTokens.type.caption.size,
+                fontWeight: 600,
+                lineHeight: 1,
+                borderRadius: designTokens.radius.control,
+                padding: "8px 12px",
+                border: "none",
+                cursor: "pointer",
+                opacity: saving ? 0.5 : 1,
+              }}
             >
               {saving ? "Saving..." : "Save"}
             </button>

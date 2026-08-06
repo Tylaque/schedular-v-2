@@ -117,3 +117,97 @@ body {
   --dt-card-border: var(--dt-card-border-dark);
   --dt-card-border-hover: var(--dt-card-border-hover-dark);
 }
+
+/* Non-interactive card surface: same tokens as .project-card but without the
+   hover/focus elevation shift (large surfaces like the calendar and team
+   screens should not lift on hover). */
+.project-card-static,
+.project-card-static:hover,
+.project-card-static:focus-within {
+  background: var(--dt-card-bg);
+  border-color: var(--dt-card-border);
+  box-shadow: var(--dt-card-shadow);
+}
+
+/* Interactive brand utilities: selected segments, selected calendar cells.
+   Values come from the --dt-brand* custom properties in dtScreenVars(). */
+.dt-brand {
+  background-color: var(--dt-brand);
+  color: var(--dt-brand-on);
+}
+.dt-brand:hover {
+  background-color: var(--dt-brand-hover);
+  color: var(--dt-brand-on);
+}
+.dt-brand-tint {
+  background-color: var(--dt-brand-tint);
+  color: var(--dt-brand-text);
+  border: 1px solid var(--dt-brand-border);
+}
+.dark .dt-brand-tint {
+  background-color: var(--dt-brand-tint-dark);
+  color: var(--dt-brand-text-dark);
+  border-color: var(--dt-brand-border-dark);
+}
+
+/* Calendar day-cell surface (light + dark via tokens; hover uses brand tint).
+   Selected and "today" cells opt out of the hover tint so their state stays
+   readable. */
+.dt-cal-cell {
+  background-color: var(--dt-control-bg);
+  border: 1px solid var(--dt-control-border);
+  color: var(--dt-text-primary);
+  transition: background-color var(--dt-motion), color var(--dt-motion), border-color var(--dt-motion);
+}
+.dark .dt-cal-cell {
+  background-color: var(--dt-control-bg-dark);
+  border-color: var(--dt-control-border-dark);
+  color: var(--dt-text-primary-dark);
+}
+.dt-cal-cell:not(.dt-brand):not(.dt-brand-tint):hover {
+  background-color: var(--dt-brand-tint);
+  border-color: var(--dt-brand-border);
+  color: var(--dt-brand-text);
+}
+.dark .dt-cal-cell:not(.dt-brand):not(.dt-brand-tint):hover {
+  background-color: var(--dt-brand-tint-dark);
+  border-color: var(--dt-brand-border-dark);
+  color: var(--dt-brand-text-dark);
+}
+
+/* Destructive fill + action-text utilities (Team screen: deactivate/
+   reactivate, modal confirmations, result banners). Dark-aware via tokens. */
+.dt-btn-danger {
+  background-color: var(--dt-danger);
+  color: var(--dt-danger-on);
+}
+.dt-btn-danger:hover {
+  background-color: var(--dt-danger-hover);
+}
+.dt-danger-text {
+  color: var(--dt-danger-text);
+}
+.dark .dt-danger-text {
+  color: var(--dt-danger-text-dark);
+}
+.dt-ok-text {
+  color: var(--dt-ok-text);
+}
+.dark .dt-ok-text {
+  color: var(--dt-ok-text-dark);
+}
+.dt-promote-text {
+  color: var(--dt-promote-text);
+}
+.dark .dt-promote-text {
+  color: var(--dt-promote-text-dark);
+}
+
+/* Table row hover (Team screen). Deactivated rows skip this via the
+   .dt-row class not being applied. */
+.dt-row:hover {
+  background-color: var(--dt-card-bg-hover);
+}
+.dark .dt-row:hover {
+  background-color: var(--dt-card-bg-hover-dark);
+}

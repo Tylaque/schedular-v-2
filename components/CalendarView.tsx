@@ -1,8 +1,19 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Search, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Loader2, CalendarX2 } from "lucide-react";
 import { cancelBookingAction } from "@/lib/actions";
+import { PlatformChip } from "@/components/shared/PlatformChip";
+import type { PlatformKey } from "@/components/shared/PlatformChip";
+import EmptyState from "@/components/shared/EmptyState";
+import CalendarSkeleton from "@/components/CalendarSkeleton";
+import {
+  designTokens,
+  dtScreenVars,
+  statusChip,
+  statusDot,
+  cardTitleStyle,
+} from "@/lib/design-tokens";
 
 type CalendarEvent = {
   id: string;
@@ -10,6 +21,7 @@ type CalendarEvent = {
   time: string;
   status: string;
   displayStatus: string;
+  meetingPlatform: PlatformKey | null;
   participantName: string;
   participantEmail: string;
   projectName: string;
@@ -20,12 +32,14 @@ type ViewMode = "day" | "week" | "month";
 
 type StatusFilter = "all" | "confirmed" | "awaiting_completion" | "completed" | "cancelled" | "rescheduled";
 
-const STATUS_BADGE: Record<string, string> = {
-  confirmed: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  awaiting_completion: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-  cancelled: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-  rescheduled: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+// Booking display status -> design-token status key (same palette as
+// My Dashboard: booked / link_sent / completed / cancelled / reminded).
+const STATUS_TOKEN: Record<string, string> = {
+  confirmed: "booked",
+  awaiting_completion: "link_sent",
+  completed: "completed",
+  cancelled: "cancelled",
+  rescheduled: "reminded",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -81,11 +95,65 @@ function CancelBookingButton({ bookingId }: { bookingId: string }) {
     <button
       onClick={handleCancel}
       disabled={loading}
-      className="text-xs text-red-600 hover:text-red-800 font-medium disabled:opacity-50 dark:text-red-300"
+      className="dt-chip"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        borderRadius: designTokens.radius.chip,
+        padding: "4px 10px",
+        fontSize: designTokens.type.caption.size,
+        fontWeight: designTokens.type.caption.weight,
+        lineHeight: 1,
+        color: designTokens.color.status.no_show.dot,
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        opacity: loading ? 0.6 : 1,
+      }}
     >
-      {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Cancel"}
+      {loading ? <Loader2 style={{ width: 12, height: 12 }} className="animate-spin" /> : "Cancel"}
     </button>
   );
+}
+
+function EventChip({ ev }: { ev: CalendarEvent }) {
+  const platformColor = ev.meetingPlatform
+    ? designTokens.color.platform[ev.meetingPlatform]
+    : designTokens.color.platform.off;
+  return (
+    <span
+      className="dt-chip dt-text-secondary"
+      title={`${ev.time} ${ev.projectName} - ${ev.participantName}`}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        borderRadius: designTokens.radius.control,
+        padding: "3px 8px",
+        fontSize: designTokens.type.caption.size,
+        lineHeight: 1.3,
+        maxWidth: "100%",
+        overflow: "hidden",
+      }}
+    >
+      <span
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: 999,
+          backgroundColor: platformColor,
+          flexShrink: 0,
+        }}
+      />
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {ev.time} {ev.projectName}
+      </span>
+    </span>
+  );
+}
+
+function CalendarEmpty({ title, description }: { title: string; description: string }) {
+  return <EmptyState icon={CalendarX2} title={title} description={description} />;
 }
 
 export default function CalendarView({
@@ -177,6 +245,19 @@ export default function CalendarView({
   }
 
   const todayStr = dateKey(today);
+  const controlStyle = {
+    padding: "9px 12px",
+    fontSize: designTokens.type.body.size,
+    borderRadius: designTokens.radius.control,
+    cursor: "pointer",
+  } as const;
+  const weekHeadStyle = {
+    fontSize: designTokens.type.overline.size,
+    fontWeight: designTokens.type.overline.weight,
+    letterSpacing: designTokens.type.overline.letterSpacing,
+    textAlign: "center",
+    paddingBottom: designTokens.spacing.chipGap,
+  } as const;
 
   // ---- Month view ----
   function renderMonth() {
@@ -186,10 +267,13 @@ export default function CalendarView({
 
     return (
       <div>
-        <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-400 mb-1 dark:text-gray-500">
+        <div className="grid grid-cols-7 dt-text-muted" style={weekHeadStyle}>
           {DAYS_SHORT.map((d) => (<div key={d}>{d}</div>))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
+        <div
+          className="grid grid-cols-7"
+          style={{ gap: 4 }}
+        >
           {days.map((d, i) => {
             if (!d) return <div key={i} />;
             const dk = dateKey(d);
@@ -203,20 +287,34 @@ export default function CalendarView({
                   setSelectedDate(d);
                   setViewMode("day");
                 }}
-                className={
-                  "aspect-square rounded-lg text-sm flex flex-col items-center justify-center transition-colors relative " +
-                  (isSelected
-                    ? "bg-brand-500 text-white font-semibold"
-                    : isToday
-                    ? "bg-brand-50 text-brand-700 font-semibold dark:bg-brand-700/40 dark:text-brand-100"
-                    : dayEvents.length > 0
-                    ? "text-gray-700 hover:bg-brand-50 font-medium dark:text-gray-200"
-                    : "text-gray-300 dark:text-gray-400")
-                }
+                className={isSelected ? "dt-brand" : isToday ? "dt-brand-tint" : "dt-cal-cell"}
+                style={{
+                  aspectRatio: "1",
+                  borderRadius: designTokens.radius.control,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 4,
+                  cursor: "pointer",
+                  width: "100%",
+                  transition: `background-color ${designTokens.motion.fast}, color ${designTokens.motion.fast}`,
+                }}
               >
-                <span>{d.getDate()}</span>
+                <span
+                  className={
+                    isSelected || isToday
+                      ? undefined
+                      : dayEvents.length > 0
+                      ? "dt-text-primary"
+                      : "dt-text-muted"
+                  }
+                  style={{ fontSize: designTokens.type.body.size, fontWeight: isSelected || isToday ? 600 : dayEvents.length > 0 ? 600 : 400 }}
+                >
+                  {d.getDate()}
+                </span>
                 {dayEvents.length > 0 && (
-                  <span className="text-[10px] leading-none mt-0.5 opacity-70">
+                  <span className="dt-pill" style={{ fontSize: 10, lineHeight: 1, padding: "2px 6px", borderRadius: designTokens.radius.chip, minWidth: 16, textAlign: "center" }}>
                     {dayEvents.length}
                   </span>
                 )}
@@ -233,10 +331,10 @@ export default function CalendarView({
     const days = getWeekDays(cursorDate);
     return (
       <div>
-        <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-400 mb-1 dark:text-gray-500">
+        <div className="grid grid-cols-7 dt-text-muted" style={weekHeadStyle}>
           {DAYS_SHORT.map((d) => (<div key={d}>{d}</div>))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7" style={{ gap: 4 }}>
           {days.map((d, i) => {
             const dk = dateKey(d);
             const dayEvents = eventsByDateKey.get(dk) ?? [];
@@ -245,33 +343,34 @@ export default function CalendarView({
             return (
               <div
                 key={i}
-                className={
-                  "rounded-lg text-sm p-1 min-h-[120px] " +
-                  (isSelected
-                    ? "bg-brand-50 border border-brand-200 dark:bg-brand-700/40 dark:border-brand-700"
-                    : isToday
-                    ? "bg-brand-50/50 dark:bg-brand-700/20"
-                    : "bg-white dark:bg-gray-900")
-                }
+                className={"dt-cal-cell " + (isSelected ? "dt-brand" : isToday ? "dt-brand-tint" : "")}
+                style={{
+                  borderRadius: designTokens.radius.control,
+                  padding: 8,
+                  display: "flex",
+                  flexDirection: "column",
+                  minHeight: 128,
+                }}
               >
-                <div className={
-                  "text-xs font-medium text-center mb-1 " +
-                  (isToday ? "text-brand-700" : "text-gray-500 dark:text-gray-400")
-                }>
+                <div
+                  className={isSelected || isToday ? undefined : "dt-text-secondary"}
+                  style={{
+                    fontSize: designTokens.type.meta.size,
+                    fontWeight: 600,
+                    textAlign: "center",
+                    marginBottom: 6,
+                  }}
+                >
                   {d.getDate()}
                 </div>
-                <div className="space-y-0.5">
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
                   {dayEvents.slice(0, 4).map((ev) => (
-                    <div
-                      key={ev.id}
-                      className="text-[10px] bg-brand-100 text-brand-700 rounded px-1 py-0.5 truncate leading-tight"
-                      title={`${ev.time} ${ev.projectName} - ${ev.participantName}`}
-                    >
-                      {ev.time} {ev.projectName}
-                    </div>
+                    <EventChip key={ev.id} ev={ev} />
                   ))}
                   {dayEvents.length > 4 && (
-                    <div className="text-[10px] text-gray-400 text-center dark:text-gray-500">+{dayEvents.length - 4} more</div>
+                    <div className="dt-text-muted" style={{ fontSize: designTokens.type.caption.size, textAlign: "center" }}>
+                      +{dayEvents.length - 4} more
+                    </div>
                   )}
                 </div>
               </div>
@@ -289,26 +388,49 @@ export default function CalendarView({
     const dayEvents = eventsByDateKey.get(dk) ?? [];
     return (
       <div>
-        <div className="text-lg font-semibold text-gray-900 mb-4 text-center dark:text-gray-50">
+        <div className="dt-text-primary" style={{ ...cardTitleStyle, textAlign: "center", marginBottom: 16 }}>
           {d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
         </div>
         {dayEvents.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8 dark:text-gray-500">No events on this date.</p>
+          <CalendarEmpty
+            title="No bookings on this date"
+            description="No bookings are scheduled for this day."
+          />
         ) : (
-          <div className="space-y-2">
-                {dayEvents.map((ev) => (
-              <div key={ev.id} className="border border-gray-200 rounded-lg p-3 flex items-center justify-between dark:border-gray-700">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-50">{ev.time}</span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">{ev.projectName}</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: designTokens.spacing.cardGap }}>
+            {dayEvents.map((ev) => (
+              <div
+                key={ev.id}
+                className="dt-chip"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: designTokens.spacing.section,
+                  padding: "12px 14px",
+                  borderRadius: designTokens.radius.control,
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span className="dt-text-primary" style={{ fontSize: designTokens.type.body.size, fontWeight: 600 }}>{ev.time}</span>
+                    <span className="dt-text-secondary" style={{ fontSize: designTokens.type.body.size }}>{ev.projectName}</span>
                   </div>
-                  <div className="text-xs text-gray-400 mt-0.5 dark:text-gray-500">
+                  <div className="dt-text-muted" style={{ fontSize: designTokens.type.caption.size, marginTop: 2 }}>
                     {ev.adminName} · {ev.participantName}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[ev.displayStatus] ?? ""}`}>
+                <div style={{ display: "flex", alignItems: "center", gap: designTokens.spacing.chipGap, flexShrink: 0 }}>
+                  {ev.meetingPlatform && (
+                    <PlatformChip
+                      platform={ev.meetingPlatform}
+                      label={ev.meetingPlatform === "zoom" ? "Zoom" : "Teams"}
+                      connected
+                      showStatus={false}
+                    />
+                  )}
+                  <span style={statusChip(STATUS_TOKEN[ev.displayStatus] ?? "invited")}>
+                    <span style={statusDot(STATUS_TOKEN[ev.displayStatus] ?? "invited")} />
                     {STATUS_LABELS[ev.displayStatus] ?? ev.displayStatus}
                   </span>
                   {ev.displayStatus === "confirmed" && (
@@ -330,35 +452,54 @@ export default function CalendarView({
     : (selectedDate ?? cursorDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
 
   return (
-    <div>
-      {/* View mode toggle */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          {(["day", "week", "month"] as ViewMode[]).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => {
-                setViewMode(mode);
-                if (mode === "day" && !selectedDate) setSelectedDate(today);
-              }}
-              className={
-                "text-sm rounded-lg px-3 py-1.5 font-medium " +
-                (viewMode === mode
-                  ? "bg-brand-500 text-white"
-                  : "border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800")
-              }
-            >
-              {mode === "day" ? "Day" : mode === "week" ? "Week" : "Month"}
-            </button>
-          ))}
+    <div style={dtScreenVars()}>
+      {/* View mode toggle + navigation */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="dt-chip" style={{ display: "flex", alignItems: "center", gap: 4, padding: 4, borderRadius: designTokens.radius.control }}>
+          {(["day", "week", "month"] as ViewMode[]).map((mode) => {
+            const active = viewMode === mode;
+            return (
+              <button
+                key={mode}
+                onClick={() => {
+                  setViewMode(mode);
+                  if (mode === "day" && !selectedDate) setSelectedDate(today);
+                }}
+                className={active ? "dt-brand" : undefined}
+                style={{
+                  borderRadius: designTokens.radius.control,
+                  padding: "6px 14px",
+                  fontSize: designTokens.type.body.size,
+                  fontWeight: designTokens.type.meta.weight,
+                  lineHeight: 1,
+                  border: "none",
+                  cursor: "pointer",
+                  color: active ? undefined : designTokens.color.text.secondary,
+                  transition: `background-color ${designTokens.motion.fast}, color ${designTokens.motion.fast}`,
+                }}
+              >
+                {mode === "day" ? "Day" : mode === "week" ? "Week" : "Month"}
+              </button>
+            );
+          })}
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate(-1)} className="p-1 rounded hover:bg-gray-100 text-gray-500 dark:hover:bg-gray-800 dark:text-gray-400">
-            <ChevronLeft className="w-4 h-4" />
+          <button
+            onClick={() => navigate(-1)}
+            className="dt-chip"
+            aria-label="Previous period"
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 8, borderRadius: designTokens.radius.control, cursor: "pointer", border: "none" }}
+          >
+            <ChevronLeft style={{ width: 16, height: 16, color: designTokens.color.text.secondary }} />
           </button>
-          <span className="text-sm font-semibold text-gray-900 min-w-[140px] text-center dark:text-gray-50">{headerLabel}</span>
-          <button onClick={() => navigate(1)} className="p-1 rounded hover:bg-gray-100 text-gray-500 dark:hover:bg-gray-800 dark:text-gray-400">
-            <ChevronRight className="w-4 h-4" />
+          <span className="dt-text-primary" style={{ ...cardTitleStyle, minWidth: 150, textAlign: "center" }}>{headerLabel}</span>
+          <button
+            onClick={() => navigate(1)}
+            className="dt-chip"
+            aria-label="Next period"
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 8, borderRadius: designTokens.radius.control, cursor: "pointer", border: "none" }}
+          >
+            <ChevronRight style={{ width: 16, height: 16, color: designTokens.color.text.secondary }} />
           </button>
         </div>
       </div>
@@ -368,7 +509,9 @@ export default function CalendarView({
         <select
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+          aria-label="Filter by project"
+          className="dt-search dt-text-primary"
+          style={controlStyle}
         >
           <option value="">All projects</option>
           {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
@@ -376,25 +519,34 @@ export default function CalendarView({
         <select
           value={adminId}
           onChange={(e) => setAdminId(e.target.value)}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+          aria-label="Filter by admin"
+          className="dt-search dt-text-primary"
+          style={controlStyle}
         >
           <option value="">All admins</option>
           {admins.map((a) => (<option key={a.id} value={a.id}>{a.name}</option>))}
         </select>
         <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: designTokens.color.text.muted }} />
           <input
             value={participantSearch}
             onChange={(e) => setParticipantSearch(e.target.value)}
             placeholder="Search participant..."
-            className="w-full text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 dark:border-gray-600"
+            className="dt-search dt-text-primary"
+            style={{
+              width: "100%",
+              padding: "9px 12px 9px 34px",
+              fontSize: designTokens.type.body.size,
+              borderRadius: designTokens.radius.control,
+            }}
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
           aria-label="Filter by status"
+          className="dt-search dt-text-primary"
+          style={controlStyle}
         >
           <option value="all">All statuses</option>
           <option value="confirmed">Confirmed</option>
@@ -405,19 +557,25 @@ export default function CalendarView({
         </select>
       </div>
 
-      {loading && <p className="text-sm text-gray-400 text-center py-8 dark:text-gray-500">Loading...</p>}
+      {loading && <CalendarSkeleton />}
 
-      {!loading && filteredEvents.length === 0 && (
-        <div className="text-center py-16">
-          <p className="text-sm text-gray-400 dark:text-gray-500">No matching events found.</p>
-        </div>
+      {!loading && events.length === 0 && (
+        <CalendarEmpty
+          title="No bookings in this period"
+          description="Nothing is booked in the range shown. Try another period or clear the filters."
+        />
       )}
 
-      {!loading && filteredEvents.length > 0 && (
+      {!loading && events.length > 0 && (
         <div>
           {viewMode === "month" && renderMonth()}
           {viewMode === "week" && renderWeek()}
           {viewMode === "day" && renderDay()}
+          {filteredEvents.length === 0 && (
+            <div className="dt-chip dt-text-secondary" style={{ marginTop: designTokens.spacing.section, padding: "10px 14px", borderRadius: designTokens.radius.control, fontSize: designTokens.type.body.size }}>
+              No bookings match your filters.
+            </div>
+          )}
         </div>
       )}
     </div>

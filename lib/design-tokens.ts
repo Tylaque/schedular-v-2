@@ -28,6 +28,12 @@ export const designTokens = {
       500: "#4338CA",
       600: "#3730A9",
       700: "#2E2789",
+      // Interactive brand states (selected cells, active segments). The
+      // `on` color is used on top of brand-500 fills; `tint`/`tintDark`
+      // and `textDark` give the tinted surface a readable dark-mode pair.
+      on: "#FFFFFF",
+      textDark: "#C7D2FE",
+      tintDark: "rgba(99, 102, 241, 0.16)",
     },
     // Surfaces & neutrals (from globals.css + landing page grays).
     surface: {
@@ -70,6 +76,30 @@ export const designTokens = {
       zoom: "#2D8CFF",
       teams: "#6264A7",
       off: "#D1D5DB",
+    },
+    // Role identity accents (Team screen) — same visual language as the
+    // status accents (gray/blue/purple), fed through the same chip helpers.
+    role: {
+      admin: { bg: "#F3F4F6", text: "#4B5563", dot: "#6B7280" },
+      super_admin: { bg: "#DBEAFE", text: "#1D4ED8", dot: "#2563EB" },
+      org_owner: { bg: "#EDE9FE", text: "#6D28D9", dot: "#7C3AED" },
+    },
+    // Destructive + success action colors (Team screen: deactivate/
+    // reactivate, modal confirmations, result banners).
+    danger: {
+      base: "#DC2626",
+      hover: "#B91C1C",
+      on: "#FFFFFF",
+      text: "#B91C1C",
+      textDark: "#FCA5A5",
+    },
+    ok: {
+      text: "#065F46",
+      textDark: "#6EE7B7",
+    },
+    promote: {
+      text: "#6D28D9",
+      textDark: "#C4B5FD",
     },
   },
 
@@ -188,6 +218,24 @@ export function dtScreenVars(): CSSProperties {
     "--dt-link-dark": darkTokens.link,
     "--dt-skeleton-bg": designTokens.color.surface.overlay,
     "--dt-skeleton-bg-dark": darkTokens.skeleton,
+    "--dt-brand": designTokens.color.brand[500],
+    "--dt-brand-hover": designTokens.color.brand[600],
+    "--dt-brand-on": designTokens.color.brand.on,
+    "--dt-brand-tint": designTokens.color.brand[50],
+    "--dt-brand-tint-dark": designTokens.color.brand.tintDark,
+    "--dt-brand-text": designTokens.color.brand[700],
+    "--dt-brand-text-dark": designTokens.color.brand.textDark,
+    "--dt-brand-border": designTokens.color.brand[100],
+    "--dt-brand-border-dark": designTokens.color.brand.tintDark,
+    "--dt-danger": designTokens.color.danger.base,
+    "--dt-danger-hover": designTokens.color.danger.hover,
+    "--dt-danger-on": designTokens.color.danger.on,
+    "--dt-danger-text": designTokens.color.danger.text,
+    "--dt-danger-text-dark": designTokens.color.danger.textDark,
+    "--dt-ok-text": designTokens.color.ok.text,
+    "--dt-ok-text-dark": designTokens.color.ok.textDark,
+    "--dt-promote-text": designTokens.color.promote.text,
+    "--dt-promote-text-dark": designTokens.color.promote.textDark,
     "--dt-card-radius": `${designTokens.radius.card}px`,
     "--dt-card-padding": `${designTokens.spacing.card}px`,
     "--dt-card-shadow": designTokens.shadow.card,
@@ -242,9 +290,10 @@ export const avatarTile: CSSProperties = {
   userSelect: "none",
 };
 
-export const statusChip = (status: string): CSSProperties => {
-  const s = (designTokens.color.status as Record<string, { bg: string; text: string; dot: string }>)[status] ??
-    designTokens.color.status.draft;
+type ChipPalette = Record<string, { bg: string; text: string; dot: string }>;
+
+function chipFor(palette: ChipPalette, key: string): CSSProperties {
+  const s = palette[key] ?? designTokens.color.status.draft;
   return {
     display: "inline-flex",
     alignItems: "center",
@@ -258,18 +307,22 @@ export const statusChip = (status: string): CSSProperties => {
     padding: "4px 10px",
     whiteSpace: "nowrap",
   };
-};
+}
 
-export const statusDot = (status: string): CSSProperties => {
-  const s = (designTokens.color.status as Record<string, { bg: string; text: string; dot: string }>)[status] ??
-    designTokens.color.status.draft;
+function dotFor(palette: ChipPalette, key: string): CSSProperties {
+  const s = palette[key] ?? designTokens.color.status.draft;
   return {
     width: 6,
     height: 6,
     borderRadius: 999,
     backgroundColor: s.dot,
   };
-};
+}
+
+export const statusChip = (status: string): CSSProperties => chipFor(designTokens.color.status, status);
+export const statusDot = (status: string): CSSProperties => dotFor(designTokens.color.status, status);
+export const roleChip = (role: string): CSSProperties => chipFor(designTokens.color.role, role);
+export const roleDot = (role: string): CSSProperties => dotFor(designTokens.color.role, role);
 
 export const platformChip = (connected: boolean, platformKey: "zoom" | "teams"): CSSProperties => ({
   display: "inline-flex",

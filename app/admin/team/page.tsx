@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { listTeamMembers } from "@/lib/data/team";
 import { listCertifications, getCertificationAssignments } from "@/lib/data/certifications";
 import TeamClient from "@/components/TeamClient";
+import { dtScreenVars, pageTitleStyle, pageSubtitleStyle } from "@/lib/design-tokens";
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +28,13 @@ export default async function TeamPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
-      <h1 className="text-xl font-bold text-gray-900 mb-6 dark:text-gray-50">Team Management</h1>
+    <div className="max-w-5xl mx-auto p-6" style={dtScreenVars()}>
+      <div style={{ marginBottom: 20 }}>
+        <h1 className="dt-text-primary" style={pageTitleStyle}>Team Management</h1>
+        <p className="dt-text-secondary" style={{ ...pageSubtitleStyle, marginTop: 6 }}>
+          Manage associates, roles, certifications, and ownership.
+        </p>
+      </div>
       <TeamClient
         members={members}
         currentUserId={session.user.id}

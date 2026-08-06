@@ -338,6 +338,7 @@ export async function getCalendarEvents(filters: CalendarFilters) {
       dateKey: true,
       time: true,
       status: true,
+      meetingPlatform: true,
       participantName: true,
       participantEmail: true,
       project: { select: { name: true, timezone: true, autoCompleteBookings: true } },
@@ -351,6 +352,7 @@ export async function getCalendarEvents(filters: CalendarFilters) {
     dateKey: b.dateKey,
     time: b.time,
     status: b.status,
+    meetingPlatform: b.meetingPlatform,
     displayStatus: getBookingDisplayStatus({
       status: b.status,
       dateKey: b.dateKey,
