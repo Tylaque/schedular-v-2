@@ -4,7 +4,7 @@ export type RoleInfo = {
 };
 
 export function canViewAllProjects(role: string): boolean {
-  return role === "org_owner" || role === "super_admin";
+  return role === "org_owner";
 }
 
 export function getScopeFilter(user: RoleInfo): { ownerId?: string } {

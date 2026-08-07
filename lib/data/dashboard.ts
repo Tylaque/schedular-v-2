@@ -219,22 +219,29 @@ type AdminDashboardBooking = {
   meetingPlatform: "zoom" | "teams" | null;
 };
 
-export async function getAdminDashboardData(adminId: string) {
+export async function getAdminDashboardData(adminId: string, ownerId?: string) {
   const admin = await db.admin.findUnique({ where: { id: adminId } });
   if (!admin) return null;
 
   // Lazy completion: past sessions on autoComplete projects become really "completed".
   await completePastConfirmedBookings();
 
+  const projectWhere: Prisma.ProjectWhereInput = { admins: { some: { adminId } } };
+  if (ownerId) projectWhere.ownerId = ownerId;
+
   const assignedProjects = await db.project.findMany({
-    where: { admins: { some: { adminId } } },
+    where: projectWhere,
     select: { id: true, slug: true, name: true, status: true, timezone: true },
   });
 
   const availCount = await db.adminAvailability.count({ where: { adminId } });
 
   const myBookings = await db.booking.findMany({
-    where: { adminId, status: { in: ["confirmed", "completed", "cancelled", "rescheduled"] } },
+    where: {
+      adminId,
+      ...(ownerId ? { project: { ownerId } } : {}),
+      status: { in: ["confirmed", "completed", "cancelled", "rescheduled"] },
+    },
     select: {
       id: true,
       dateKey: true,

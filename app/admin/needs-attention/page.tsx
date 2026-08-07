@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import { listFlaggedBookings } from "@/lib/data/needs-attention";
-import { canViewAllProjects } from "@/lib/authz";
+import { isOrgOwner, isSuperAdmin } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { isAdminEligibleForSlot } from "@/lib/data/bookings";
 import NeedsAttentionClient from "@/components/NeedsAttentionClient";
@@ -15,7 +15,7 @@ export default async function NeedsAttentionPage() {
   if (!session?.user?.id) notFound();
 
   const role = (session.user as any)?.role;
-  if (!canViewAllProjects(role)) notFound();
+  if (!isOrgOwner(role) && !isSuperAdmin(role)) notFound();
 
   const ownerId = role === "org_owner" ? undefined : session.user.id;
   const flagged = await listFlaggedBookings(ownerId);

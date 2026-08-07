@@ -20,7 +20,7 @@ import { createTemplateVersion } from "@/lib/data/templates";
 import { sendTestEmail } from "@/lib/data/notifications";
 import { inviteAssociate } from "@/lib/data/admins";
 import { previewAdminUnavailable, commitAdminUnavailable, previewDateShift, commitDateShift } from "@/lib/data/bulk-reschedule";
-import { canViewAllProjects, isOrgOwner, isSuperAdmin } from "@/lib/authz";
+import { isOrgOwner, isSuperAdmin } from "@/lib/authz";
 import { changeAdminRole, promoteToOrgOwner, deactivateAdmin, reactivateAdmin } from "@/lib/data/team";
 import { setAdminRangesForDate } from "@/lib/data/availability-ranges";
 import { sendInvitationsOnActivation } from "@/lib/data/participants";
@@ -50,7 +50,7 @@ export async function saveAvailabilityAction(
   }
   // Only allow setting your own availability, or if you're a super_admin/org_owner
   const role = (session?.user as any)?.role;
-  if (session.user.id !== adminId && !canViewAllProjects(role)) {
+  if (session.user.id !== adminId && !isOrgOwner(role) && !isSuperAdmin(role)) {
     throw new Error("Unauthorized");
   }
   await setAdminAvailabilityBulk(projectId, adminId, entries);
@@ -84,7 +84,7 @@ export async function createProjectAction(formData: {
   if (!session?.user?.id) return;
 
   const role = (session?.user as any)?.role;
-  if (!canViewAllProjects(role)) return;
+  if (!isOrgOwner(role) && !isSuperAdmin(role)) return;
 
   if (formData.durationMinutes < 5 || formData.durationMinutes > 480) return;
   if (formData.availabilityPeriodDays < 1 || formData.availabilityPeriodDays > 365) return;
@@ -414,7 +414,7 @@ export async function inviteAssociateAction(input: {
   }
 
   const role = (session?.user as any)?.role;
-  if (!canViewAllProjects(role)) {
+  if (!isOrgOwner(role) && !isSuperAdmin(role)) {
     redirect("/admin/my-area");
   }
 
