@@ -194,14 +194,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       }
 
-      if (!token.role && token.sub) {
+      // Role is re-read from the DB on every request (not cached in the JWT)
+      // so role changes made server-side take effect without a full sign-out.
+      // The token is only trusted for identity (sub); everything authorization-
+      // relevant is refreshed here.
+      //
+      // The DB read runs only in the Node.js runtime. Middleware runs on the
+      // Edge runtime where pg/node:crypto is unavailable, so it keeps trusting
+      // the token's cached claims for its coarse redirect; every Node-runtime
+      // page/API/action re-validates against the DB via this callback, so the
+      // source of truth is always current wherever authorization is enforced.
+      if (token.sub && process.env.NEXT_RUNTIME !== "edge") {
         const db = await getDb();
         const admin = await db.admin.findUnique({
           where: { id: token.sub },
-          select: { role: true },
+          select: { role: true, isActive: true },
         });
         if (admin) {
-          token.role = admin.role;
+          if (admin.role !== token.role) token.role = admin.role;
+          if (admin.isActive !== token.isActive) token.isActive = admin.isActive;
+        } else {
+          // Admin row no longer exists — drop any cached role so gates treat
+          // the token as unprivileged rather than trusting a stale claim.
+          delete token.role;
+          token.isActive = false;
         }
       }
 

@@ -77,6 +77,9 @@ export default function TeamClient({
     try {
       const result = await changeAdminRoleAction(memberId, newRole);
       if (result.ok) {
+        setMembersList((prev) =>
+          prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m))
+        );
         setMsg({ type: "ok", text: "Role updated successfully." });
       } else {
         const reasons: Record<string, string> = {
