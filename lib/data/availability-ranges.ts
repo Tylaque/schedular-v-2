@@ -135,6 +135,7 @@ export type TeamAvailabilityResult = {
   adminId: string;
   adminName: string;
   projectNames: string[];
+  projectIds: string[];
   ranges: { dateKey: string; startTime: string; endTime: string }[];
 };
 
@@ -147,25 +148,32 @@ export type TeamAvailabilityResult = {
  *   super_admins' own) submitted availability, system-wide.
  *
  * Optional filters narrow by associate and/or project, and by date window
- * (inclusive dateKey range).
+ * (inclusive dateKey range). Associates with no availability in the window
+ * are excluded.
  */
 export async function getTeamAvailability(
   scopeToOwnerId: string | undefined,
   filters: { adminId?: string; projectId?: string; fromDate: string; toDate: string }
 ): Promise<TeamAvailabilityResult[]> {
   const where: Prisma.AdminWhereInput = {};
+  const projectWhere: Prisma.ProjectWhereInput = {};
   if (scopeToOwnerId) {
+    projectWhere.ownerId = scopeToOwnerId;
+  }
+  if (filters.projectId) {
+    projectWhere.id = filters.projectId;
+  }
+  if (Object.keys(projectWhere).length > 0) {
     where.projectAssignments = {
-      some: { project: { ownerId: scopeToOwnerId } },
-    };
-  } else if (filters.projectId) {
-    where.projectAssignments = {
-      some: { project: { id: filters.projectId } },
+      some: { project: projectWhere },
     };
   }
   if (filters.adminId) {
     where.id = filters.adminId;
   }
+  where.availabilityRanges = {
+    some: { dateKey: { gte: filters.fromDate, lte: filters.toDate } },
+  };
 
   const admins = await db.admin.findMany({
     where,
@@ -174,7 +182,7 @@ export async function getTeamAvailability(
       name: true,
       projectAssignments: {
         where: { project: scopeToOwnerId ? { ownerId: scopeToOwnerId } : {} },
-        select: { project: { select: { name: true } } },
+        select: { project: { select: { name: true, id: true } } },
         orderBy: { createdAt: "asc" },
       },
       availabilityRanges: {
@@ -190,6 +198,7 @@ export async function getTeamAvailability(
     adminId: a.id,
     adminName: a.name,
     projectNames: a.projectAssignments.map((pa) => pa.project.name),
+    projectIds: a.projectAssignments.map((pa) => pa.project.id),
     ranges: a.availabilityRanges.map((r) => ({
       dateKey: r.dateKey,
       startTime: r.startTime,

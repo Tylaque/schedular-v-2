@@ -7,6 +7,7 @@ type TeamAvailabilityEntry = {
   adminId: string;
   adminName: string;
   projectNames: string[];
+  projectIds: string[];
   ranges: { dateKey: string; startTime: string; endTime: string }[];
 };
 
@@ -65,9 +66,17 @@ export default function TeamAvailabilityView() {
   }, [data]);
 
   const projectOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const entry of data) for (const p of entry.projectNames) set.add(p);
-    return [...set].sort();
+    const map = new Map<string, string>();
+    for (const entry of data) {
+      for (let i = 0; i < entry.projectIds.length; i++) {
+        const id = entry.projectIds[i];
+        const name = entry.projectNames[i] ?? id;
+        if (!map.has(id)) map.set(id, name);
+      }
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => (a.name < b.name ? -1 : 1));
   }, [data]);
 
   const rangesByDate = (ranges: { dateKey: string; startTime: string; endTime: string }[]) => {
@@ -120,7 +129,7 @@ export default function TeamAvailabilityView() {
             className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
           >
             <option value="">All projects</option>
-            {projectOptions.map((p) => (<option key={p} value={p}>{p}</option>))}
+            {projectOptions.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
           </select>
         </div>
       </div>
