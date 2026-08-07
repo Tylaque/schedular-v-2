@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { Clock, Globe, CalendarDays, Loader2, CheckCircle, XCircle, Mail, Video } from "lucide-react";
-import { participantCancelAction, participantRescheduleAction, verifyManageEmail } from "./actions";
+import { CalendarDays, Loader2, CheckCircle, XCircle, Video } from "lucide-react";
+import { participantCancelAction, participantRescheduleAction } from "./actions";
 import SlotPicker, { formatDate, formatTime } from "@/components/SlotPicker";
 
 type Booking = {
@@ -12,18 +11,13 @@ type Booking = {
   participantEmail: string;
   dateKey: string;
   time: string;
-  adminId: string;
-  projectId: string;
   meetingPlatform: "zoom" | "teams" | null;
   teamsJoinUrl: string | null;
   zoomJoinUrl: string | null;
-  teamsProvisionStatus: string | null;
-  zoomProvisionStatus: string | null;
   meetingFallbackReason: string | null;
 };
 
 type Project = {
-  id: string;
   name: string;
   company: string;
   timezone: string;
@@ -47,7 +41,6 @@ export default function ManageBooking({
   windowOpen: boolean;
   hoursLeft: number;
 }) {
-  const router = useRouter();
   const [cancelling, setCancelling] = useState(false);
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
@@ -55,35 +48,15 @@ export default function ManageBooking({
   const [rescheduling, setRescheduling] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Email verification gate
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [verifyEmail, setVerifyEmail] = useState("");
-  const [verifying, setVerifying] = useState(false);
-  const [verifyError, setVerifyError] = useState<string | null>(null);
-
-  const handleVerifyEmail = useCallback(async () => {
-    if (!verifyEmail.trim()) return;
-    setVerifying(true);
-    setVerifyError(null);
-    try {
-      const result = await verifyManageEmail(booking.id, verifyEmail.trim());
-      if (result.verified) {
-        setEmailVerified(true);
-      } else {
-        setVerifyError(result.error);
-      }
-    } catch {
-      setVerifyError("Something went wrong. Please try again.");
-    } finally {
-      setVerifying(false);
-    }
-  }, [booking.id, verifyEmail]);
+  // The participant email arrives server-verified via the signed manage token
+  // (see page.tsx); the actions below still verify it server-side as defense-in-depth.
+  const participantEmail = booking.participantEmail;
 
   const handleCancel = useCallback(async () => {
     setCancelling(true);
     setMessage(null);
     try {
-      await participantCancelAction(booking.id, verifyEmail.trim());
+      await participantCancelAction(booking.id, participantEmail);
       setMessage({ type: "success", text: "Your booking has been cancelled." });
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message ?? "Something went wrong." });
@@ -91,14 +64,14 @@ export default function ManageBooking({
       setCancelling(false);
       setShowConfirmCancel(false);
     }
-  }, [booking.id, verifyEmail]);
+  }, [booking.id, participantEmail]);
 
   const handleReschedule = useCallback(async () => {
     if (!selectedDateKey || !selectedTime) return;
     setRescheduling(true);
     setMessage(null);
     try {
-      const result = await participantRescheduleAction(booking.id, selectedDateKey, selectedTime, verifyEmail.trim());
+      const result = await participantRescheduleAction(booking.id, selectedDateKey, selectedTime, participantEmail);
       if (result.ok) {
         setMessage({ type: "success", text: "Your booking has been rescheduled!" });
         setSelectedDateKey(null);
@@ -112,7 +85,7 @@ export default function ManageBooking({
     } finally {
       setRescheduling(false);
     }
-  }, [booking.id, selectedDateKey, selectedTime, verifyEmail]);
+  }, [booking.id, selectedDateKey, selectedTime, participantEmail]);
 
   const formatHoursLeft = hoursLeft > 0
     ? `${Math.floor(hoursLeft)}h${Math.floor((hoursLeft % 1) * 60) > 0 ? ` ${Math.floor((hoursLeft % 1) * 60)}m` : ""}`
@@ -186,39 +159,7 @@ export default function ManageBooking({
             </div>
           ) : null}
 
-          {windowOpen && !message?.type.startsWith("success") && !emailVerified && (
-            <div className="border-t pt-4 space-y-3">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                To cancel or reschedule, please confirm your email address.
-              </p>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-                  <input
-                    type="email"
-                    value={verifyEmail}
-                    onChange={(e) => { setVerifyEmail(e.target.value); setVerifyError(null); }}
-                    onKeyDown={(e) => e.key === "Enter" && handleVerifyEmail()}
-                    placeholder="Enter your booking email"
-                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                  />
-                </div>
-                <button
-                  onClick={handleVerifyEmail}
-                  disabled={verifying || !verifyEmail.trim()}
-                  className="px-4 py-2 text-sm font-medium text-white bg-brand-500 rounded-lg hover:bg-brand-600 disabled:opacity-50 flex items-center gap-1"
-                >
-                  {verifying && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  Verify
-                </button>
-              </div>
-              {verifyError && (
-                <p className="text-sm text-red-600 dark:text-red-300">{verifyError}</p>
-              )}
-            </div>
-          )}
-
-          {windowOpen && !message?.type.startsWith("success") && emailVerified && (
+          {windowOpen && !message?.type.startsWith("success") && (
             <div className="space-y-4 pt-2">
               <div className="text-sm text-gray-500 dark:text-gray-400">
                 Self-service window closes in <span className="font-semibold text-gray-700 dark:text-gray-200">{formatHoursLeft}</span>.

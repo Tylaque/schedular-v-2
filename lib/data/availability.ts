@@ -4,19 +4,6 @@ import { expireStaleOffers } from "@/lib/data/waitlist";
 import { isAdminAvailableForSlot, getAdminRanges } from "@/lib/data/availability-ranges";
 import { isAdminCertifiedForProject } from "@/lib/data/certifications";
 
-export async function getAdminAvailability(
-  projectId: string,
-  adminId: string
-): Promise<{ dateKey: string; time: string }[]> {
-  // Legacy: kept for backward compatibility with the old availability API route.
-  // Reads from the old per-project AdminAvailability table.
-  const rows = await db.adminAvailability.findMany({
-    where: { projectId, adminId },
-    select: { dateKey: true, time: true },
-  });
-  return rows;
-}
-
 export async function setAdminAvailabilityBulk(
   projectId: string,
   adminId: string,

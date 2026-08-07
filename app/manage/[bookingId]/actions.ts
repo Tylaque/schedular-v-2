@@ -6,6 +6,7 @@ import { hoursUntilSession } from "@/lib/slotHelpers";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { signManageToken } from "@/lib/manage-token";
 
 async function getBookingWithProject(bookingId: string) {
   return db.booking.findUnique({
@@ -26,7 +27,7 @@ async function assertSelfServiceWindow(bookingId: string) {
 export async function verifyManageEmail(
   bookingId: string,
   email: string
-): Promise<{ verified: true } | { verified: false; error: string }> {
+): Promise<{ verified: true; token: string } | { verified: false; error: string }> {
   const hdrs = await headers();
   const ip = getClientIp(hdrs);
   if (!checkRateLimit(`manage-verify:${ip}`, 10, 15 * 60 * 1000)) {
@@ -43,7 +44,7 @@ export async function verifyManageEmail(
   if (booking.participantEmail.toLowerCase().trim() !== email.toLowerCase().trim()) {
     return { verified: false, error: "Email does not match our records." };
   }
-  return { verified: true };
+  return { verified: true, token: signManageToken(bookingId, booking.participantEmail) };
 }
 
 export async function participantCancelAction(bookingId: string, participantEmail?: string) {

@@ -336,6 +336,14 @@ export async function previewAdminUnavailableAction(adminId: string, fromDate: s
   if (!session?.user?.id) {
     throw new Error("Unauthorized");
   }
+  const role = (session.user as any)?.role;
+  if (!isOrgOwner(role) && !isSuperAdmin(role)) {
+    const inScope = await db.projectAdmin.findFirst({
+      where: { adminId, project: { ownerId: session.user.id } },
+      select: { id: true },
+    });
+    if (!inScope) throw new Error("Forbidden");
+  }
   return previewAdminUnavailable(adminId, fromDate, toDate);
 }
 
@@ -343,6 +351,14 @@ export async function commitAdminUnavailableAction(adminId: string, fromDate: st
   const session = await auth();
   if (!session?.user?.id) {
     throw new Error("Unauthorized");
+  }
+  const role = (session.user as any)?.role;
+  if (!isOrgOwner(role) && !isSuperAdmin(role)) {
+    const inScope = await db.projectAdmin.findFirst({
+      where: { adminId, project: { ownerId: session.user.id } },
+      select: { id: true },
+    });
+    if (!inScope) throw new Error("Forbidden");
   }
   const result = await commitAdminUnavailable(adminId, fromDate, toDate);
   revalidatePath("/admin/calendar");
@@ -355,6 +371,10 @@ export async function previewDateShiftAction(projectId: string, fromDate: string
   if (!session?.user?.id) {
     throw new Error("Unauthorized");
   }
+  const project = await db.project.findUnique({ where: { id: projectId }, select: { ownerId: true } });
+  if (!project) throw new Error("Forbidden");
+  const user = { id: session.user.id, role: (session.user as any)?.role as "admin" | "super_admin" | "org_owner" };
+  if (!canManageProject(user, project)) throw new Error("Forbidden");
   return previewDateShift(projectId, fromDate, toDate, offsetDays);
 }
 
@@ -363,6 +383,10 @@ export async function commitDateShiftAction(projectId: string, fromDate: string,
   if (!session?.user?.id) {
     throw new Error("Unauthorized");
   }
+  const project = await db.project.findUnique({ where: { id: projectId }, select: { ownerId: true } });
+  if (!project) throw new Error("Forbidden");
+  const user = { id: session.user.id, role: (session.user as any)?.role as "admin" | "super_admin" | "org_owner" };
+  if (!canManageProject(user, project)) throw new Error("Forbidden");
   const result = await commitDateShift(projectId, fromDate, toDate, offsetDays);
   revalidatePath("/admin/calendar");
   revalidatePath("/admin/bulk-reschedule");

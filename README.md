@@ -164,11 +164,9 @@ scheduler-app/
     admin/projects/new/page.tsx      Create project
     admin/projects/[project]/edit/   Edit project
     admin/availability/[project]/    Admin availability grid
-    api/availability/                Availability data API
     api/admins/                      Admin directory API
   components/
     BookingFlow.tsx                  Booking UI (calendar → slots → confirmation)
-    AvailabilityGrid.tsx             Doodle-style availability grid with drag-select
     ProjectForm.tsx                  Create/edit project form
   lib/
     db.ts                            Prisma client singleton (Prisma 7 adapter-based)
