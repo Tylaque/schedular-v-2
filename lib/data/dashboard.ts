@@ -219,15 +219,28 @@ type AdminDashboardBooking = {
   meetingPlatform: "zoom" | "teams" | null;
 };
 
-export async function getAdminDashboardData(adminId: string, ownerId?: string) {
+export async function getAdminDashboardData(
+  adminId: string,
+  opts: { ownerId?: string; includeOwned?: boolean } = {}
+) {
+  const { ownerId, includeOwned } = opts;
   const admin = await db.admin.findUnique({ where: { id: adminId } });
   if (!admin) return null;
 
   // Lazy completion: past sessions on autoComplete projects become really "completed".
   await completePastConfirmedBookings();
 
-  const projectWhere: Prisma.ProjectWhereInput = { admins: { some: { adminId } } };
-  if (ownerId) projectWhere.ownerId = ownerId;
+  // A project counts as "yours" if you're assigned to it (ProjectAdmin) OR —
+  // for a self-dashboard (includeOwned) — if you own it. Ownership alone never
+  // satisfies the assignment-only case (e.g. a super_admin viewing another
+  // admin's dashboard), so that path is unchanged.
+  const projectWhere: Prisma.ProjectWhereInput = {
+    ...(ownerId ? { ownerId } : {}),
+    OR: [
+      { admins: { some: { adminId } } },
+      ...(includeOwned ? [{ ownerId: adminId }] : []),
+    ],
+  };
 
   const assignedProjects = await db.project.findMany({
     where: projectWhere,

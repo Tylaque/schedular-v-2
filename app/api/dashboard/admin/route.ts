@@ -22,11 +22,14 @@ export async function GET(request: NextRequest) {
   // dashboard but only sees data scoped to their own projects.
   // Mirrors the dashboard page logic at app/admin/dashboard/page.tsx:51.
   const role = (session.user as any)?.role;
-  if (!isOrgOwner(role) && !isSuperAdmin(role) && session.user.id !== adminId) {
+  const isSelf = session.user.id === adminId;
+  if (!isOrgOwner(role) && !isSuperAdmin(role) && !isSelf) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  if (isSuperAdmin(role)) {
+  // super_admin viewing another admin's dashboard: must be assigned to one of
+  // the super_admin's own projects to be in scope (data is ownerId-scoped).
+  if (isSuperAdmin(role) && !isSelf) {
     const inScope = await db.projectAdmin.findFirst({
       where: { adminId, project: { ownerId: session.user.id } },
       select: { id: true },
@@ -36,10 +39,13 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const data = await getAdminDashboardData(
-    adminId,
-    isSuperAdmin(role) ? session.user.id : undefined
-  );
+  const data = await getAdminDashboardData(adminId, {
+    ownerId: isSuperAdmin(role) ? session.user.id : undefined,
+    // Self-dashboards include owned-but-not-assigned projects so the list
+    // matches the Projects page (owner rule). Plain admins own nothing, so
+    // this is a no-op for them.
+    includeOwned: isSelf,
+  });
   if (!data) {
     return NextResponse.json({ error: "Admin not found" }, { status: 404 });
   }
