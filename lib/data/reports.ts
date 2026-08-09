@@ -143,11 +143,15 @@ async function generateAdminUtilization(ownerId?: string): Promise<ReportRow[]> 
     const admins = await db.admin.findMany({
       select: { id: true, name: true },
     });
-    const totalSlotsPerAdmin = 30;
     for (const admin of admins) {
-      const bookingCount = await db.booking.count({
-        where: { projectId: project.id, adminId: admin.id, status: "confirmed" },
-      });
+      const [bookingCount, totalSlotsPerAdmin] = await Promise.all([
+        db.booking.count({
+          where: { projectId: project.id, adminId: admin.id, status: "confirmed" },
+        }),
+        db.adminAvailability.count({
+          where: { projectId: project.id, adminId: admin.id },
+        }),
+      ]);
       rows.push({
         projectName: project.name,
         adminName: admin.name,
@@ -209,15 +213,18 @@ async function generateProjectProgress(ownerId?: string): Promise<ReportRow[]> {
 }
 
 async function generateTemplateUsage(ownerId?: string): Promise<ReportRow[]> {
-  const templates = await db.emailTemplate.findMany({
-    orderBy: [{ category: "asc" }, { version: "asc" }],
-  });
   const projectFilter = ownerId ? { ownerId } : {};
   const projects = await db.project.findMany({
     where: projectFilter,
     select: { id: true, name: true },
   });
   const projectMap = new Map(projects.map((p) => [p.id, p.name]));
+  const templates = await db.emailTemplate.findMany({
+    where: ownerId
+      ? { OR: [{ projectId: null }, { project: { ownerId } }] }
+      : {},
+    orderBy: [{ category: "asc" }, { version: "asc" }],
+  });
   return templates.map((t) => ({
     category: t.category,
     audience: t.audience,

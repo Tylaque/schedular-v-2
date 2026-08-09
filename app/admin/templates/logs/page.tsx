@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function NotificationLogsPage() {
   const session = await auth();
   const role = (session?.user as any)?.role;
-  const logs = await listNotificationLogs();
+  const logs = await listNotificationLogs(role === "org_owner" ? undefined : session?.user?.id);
 
   return (
     <div className="max-w-5xl mx-auto p-6">

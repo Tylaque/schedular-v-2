@@ -4,8 +4,15 @@ import type { EmailCategory, EmailAudience, NotificationStatus } from "@prisma/c
 import { getActiveTemplate, renderTemplate, MOCK_PREVIEW_CONTEXT } from "@/lib/data/templates";
 import { ALL_CATEGORIES } from "@/lib/template-utils";
 
-export async function listNotificationLogs(limit = 100) {
+/**
+ * Lists recent notification logs, optionally scoped to the given owner's
+ * projects. Matches the app-wide scoping convention: org_owner passes no
+ * ownerId (sees all projects); super_admin / admin pass their own id.
+ */
+export async function listNotificationLogs(ownerId?: string, limit = 100) {
+  const where = ownerId ? { project: { ownerId } } : {};
   return db.notificationLog.findMany({
+    where,
     orderBy: { createdAt: "desc" },
     take: limit,
   });

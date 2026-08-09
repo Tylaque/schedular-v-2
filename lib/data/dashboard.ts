@@ -124,8 +124,12 @@ export async function getAdminUtilization(ownerId?: string) {
     if (ownerId) {
       bookingFilter.project = { ownerId };
     }
+    const availFilter: Prisma.AdminAvailabilityWhereInput = { adminId: admin.id };
+    if (ownerId) {
+      availFilter.project = { ownerId };
+    }
     const [availCount, bookingCount] = await Promise.all([
-      db.adminAvailability.count({ where: { adminId: admin.id } }),
+      db.adminAvailability.count({ where: availFilter }),
       db.booking.count({ where: bookingFilter as any }),
     ]);
     result.push({

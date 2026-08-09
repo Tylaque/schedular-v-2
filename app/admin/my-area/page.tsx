@@ -46,6 +46,9 @@ export default async function MyAreaPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <GreetingHeader name={session.user.name ?? ""} todayCount={todayCount} />
+        <p className="text-sm text-gray-500 mb-6 dark:text-gray-400">
+          Your assigned work — projects and sessions assigned to you.
+        </p>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 dark:border-gray-700 dark:bg-gray-900">
@@ -79,9 +82,12 @@ export default async function MyAreaPage() {
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 mb-8 dark:border-gray-700 dark:bg-gray-900">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2 dark:text-gray-50">
-            <FolderKanban className="w-4 h-4 text-gray-400 dark:text-gray-500" /> Assigned Projects
-          </h2>
+          <div className="mb-3">
+            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 dark:text-gray-50">
+              <FolderKanban className="w-4 h-4 text-gray-400 dark:text-gray-500" /> Assigned Projects
+            </h2>
+            <p className="text-xs text-gray-400 mt-1 dark:text-gray-500">Projects assigned to you.</p>
+          </div>
           {data.assignedProjects.length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-gray-500">No projects assigned.</p>
           ) : (
@@ -132,9 +138,12 @@ export default async function MyAreaPage() {
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 dark:border-gray-700 dark:bg-gray-900">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2 dark:text-gray-50">
-            <Users className="w-4 h-4 text-gray-400 dark:text-gray-500" /> Participants ({data.relevantParticipants.length})
-          </h2>
+          <div className="mb-3">
+            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 dark:text-gray-50">
+              <Users className="w-4 h-4 text-gray-400 dark:text-gray-500" /> Participants ({data.relevantParticipants.length})
+            </h2>
+            <p className="text-xs text-gray-400 mt-1 dark:text-gray-500">Participants on projects assigned to you.</p>
+          </div>
           {data.relevantParticipants.length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-gray-500">No participants yet.</p>
           ) : (

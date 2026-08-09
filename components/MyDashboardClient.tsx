@@ -5,7 +5,6 @@ import {
   FolderKanban,
   CalendarClock,
   CheckCircle2,
-  Clock,
   Users,
   CalendarDays,
   UserX,
@@ -74,23 +73,30 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function SectionHeader({ icon, title, count }: { icon: React.ReactNode; title: string; count?: number }) {
+function SectionHeader({ icon, title, count, subtitle }: { icon: React.ReactNode; title: string; count?: number; subtitle?: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: designTokens.spacing.chipGap }}>
-      <span className="dt-text-muted" style={{ display: "inline-flex" }}>{icon}</span>
-      <h2 className="dt-text-primary" style={{ ...cardTitleStyle, color: undefined }}>
-        {title}
-      </h2>
-      {typeof count === "number" && count > 0 && (
-        <span
-          className="dt-text-muted"
-          style={{
-            fontSize: designTokens.type.caption.size,
-            fontWeight: designTokens.type.caption.weight,
-          }}
-        >
-          {count}
-        </span>
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: designTokens.spacing.chipGap }}>
+        <span className="dt-text-muted" style={{ display: "inline-flex" }}>{icon}</span>
+        <h2 className="dt-text-primary" style={{ ...cardTitleStyle, color: undefined }}>
+          {title}
+        </h2>
+        {typeof count === "number" && count > 0 && (
+          <span
+            className="dt-text-muted"
+            style={{
+              fontSize: designTokens.type.caption.size,
+              fontWeight: designTokens.type.caption.weight,
+            }}
+          >
+            {count}
+          </span>
+        )}
+      </div>
+      {subtitle && (
+        <p className="dt-text-muted" style={{ ...metaTextStyle, color: undefined, marginTop: 4 }}>
+          {subtitle}
+        </p>
       )}
     </div>
   );
@@ -174,7 +180,7 @@ export default function MyDashboardClient({ adminId }: { adminId: string }) {
           My Dashboard
         </h1>
         <p className="mt-1 dt-text-secondary" style={{ ...pageSubtitleStyle, color: undefined }}>
-          Your projects, availability, and upcoming sessions.
+          Your projects, and the sessions and activity tied to them.
         </p>
       </div>
 
@@ -190,19 +196,13 @@ export default function MyDashboardClient({ adminId }: { adminId: string }) {
           icon={<FolderKanban style={{ width: 14, height: 14 }} />}
           label="Active Projects"
           value={activeProjects}
-          sub={data.assignedProjects.length === 1 ? "1 project assigned" : `${data.assignedProjects.length} projects assigned`}
+          sub={data.assignedProjects.length === 1 ? "1 project" : `${data.assignedProjects.length} projects`}
         />
         <StatCard
           icon={<CalendarClock style={{ width: 14, height: 14 }} />}
           label="Upcoming Sessions"
           value={data.upcomingSessions.length}
           sub={upcomingThisWeek === 1 ? "1 in the next 7 days" : `${upcomingThisWeek} in the next 7 days`}
-        />
-        <StatCard
-          icon={<Clock style={{ width: 14, height: 14 }} />}
-          label="Availability Entries"
-          value={data.submittedAvailabilityCount}
-          sub="submitted slots"
         />
         <StatCard
           icon={<CheckCircle2 style={{ width: 14, height: 14 }} />}
@@ -218,6 +218,7 @@ export default function MyDashboardClient({ adminId }: { adminId: string }) {
           icon={<CalendarDays style={{ width: 16, height: 16 }} />}
           title="Upcoming Sessions"
           count={data.upcomingSessions.length}
+          subtitle="Confirmed sessions on your projects."
         />
         {data.upcomingSessions.length === 0 ? (
           <EmptyState
@@ -271,6 +272,7 @@ export default function MyDashboardClient({ adminId }: { adminId: string }) {
           icon={<FolderKanban style={{ width: 16, height: 16 }} />}
           title="Assigned Projects"
           count={data.assignedProjects.length}
+          subtitle="Includes projects you own."
         />
         {data.assignedProjects.length === 0 ? (
           <EmptyState
@@ -307,6 +309,7 @@ export default function MyDashboardClient({ adminId }: { adminId: string }) {
           icon={<CheckCircle2 style={{ width: 16, height: 16 }} />}
           title="Completed Sessions"
           count={data.completedSessions.length}
+          subtitle="Completed sessions on your projects."
         />
         {data.completedSessions.length === 0 ? (
           <EmptyState
@@ -360,6 +363,7 @@ export default function MyDashboardClient({ adminId }: { adminId: string }) {
           icon={<Users style={{ width: 16, height: 16 }} />}
           title="Participants"
           count={data.relevantParticipants.length}
+          subtitle="Everyone on your projects."
         />
         {data.relevantParticipants.length === 0 ? (
           <EmptyState
