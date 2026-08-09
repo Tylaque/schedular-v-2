@@ -114,7 +114,7 @@ export async function confirmBookingAction(input: {
   participantId?: string;
 }): Promise<
   | { ok: true; adminName: string }
-  | { ok: false; reason: "slot_full" | "no_admin_available" | "rate_limited" }
+  | { ok: false; reason: "slot_full" | "no_admin_available" | "rate_limited" | "too_short_notice" }
 > {
   if (!input.projectId || !input.participantEmail) {
     return { ok: false, reason: "slot_full" };

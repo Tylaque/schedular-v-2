@@ -87,9 +87,12 @@ export async function getConsolidatedAvailability(
   });
   if (!project) return {};
 
-  // Get all admins assigned to this project
+  // Get all ACTIVE admins assigned to this project. Deactivated associates
+  // must never contribute bookable slots: their ranges are ignored here so the
+  // calendar can't advertise a slot that createBooking will refuse
+  // (pickAvailableAdmin filters admin.isActive === true).
   const projectAdmins = await db.projectAdmin.findMany({
-    where: { projectId },
+    where: { projectId, admin: { isActive: true } },
     select: { adminId: true },
   });
   const adminIds = projectAdmins.map((pa) => pa.adminId);
@@ -204,4 +207,112 @@ function formatTime(minutes: number): string {
 
 function fmtDate(d: Date): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Default booking window for a project: from today to today +
+ * availabilityPeriodDays (inclusive dateKeys), matching the window used by
+ * getConsolidatedAvailability.
+ */
+export function bookingDateWindow(availabilityPeriodDays: number): { fromDate: string; toDate: string } {
+  const now = new Date();
+  const fromDate = fmtDate(now);
+  const end = new Date(now);
+  end.setDate(end.getDate() + availabilityPeriodDays);
+  return { fromDate, toDate: fmtDate(end) };
+}
+
+export type RangeSlotCounts = {
+  total: number;
+  byAdmin: Record<string, number>;
+};
+
+/**
+ * Count bookable slots derived from the unified AdminAvailabilityRange model
+ * for one project over an inclusive date range.
+ *
+ * Reuses the same qualification and grid rules as getConsolidatedAvailability
+ * (assigned + active + certified admins; dailyStart→dailyEnd at
+ * durationMinutes steps, honoring includeWeekends), but counts every grid
+ * slot covered by at least one qualified admin's range — WITHOUT
+ * sessionCapacity or waitlist filtering, so "total slots offered" stays
+ * independent of bookings already landed.
+ *
+ * Returns the project-wide union total plus per-admin counts.
+ */
+export async function countRangeSlots(opts: {
+  projectId: string;
+  fromDate: string;
+  toDate: string;
+}): Promise<RangeSlotCounts> {
+  const project = await db.project.findUnique({
+    where: { id: opts.projectId },
+    select: {
+      dailyStart: true,
+      dailyEnd: true,
+      durationMinutes: true,
+      includeWeekends: true,
+    },
+  });
+  if (!project) return { total: 0, byAdmin: {} };
+
+  const projectAdmins = await db.projectAdmin.findMany({
+    where: { projectId: opts.projectId, admin: { isActive: true } },
+    select: { adminId: true },
+  });
+
+  const qualifiedIds: string[] = [];
+  for (const pa of projectAdmins) {
+    if (await isAdminCertifiedForProject(opts.projectId, pa.adminId)) {
+      qualifiedIds.push(pa.adminId);
+    }
+  }
+  if (qualifiedIds.length === 0) return { total: 0, byAdmin: {} };
+
+  const ranges = await db.adminAvailabilityRange.findMany({
+    where: {
+      adminId: { in: qualifiedIds },
+      dateKey: { gte: opts.fromDate, lte: opts.toDate },
+    },
+    select: { adminId: true, dateKey: true, startTime: true, endTime: true },
+  });
+
+  const rangesByDate = new Map<string, { adminId: string; startMin: number; endMin: number }[]>();
+  for (const r of ranges) {
+    const list = rangesByDate.get(r.dateKey) ?? [];
+    list.push({ adminId: r.adminId, startMin: parseTime(r.startTime), endMin: parseTime(r.endTime) });
+    rangesByDate.set(r.dateKey, list);
+  }
+
+  const startMin = parseTime(project.dailyStart);
+  const endMin = parseTime(project.dailyEnd);
+  const step = project.durationMinutes;
+  const byAdmin: Record<string, number> = {};
+  for (const id of qualifiedIds) byAdmin[id] = 0;
+  let total = 0;
+
+  const d = new Date(`${opts.fromDate}T00:00:00Z`);
+  const endD = new Date(`${opts.toDate}T00:00:00Z`);
+  while (d <= endD) {
+    const day = d.getUTCDay();
+    if (project.includeWeekends || (day !== 0 && day !== 6)) {
+      const dateRanges = rangesByDate.get(fmtDate(d));
+      if (dateRanges) {
+        for (let m = startMin; m + step <= endMin; m += step) {
+          const slotEnd = m + step;
+          let anyCovered = false;
+          for (const r of dateRanges) {
+            if (r.startMin <= m && slotEnd <= r.endMin) {
+              byAdmin[r.adminId] += 1;
+              anyCovered = true;
+            }
+          }
+          if (anyCovered) total += 1;
+        }
+      }
+    }
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+
+  return { total, byAdmin };
 }

@@ -2,6 +2,7 @@ import { chromium, type BrowserContext, type Page } from "playwright";
 import { config } from "dotenv";
 import { resolve, join } from "path";
 import { mkdirSync } from "fs";
+import { countRangeSlots } from "@/lib/data/availability";
 
 const ENV_PATH = resolve(__dirname, "../../.env");
 config({ path: ENV_PATH });
@@ -144,13 +145,13 @@ async function main() {
   const volTotal = wideJson.volume.reduce((n: number, b: any) => n + b.total, 0);
   check("volume total matches DB", volTotal === dbBookingsWide, `api=${volTotal} db=${dbBookingsWide}`);
 
-  const dbSlotsWide = await db.adminAvailability.count({ where: { dateKey: { gte: WIDE_FROM, lte: WIDE_TO } } });
-  const dbConfirmedWide = await db.booking.count({ where: { status: "confirmed", dateKey: { gte: WIDE_FROM, lte: WIDE_TO } } });
   const dbWaitlistWide = await db.waitlistEntry.count({ where: { createdAt: { gte: new Date(`${WIDE_FROM}T00:00:00.000Z`), lte: new Date(`${WIDE_TO}T23:59:59.999Z`) } } });
-  const expectedFill = dbSlotsWide > 0 ? dbConfirmedWide / dbSlotsWide : 0;
   const health = wideJson.health.find((h: any) => h.projectName === "Test Owner Project");
   check("health row returned", !!health);
   if (health) {
+    const dbSlotsWide = await countRangeSlots({ projectId: health.projectId, fromDate: WIDE_FROM, toDate: WIDE_TO });
+    const dbConfirmedForProject = await db.booking.count({ where: { projectId: health.projectId, status: "confirmed", dateKey: { gte: WIDE_FROM, lte: WIDE_TO } } });
+    const expectedFill = dbSlotsWide.total > 0 ? dbConfirmedForProject / dbSlotsWide.total : 0;
     check("fillRate matches DB", Math.abs(health.fillRate - expectedFill) < 1e-9, `expected ${expectedFill} got ${health.fillRate}`);
     check("waitlistCount matches DB", health.waitlistCount === dbWaitlistWide, `expected ${dbWaitlistWide} got ${health.waitlistCount}`);
   }
@@ -165,8 +166,8 @@ async function main() {
   const narrow = await ctx.request.get(`${BASE_URL}/api/analytics?from=2026-07-01&to=2026-07-15&granularity=week`);
   const narrowJson: any = await narrow.json();
   check("API volume empty on narrow range", narrowJson.volume.every((b: any) => b.total === 0), JSON.stringify(narrowJson.volume));
-  const dbSlotsNarrow = await db.adminAvailability.count({ where: { dateKey: { gte: "2026-07-01", lte: "2026-07-15" } } });
-  check("narrow range health fillRate 0", narrowJson.health[0].fillRate === 0 && dbSlotsNarrow === 0, `slots=${dbSlotsNarrow} fill=${narrowJson.health[0].fillRate}`);
+  const dbSlotsNarrow = health ? await countRangeSlots({ projectId: health.projectId, fromDate: "2026-07-01", toDate: "2026-07-15" }) : { total: 0 };
+  check("narrow range health fillRate 0", narrowJson.health[0].fillRate === 0 && dbSlotsNarrow.total === 0, `slots=${dbSlotsNarrow.total} fill=${narrowJson.health[0].fillRate}`);
 
   await setDateRange(page, "2026-07-27", "2026-08-02");
   const barsWideAgain = await waitForBars(page);

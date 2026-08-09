@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { bookingDateWindow, countRangeSlots } from "@/lib/data/availability";
 import type { Prisma } from "@prisma/client";
 
 export type ReportRow = Record<string, string | number | boolean | null>;
@@ -136,28 +137,30 @@ async function generateAdminUtilization(ownerId?: string): Promise<ReportRow[]> 
   const projectFilter = ownerId ? { ownerId } : {};
   const projects = await db.project.findMany({
     where: projectFilter,
-    select: { id: true, name: true },
+    select: { id: true, name: true, availabilityPeriodDays: true },
   });
   const rows: ReportRow[] = [];
   for (const project of projects) {
+    const window = bookingDateWindow(project.availabilityPeriodDays);
+    const slotCounts = await countRangeSlots({ projectId: project.id, ...window });
+    const adminFilter = ownerId
+      ? { projectAssignments: { some: { project: { ownerId } } } }
+      : {};
     const admins = await db.admin.findMany({
+      where: adminFilter,
       select: { id: true, name: true },
     });
     for (const admin of admins) {
-      const [bookingCount, totalSlotsPerAdmin] = await Promise.all([
-        db.booking.count({
-          where: { projectId: project.id, adminId: admin.id, status: "confirmed" },
-        }),
-        db.adminAvailability.count({
-          where: { projectId: project.id, adminId: admin.id },
-        }),
-      ]);
+      const bookingCount = await db.booking.count({
+        where: { projectId: project.id, adminId: admin.id, status: "confirmed" },
+      });
+      const totalSlotsPerAdmin = slotCounts.byAdmin[admin.id] ?? 0;
       rows.push({
         projectName: project.name,
         adminName: admin.name,
         totalSlots: totalSlotsPerAdmin,
         bookedSlots: bookingCount,
-        utilization: totalSlotsPerAdmin > 0 ? `${((bookingCount / totalSlotsPerAdmin) * 100).toFixed(1)}%` : "0%",
+        utilization: totalSlotsPerAdmin > 0 ? `${(Math.min(1, bookingCount / totalSlotsPerAdmin) * 100).toFixed(1)}%` : "0%",
       });
     }
   }
@@ -195,12 +198,13 @@ async function generateProjectProgress(ownerId?: string): Promise<ReportRow[]> {
   });
   const rows: ReportRow[] = [];
   for (const project of projects) {
-    const availableSlots = await db.adminAvailability.count({
-      where: { projectId: project.id },
-    });
-    const bookedSlots = await db.booking.count({
-      where: { projectId: project.id, status: "confirmed" },
-    });
+    const window = bookingDateWindow(project.availabilityPeriodDays);
+    const [availableSlots, bookedSlots] = await Promise.all([
+      countRangeSlots({ projectId: project.id, ...window }).then((c) => c.total),
+      db.booking.count({
+        where: { projectId: project.id, status: "confirmed" },
+      }),
+    ]);
     rows.push({
       projectName: project.name,
       status: project.status,

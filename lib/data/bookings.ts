@@ -1,12 +1,13 @@
 import { db } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
-import { offerNextWaitlistEntry } from "@/lib/data/waitlist";
+import { offerNextWaitlistEntry, rescindOffersForSlot } from "@/lib/data/waitlist";
 import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
 import { logNotification } from "@/lib/data/notifications";
 import { provisionMeeting, removeMeeting, updateMeetingTime } from "@/lib/data/meetings";
 import { isAdminAvailableForSlot } from "@/lib/data/availability-ranges";
 import { isAdminCertifiedForProject } from "@/lib/data/certifications";
 import { timesOverlap } from "@/lib/timeOverlap";
+import { hoursUntilSession } from "@/lib/slotHelpers";
 import type { Prisma } from "@prisma/client";
 
 /**
@@ -216,7 +217,7 @@ type BookingOk = {
   booking: { id: string; adminId: string; dateKey: string; time: string };
   admin: AdminInfo;
 };
-type BookingErr = { ok: false; reason: "slot_full" | "no_admin_available" };
+type BookingErr = { ok: false; reason: "slot_full" | "no_admin_available" | "too_short_notice" };
 type BookingResult = BookingOk | BookingErr;
 
 export async function createBooking(input: {
@@ -231,10 +232,18 @@ export async function createBooking(input: {
       async (tx): Promise<BookingResult> => {
         const project = await tx.project.findUnique({
           where: { id: input.projectId },
-          select: { sessionCapacity: true },
+          select: { sessionCapacity: true, minNoticeHours: true, timezone: true },
         });
         if (!project) {
           return { ok: false as const, reason: "slot_full" as const };
+        }
+
+        // Server-side min-notice gate: the UI disables too-short-notice (and
+        // past) slots, but the booking API must enforce the rule itself too.
+        // Negative hoursUntilSession also rejects slots already in the past.
+        const hoursUntil = hoursUntilSession(input.dateKey, input.time, project.timezone);
+        if (hoursUntil < project.minNoticeHours) {
+          return { ok: false as const, reason: "too_short_notice" as const };
         }
 
         const existingCount = await tx.booking.count({
@@ -246,6 +255,7 @@ export async function createBooking(input: {
           },
         });
         if (existingCount >= project.sessionCapacity) {
+          await rescindOffersForSlot(input.projectId, input.dateKey, input.time, tx);
           return { ok: false as const, reason: "slot_full" as const };
         }
 
@@ -287,6 +297,12 @@ export async function createBooking(input: {
           },
           select: { id: true, adminId: true, dateKey: true, time: true },
         });
+
+        // The slot just filled (capacity reached): rescind any outstanding
+        // waitlist offers for it so they can't be claimed after the fact.
+        if (existingCount + 1 >= project.sessionCapacity) {
+          await rescindOffersForSlot(input.projectId, input.dateKey, input.time, tx);
+        }
 
         return { ok: true as const, booking, admin };
       },
@@ -338,6 +354,7 @@ export async function createBooking(input: {
     // P2034: serialization failure under Serializable isolation (concurrent write conflict)
     // Both outcomes mean the slot was just taken — return slot_full, not a 500.
     if (err?.code === "P2002" || err?.code === "P2034") {
+      await rescindOffersForSlot(input.projectId, input.dateKey, input.time).catch(() => {});
       return { ok: false, reason: "slot_full" };
     }
     throw err;
@@ -618,6 +635,13 @@ export async function reassignBookingAdmin(
   });
   if (!booking) return { ok: false, reason: "not_found" };
   if (booking.status !== "confirmed") return { ok: false, reason: "already_resolved" };
+
+  // True no-op: reassigning to the admin already on the booking must succeed.
+  // Re-running the eligibility checks here would count the booking itself as a
+  // conflict (and against maxSessionsPerAdminPerDay), spuriously failing.
+  if (newAdminId === booking.adminId) {
+    return { ok: true, booking: { id: booking.id, adminId: booking.adminId, dateKey: booking.dateKey, time: booking.time } };
+  }
 
   const eligible = await isAdminEligibleForSlot(booking.projectId, newAdminId, booking.dateKey, booking.time, undefined, undefined, skipAvailability);
   if (!eligible) return { ok: false, reason: "admin_not_eligible" };

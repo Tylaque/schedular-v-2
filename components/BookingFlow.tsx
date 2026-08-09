@@ -22,7 +22,7 @@ type Step = "calendar" | "details" | "confirmed";
 type BookingState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "error"; reason: "slot_full" | "no_admin_available" | "rate_limited" };
+  | { status: "error"; reason: "slot_full" | "no_admin_available" | "rate_limited" | "too_short_notice" };
 
 function pad(n: number) {
   return n < 10 ? `0${n}` : `${n}`;
@@ -133,6 +133,8 @@ export default function BookingFlow({
         ? "That slot was just booked by someone else — please pick another time."
         : bookingState.reason === "rate_limited"
         ? "Too many booking attempts. Please try again later."
+        : bookingState.reason === "too_short_notice"
+        ? "That slot is too close to book — please pick a time with more notice."
         : "No interviewer is available for that exact time — please pick another slot."
       : null;
 

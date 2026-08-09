@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getAdminUtilization } from "@/lib/data/dashboard";
+import { bookingDateWindow, countRangeSlots } from "@/lib/data/availability";
 import type { Prisma, ProjectStatus } from "@prisma/client";
 
 export type VolumeGranularity = "week" | "month";
@@ -149,9 +150,12 @@ export async function getAdminUtilizationChart(opts: {
     // Defense in depth: the requested project must be within the caller's scope.
     const inScope = await db.project.findFirst({
       where: { id: projectId, ...(ownerId ? { ownerId } : {}) },
-      select: { id: true },
+      select: { id: true, availabilityPeriodDays: true },
     });
     if (!inScope) return [];
+
+    const window = bookingDateWindow(inScope.availabilityPeriodDays);
+    const slotCounts = await countRangeSlots({ projectId, ...window });
 
     const assignments = await db.projectAdmin.findMany({
       where: { projectId },
@@ -159,18 +163,16 @@ export async function getAdminUtilizationChart(opts: {
     });
     const result: AdminUtilizationPoint[] = [];
     for (const a of assignments) {
-      const [availCount, bookingCount] = await Promise.all([
-        db.adminAvailability.count({ where: { adminId: a.admin.id, projectId } }),
-        db.booking.count({
-          where: { adminId: a.admin.id, projectId, status: "confirmed" },
-        }),
-      ]);
+      const availCount = slotCounts.byAdmin[a.admin.id] ?? 0;
+      const bookingCount = await db.booking.count({
+        where: { adminId: a.admin.id, projectId, status: "confirmed" },
+      });
       result.push({
         adminId: a.admin.id,
         adminName: a.admin.name,
         submittedAvailabilityCount: availCount,
         confirmedBookingsCount: bookingCount,
-        utilizationRate: availCount > 0 ? bookingCount / availCount : 0,
+        utilizationRate: availCount > 0 ? Math.min(1, bookingCount / availCount) : 0,
       });
     }
     result.sort((a, b) => b.utilizationRate - a.utilizationRate);
@@ -206,12 +208,10 @@ export async function getProjectHealthMetrics(opts: {
   if (projects.length === 0) return [];
   const ids = projects.map((p) => p.id);
 
-  const slotsByProject = await db.adminAvailability.groupBy({
-    by: ["projectId"],
-    where: { projectId: { in: ids }, dateKey: { gte: fromDate, lte: toDate } },
-    _count: { id: true },
-  });
-  const slotCounts = new Map(slotsByProject.map((s) => [s.projectId, s._count.id]));
+  const slotCountsByProject = await Promise.all(
+    ids.map((pid) => countRangeSlots({ projectId: pid, fromDate, toDate }))
+  );
+  const slotCounts = new Map(ids.map((pid, i) => [pid, slotCountsByProject[i].total]));
 
   const bookingsByProject = await db.booking.groupBy({
     by: ["projectId", "status"],
@@ -251,7 +251,7 @@ export async function getProjectHealthMetrics(opts: {
       totalSlots,
       confirmedBookings,
       totalBookings,
-      fillRate: totalSlots > 0 ? confirmedBookings / totalSlots : 0,
+      fillRate: totalSlots > 0 ? Math.min(1, confirmedBookings / totalSlots) : 0,
       cancellationRate: totalBookings > 0 ? cancelledBookings / totalBookings : 0,
       waitlistCount: waitlistCounts.get(p.id) ?? 0,
     };

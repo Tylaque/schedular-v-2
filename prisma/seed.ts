@@ -171,16 +171,26 @@ async function main() {
     }
   }
 
-  // Clear existing availability for a1 on this project and re-seed
-  await db.adminAvailability.deleteMany({
-    where: { projectId: projectRecord.id, adminId: "a1" },
+  // Clear existing availability for a1 and re-seed using the range model
+  // (one range per slot, so exactly the seeded times stay bookable).
+  const durationMinutes = 45;
+  const seededRanges = seeded.map((s) => {
+    const [h, m] = s.time.split(":").map(Number);
+    const end = h * 60 + m + durationMinutes;
+    return {
+      adminId: s.adminId,
+      dateKey: s.dateKey,
+      startTime: s.time,
+      endTime: `${Math.floor(end / 60)}:${String(end % 60).padStart(2, "0")}`,
+    };
   });
-  if (seeded.length > 0) {
-    await db.adminAvailability.createMany({ data: seeded });
+  await db.adminAvailabilityRange.deleteMany({ where: { adminId: "a1" } });
+  if (seededRanges.length > 0) {
+    await db.adminAvailabilityRange.createMany({ data: seededRanges });
   }
-  console.log(`  Seeded ${seeded.length} availability entries for Priya`);
+  console.log(`  Seeded ${seededRanges.length} availability ranges for Priya`);
 
-  // Seed global default email templates for all 9 categories
+  // Seed global default email templates for all 11 categories
   const TEMPLATES: {
     category: string;
     audience: string;

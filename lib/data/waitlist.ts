@@ -3,6 +3,7 @@ import { recordAudit } from "@/lib/data/audit";
 import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
 import { logNotification } from "@/lib/data/notifications";
 import { createBooking } from "@/lib/data/bookings";
+import type { Prisma } from "@prisma/client";
 
 export async function joinWaitlist(input: {
   projectId: string;
@@ -58,6 +59,23 @@ export async function getWaitlistEntry(entryId: string) {
   });
 }
 
+// When a slot becomes unavailable (booked/filled), any outstanding held offer
+// for that exact slot is rescinded back to "waiting" so it can no longer be
+// claimed after the fact and stays in line for the next opening.
+export async function rescindOffersForSlot(
+  projectId: string,
+  dateKey: string,
+  time: string,
+  client?: Prisma.TransactionClient
+): Promise<number> {
+  const tx = client ?? db;
+  const res = await tx.waitlistEntry.updateMany({
+    where: { projectId, dateKey, time, status: "offered" },
+    data: { status: "waiting", offeredAt: null, expiresAt: null },
+  });
+  return res.count;
+}
+
 export async function listWaitlistForProject(projectId: string) {
   return db.waitlistEntry.findMany({
     where: { projectId },
@@ -98,10 +116,18 @@ export async function offerNextWaitlistEntry(
     orderBy: { createdAt: "asc" },
   });
 
-  const entry = exactMatch ?? await db.waitlistEntry.findFirst({
-    where: { projectId, dateKey, time: null, status: "waiting" },
-    orderBy: { createdAt: "asc" },
-  });
+  // Preference order: exact date+time, then date-without-time, then fully
+  // dateless (a date-agnostic "any future opening" request).
+  const entry =
+    exactMatch ??
+    (await db.waitlistEntry.findFirst({
+      where: { projectId, dateKey, time: null, status: "waiting" },
+      orderBy: { createdAt: "asc" },
+    })) ??
+    (await db.waitlistEntry.findFirst({
+      where: { projectId, dateKey: null, status: "waiting" },
+      orderBy: { createdAt: "asc" },
+    }));
 
   if (!entry) return null;
 
