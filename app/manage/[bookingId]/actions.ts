@@ -67,7 +67,11 @@ export async function participantCancelAction(bookingId: string, participantEmai
 
   await assertSelfServiceWindow(bookingId);
   await cancelBooking(bookingId, { actorType: "participant", actorLabel: "Self-service" });
-  revalidatePath(`/manage/${bookingId}`);
+  try {
+    revalidatePath(`/manage/${bookingId}`);
+  } catch (err) {
+    console.error("Failed to revalidate manage page after participant cancel:", err);
+  }
 }
 
 export async function participantRescheduleAction(
@@ -75,7 +79,7 @@ export async function participantRescheduleAction(
   newDateKey: string,
   newTime: string,
   participantEmail?: string
-): Promise<{ ok: true } | { ok: false; reason: string }> {
+): Promise<{ ok: true; newBookingId: string; token: string } | { ok: false; reason: string }> {
   const hdrs = await headers();
   const ip = getClientIp(hdrs);
   if (!checkRateLimit(`manage-reschedule:${ip}`, 5, 15 * 60 * 1000)) {
@@ -96,8 +100,18 @@ export async function participantRescheduleAction(
   await assertSelfServiceWindow(bookingId);
   const result = await rescheduleBookingTime(bookingId, newDateKey, newTime, { actor: { actorType: "participant", actorLabel: "Self-service" } });
   if (result.ok) {
-    revalidatePath(`/manage/${bookingId}`);
-    return { ok: true };
+    const newBooking = await db.booking.findUnique({
+      where: { id: result.newBooking.id },
+      select: { participantEmail: true },
+    });
+    if (!newBooking) return { ok: false, reason: "not_found" };
+    try {
+      revalidatePath(`/manage/${bookingId}`);
+      revalidatePath(`/manage/${result.newBooking.id}`);
+    } catch (err) {
+      console.error("Failed to revalidate manage pages after participant reschedule:", err);
+    }
+    return { ok: true, newBookingId: result.newBooking.id, token: signManageToken(result.newBooking.id, newBooking.participantEmail) };
   }
   return result;
 }

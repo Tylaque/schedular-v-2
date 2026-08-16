@@ -585,7 +585,7 @@ export async function rescheduleBookingTime(
             time_zone: "",
             meeting_link: "",
             booking_link: `${baseUrl}/book/${original.projectId}`,
-            manage_booking_link: `${baseUrl}/manage/${original.id}`,
+            manage_booking_link: `${baseUrl}/manage/${result.newBooking.id}`,
             company_logo: "",
             old_session_date: original.dateKey,
             old_session_time: original.time,

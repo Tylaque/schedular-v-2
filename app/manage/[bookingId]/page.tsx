@@ -5,6 +5,7 @@ import { hoursUntilSession, isSessionInPast } from "@/lib/slotHelpers";
 import { verifyManageToken } from "@/lib/manage-token";
 import ManageBooking from "./ManageBooking";
 import ManageBookingLocked from "./ManageBookingLocked";
+import ManageBookingResolved from "./ManageBookingResolved";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export default async function ManagePage({
   searchParams,
 }: {
   params: { bookingId: string };
-  searchParams: { token?: string };
+  searchParams: { token?: string; rescheduled?: string };
 }) {
   // No booking data is queried or rendered until the participant proves
   // knowledge of the booking email (which issues a signed, expiring token).
@@ -45,11 +46,17 @@ export default async function ManagePage({
     },
   });
 
-  if (!booking || booking.status !== "confirmed") return notFound();
+  if (!booking) return notFound();
 
   // Defense-in-depth: the token is bound to this bookingId and to the email
   // recorded on the booking.
   if (booking.participantEmail.toLowerCase().trim() !== verified.email) return notFound();
+
+  // A reschedule or cancel moves the booking out of "confirmed": the old
+  // manage link must show a clear, accurate message — never a bare 404.
+  if (booking.status !== "confirmed") {
+    return <ManageBookingResolved status={booking.status} />;
+  }
 
   const { project } = booking;
   const inPast = isSessionInPast(booking.dateKey, booking.time, project.timezone);
@@ -83,6 +90,7 @@ export default async function ManagePage({
       inPast={inPast}
       windowOpen={windowOpen}
       hoursLeft={hoursLeft}
+      showRescheduleBanner={searchParams.rescheduled === "1"}
     />
   );
 }

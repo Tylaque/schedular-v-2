@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { CalendarDays, Loader2, CheckCircle, XCircle, Video } from "lucide-react";
 import { participantCancelAction, participantRescheduleAction } from "./actions";
 import SlotPicker, { formatDate, formatTime } from "@/components/SlotPicker";
@@ -33,6 +34,7 @@ export default function ManageBooking({
   inPast,
   windowOpen,
   hoursLeft,
+  showRescheduleBanner,
 }: {
   booking: Booking;
   project: Project;
@@ -40,13 +42,16 @@ export default function ManageBooking({
   inPast: boolean;
   windowOpen: boolean;
   hoursLeft: number;
+  showRescheduleBanner: boolean;
 }) {
+  const router = useRouter();
   const [cancelling, setCancelling] = useState(false);
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [rescheduling, setRescheduling] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [rescheduledNotice, setRescheduledNotice] = useState(showRescheduleBanner);
 
   // The participant email arrives server-verified via the signed manage token
   // (see page.tsx); the actions below still verify it server-side as defense-in-depth.
@@ -58,26 +63,33 @@ export default function ManageBooking({
     try {
       await participantCancelAction(booking.id, participantEmail);
       setMessage({ type: "success", text: "Your booking has been cancelled." });
+      router.refresh();
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message ?? "Something went wrong." });
     } finally {
       setCancelling(false);
       setShowConfirmCancel(false);
     }
-  }, [booking.id, participantEmail]);
+  }, [booking.id, participantEmail, router]);
 
   const handleReschedule = useCallback(async () => {
     if (!selectedDateKey || !selectedTime) return;
     setRescheduling(true);
     setMessage(null);
+    setRescheduledNotice(false);
     try {
       const result = await participantRescheduleAction(booking.id, selectedDateKey, selectedTime, participantEmail);
       if (result.ok) {
-        setMessage({ type: "success", text: "Your booking has been rescheduled!" });
-        setSelectedDateKey(null);
-        setSelectedTime(null);
+        router.replace(`/manage/${result.newBookingId}?token=${result.token}&rescheduled=1`);
       } else {
-        const reason = result.reason === "slot_full" ? "That slot is no longer available." : "No interviewer is available at that time.";
+        const reason =
+          result.reason === "slot_full"
+            ? "That slot is no longer available."
+            : result.reason === "already_resolved"
+              ? "This booking has already been rescheduled or cancelled."
+              : result.reason === "Unauthorized — email verification required."
+                ? "Please verify your email address to continue."
+                : "No interviewer is available at that time.";
         setMessage({ type: "error", text: reason });
       }
     } catch (err: any) {
@@ -85,7 +97,7 @@ export default function ManageBooking({
     } finally {
       setRescheduling(false);
     }
-  }, [booking.id, selectedDateKey, selectedTime, participantEmail]);
+  }, [booking.id, selectedDateKey, selectedTime, participantEmail, router]);
 
   const formatHoursLeft = hoursLeft > 0
     ? `${Math.floor(hoursLeft)}h${Math.floor((hoursLeft % 1) * 60) > 0 ? ` ${Math.floor((hoursLeft % 1) * 60)}m` : ""}`
@@ -94,6 +106,13 @@ export default function ManageBooking({
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-start justify-center p-4 pt-12">
       <div className="w-full max-w-2xl space-y-4">
+
+        {rescheduledNotice && (
+          <div className="flex items-center gap-2 rounded-lg p-3 text-sm bg-green-50 border border-green-200 text-green-700 dark:bg-green-900/40 dark:border-green-800 dark:text-green-300">
+            <CheckCircle className="w-4 h-4 shrink-0" />
+            Your booking has been rescheduled!
+          </div>
+        )}
 
         {message && (
           <div className={`flex items-center gap-2 rounded-lg p-3 text-sm ${message.type === "success" ? "bg-green-50 border border-green-200 text-green-700 dark:bg-green-900/40 dark:border-green-800 dark:text-green-300" : "bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/40 dark:border-red-800 dark:text-red-300"}`}>
