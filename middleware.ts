@@ -6,9 +6,25 @@ const SECURITY_HEADERS: [string, string][] = [
   ["X-Frame-Options", "DENY"],
   ["Referrer-Policy", "strict-origin-when-cross-origin"],
   ["Permissions-Policy", "camera=(), microphone=(), geolocation=()"],
-  ["Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"],
 ];
+
+function contentSecurityPolicy(): string {
+  const scriptSrc =
+    process.env.NODE_ENV === "development"
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+      : "script-src 'self' 'unsafe-inline'";
+  return [
+    "default-src 'self'",
+    scriptSrc,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+}
 
 const ADMIN_ONLY_ROUTES = [
   "/admin/my-area",
@@ -41,6 +57,7 @@ export function middleware(req: NextRequest) {
   for (const [key, value] of SECURITY_HEADERS) {
     res.headers.set(key, value);
   }
+  res.headers.set("Content-Security-Policy", contentSecurityPolicy());
   return res;
 }
 
