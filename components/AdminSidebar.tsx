@@ -116,7 +116,7 @@ export default function AdminSidebar({ role, flaggedCount = 0 }: AdminSidebarPro
             const visibleItems = group.items.filter((i) => matchesRole(i.roles));
             if (visibleItems.length === 0) return null;
 
-            return visibleItems.map((item) => {
+            const links = visibleItems.map((item) => {
               const active = isActive(item.href);
               return (
                 <Link
@@ -133,6 +133,15 @@ export default function AdminSidebar({ role, flaggedCount = 0 }: AdminSidebarPro
                 </Link>
               );
             });
+
+            if (group.divider) {
+              return (
+                <div key="divider" className="mt-3 border-t border-gray-200 pt-3 dark:border-gray-700">
+                  {links}
+                </div>
+              );
+            }
+            return links;
           }
 
           // Dropdown groups

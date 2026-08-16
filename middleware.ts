@@ -29,6 +29,7 @@ function contentSecurityPolicy(): string {
 const ADMIN_ONLY_ROUTES = [
   "/admin/my-area",
   "/admin/my-availability",
+  "/admin/settings",
 ];
 
 const adminAuth = auth((req) => {

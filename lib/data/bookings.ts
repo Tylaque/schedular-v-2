@@ -164,7 +164,10 @@ async function sendNotification(
     for (const recipient of recipients) {
       const ctx = { ...baseCtx };
       if (recipient.adminLink) {
-        ctx.manage_booking_link = `${baseUrl}/admin/calendar`;
+        // Plain-admin recipients land on their own-work hub (the /admin/calendar
+        // route is scoped to project owners, so it would render empty for them).
+        ctx.manage_booking_link =
+          recipient.role === "admin" ? `${baseUrl}/admin/my-area` : `${baseUrl}/admin/calendar`;
       }
       const rendered = renderTemplate(template, ctx);
       try {
