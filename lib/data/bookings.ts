@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db, isSerializationConflict } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
 import { offerNextWaitlistEntry, rescindOffersForSlot } from "@/lib/data/waitlist";
 import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
@@ -9,6 +9,30 @@ import { isAdminCertifiedForProject } from "@/lib/data/certifications";
 import { timesOverlap } from "@/lib/timeOverlap";
 import { hoursUntilSession } from "@/lib/slotHelpers";
 import type { Prisma } from "@prisma/client";
+
+const LOCK_ATTEMPTS = 20;
+const LOCK_BACKOFF_MS = 50;
+
+// Bounded non-blocking advisory-lock acquire. The old `pg_advisory_xact_lock`
+// parked a pooled connection for every writer queued behind the slot lock, so a
+// burst larger than the pool starved it and every excess caller failed with
+// P2028. `pg_try_advisory_xact_lock` never blocks: per attempt the hold is a
+// single fast query, and the retry loop keeps "queue and eventually win"
+// semantics for the common case (a competitor's transaction is short), then
+// fails fast with slot_full instead of holding a connection for an unbounded
+// wait. The lock is xact-scoped either way, so release-at-commit semantics and
+// the exactly-one-writer guarantee are unchanged.
+async function acquireAdvisoryLock(tx: Prisma.TransactionClient, key: string): Promise<boolean> {
+  for (let attempt = 0; attempt < LOCK_ATTEMPTS; attempt++) {
+    const rows = await tx.$queryRaw<{ acquired: boolean }[]>`
+      SELECT pg_try_advisory_xact_lock(hashtext(${key})) AS acquired`;
+    if (rows[0]?.acquired) return true;
+    if (attempt < LOCK_ATTEMPTS - 1) {
+      await new Promise((r) => setTimeout(r, LOCK_BACKOFF_MS));
+    }
+  }
+  return false;
+}
 
 /**
  * Cross-project conflict check: returns true if the admin already has a
@@ -230,6 +254,18 @@ export async function createBooking(input: {
   try {
     const result: BookingResult = await db.$transaction(
       async (tx): Promise<BookingResult> => {
+        // Serialize writers of THIS slot (project + dateKey + time) at the
+        // database level. Only bookings for the same slot contend on the lock,
+        // so unrelated slots never block or abort each other. The lock is
+        // transaction-scoped (released at commit/rollback) and waiters queue on
+        // Postgres' advisory-lock primitives — not on Serializable predicate
+        // conflicts — which is what lets non-contending slots proceed in
+        // parallel without phantom serialization aborts.
+        const slotLocked = await acquireAdvisoryLock(tx, `bslot:${input.projectId}|${input.dateKey}|${input.time}`);
+        if (!slotLocked) {
+          return { ok: false as const, reason: "slot_full" as const };
+        }
+
         const project = await tx.project.findUnique({
           where: { id: input.projectId },
           select: { sessionCapacity: true, minNoticeHours: true, timezone: true },
@@ -259,12 +295,27 @@ export async function createBooking(input: {
           return { ok: false as const, reason: "slot_full" as const };
         }
 
-        const admin = await pickAvailableAdmin(
-          input.projectId,
-          input.dateKey,
-          input.time,
-          tx
-        );
+        // Admin assignment is serialized per (admin, slot): two concurrent
+        // bookings must not both assign the same admin to the same slot time
+        // (including across projects), while different admins/slots proceed
+        // independently. After taking the admin's lock we re-validate because
+        // the admin may have just been booked at this slot by another project.
+        let admin: AdminInfo | null = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const picked = await pickAvailableAdmin(
+            input.projectId,
+            input.dateKey,
+            input.time,
+            tx
+          );
+          if (!picked) break;
+          const adminLocked = await acquireAdvisoryLock(tx, `badm:${picked.id}|${input.dateKey}|${input.time}`);
+          if (!adminLocked) continue;
+          if (await isAdminEligibleForSlot(input.projectId, picked.id, input.dateKey, input.time, tx)) {
+            admin = picked;
+            break;
+          }
+        }
         if (!admin) {
           return { ok: false as const, reason: "no_admin_available" as const };
         }
@@ -307,7 +358,7 @@ export async function createBooking(input: {
         return { ok: true as const, booking, admin };
       },
       {
-        isolationLevel: "Serializable",
+        isolationLevel: "ReadCommitted",
         maxWait: 5000,
         timeout: 10000,
       }
@@ -350,10 +401,12 @@ export async function createBooking(input: {
 
     return result;
   } catch (err: any) {
-    // P2002: unique constraint violation on partial index (race on capacity=1 slots)
-    // P2034: serialization failure under Serializable isolation (concurrent write conflict)
-    // Both outcomes mean the slot was just taken — return slot_full, not a 500.
-    if (err?.code === "P2002" || err?.code === "P2034") {
+    // P2002: unique constraint violation (race on the slot's uniqueness).
+    // Serialization conflict: a concurrent transaction just took the slot
+    // (Postgres 40001 / Prisma P2034, in whatever shape the driver adapter
+    // surfaces it). Both outcomes mean the slot was just taken — return
+    // slot_full, not a 500.
+    if (err?.code === "P2002" || isSerializationConflict(err)) {
       await rescindOffersForSlot(input.projectId, input.dateKey, input.time).catch(() => {});
       return { ok: false, reason: "slot_full" };
     }
@@ -566,7 +619,7 @@ export async function rescheduleBookingTime(
 
     return result;
   } catch (err: any) {
-    if (err?.code === "P2002" || err?.code === "P2034") {
+    if (err?.code === "P2002" || isSerializationConflict(err)) {
       return { ok: false, reason: "slot_full" };
     }
     throw err;

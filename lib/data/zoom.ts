@@ -8,7 +8,7 @@
 // all active ZoomAccount rows, two concurrent claims serialize and cannot both
 // grab the same account.
 
-import { db } from "@/lib/db";
+import { db, isSerializationConflict } from "@/lib/db";
 import { getOffsetMinutesForDate } from "@/lib/slotHelpers";
 import { epochOverlap } from "@/lib/timeOverlap";
 import type { ZoomAccount } from "@prisma/client";
@@ -115,10 +115,7 @@ export async function claimZoomAccountForBooking(input: {
     try {
       return await attempt();
     } catch (err: any) {
-      const isSerialization =
-        err?.code === "P2034" ||
-        /(40001|serializ|deadlock)/i.test(err?.message ?? "");
-      if (!isSerialization || i === 2) {
+      if (!isSerializationConflict(err) || i === 2) {
         return { ok: false, reason: "error", detail: err?.message ?? String(err) };
       }
       await new Promise((r) => setTimeout(r, 25 * (i + 1)));
