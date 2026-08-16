@@ -101,8 +101,9 @@ function recipientRoleFor(admin: { role: string }): EmailAudience {
 /**
  * Sends a booking-related notification to the participant, the assigned admin,
  * and the project owner. The participant always receives it; the assigned
- * admin and the project owner each receive it only when their own
- * notifyOnBooking preference is enabled.
+ * admin always receives it (they run the session); the project owner receives
+ * it only when their own notifyOnBooking preference is enabled, and never as a
+ * separate copy when they are also the assigned admin.
  *
  * Sends a real email via Resend and writes one NotificationLog row per
  * recipient with the actual recipientEmail/recipientRole. Send failures are
@@ -121,7 +122,7 @@ async function sendNotification(
       }),
       db.admin.findUnique({
         where: { id: booking.adminId },
-        select: { id: true, name: true, email: true, role: true, notifyOnBooking: true },
+        select: { id: true, name: true, email: true, role: true },
       }),
     ]);
     if (!project) return;
@@ -146,7 +147,7 @@ async function sendNotification(
     type Recipient = { email: string; role: EmailAudience; adminLink?: boolean };
     const recipients: Recipient[] = [{ email: booking.participantEmail, role: "participant" }];
 
-    if (admin?.email && admin.notifyOnBooking) {
+    if (admin?.email) {
       recipients.push({ email: admin.email, role: recipientRoleFor(admin), adminLink: true });
     }
     if (project.ownerId) {

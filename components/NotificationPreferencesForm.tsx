@@ -33,7 +33,7 @@ export default function NotificationPreferencesForm({ initialEnabled }: { initia
         <div className="flex-1">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">Booking notifications</h2>
           <p className="text-xs text-gray-500 mt-1 dark:text-gray-400">
-            Email me when a booking is created, rescheduled, or cancelled on a project I&apos;m assigned to or own.
+            Email me when a booking is created, rescheduled, or cancelled on a project I own.
           </p>
         </div>
       </div>
