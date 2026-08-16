@@ -63,7 +63,7 @@ Scheduler &mdash; Multi-project scheduling platform
 
         const resend = new Resend(process.env.RESEND_API_KEY ?? "");
         await resend.emails.send({
-          from: process.env.EMAIL_FROM ?? "Scheduler <onboarding@scheduler.example.com>",
+          from: process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>",
           to: email,
           subject: "Reset your Scheduler password",
           html,
@@ -105,7 +105,7 @@ Scheduler &mdash; Multi-project scheduling platform
 
         const resend = new Resend(process.env.RESEND_API_KEY ?? "");
         await resend.emails.send({
-          from: process.env.EMAIL_FROM ?? "Scheduler <onboarding@scheduler.example.com>",
+          from: process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>",
           to: email,
           subject: "Activate your Scheduler account",
           html,
@@ -129,3 +129,4 @@ Scheduler &mdash; Multi-project scheduling platform
     return NextResponse.json({ error: "Failed to process request." }, { status: 500 });
   }
 }
+

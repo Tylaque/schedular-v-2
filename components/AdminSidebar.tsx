@@ -20,6 +20,7 @@ import {
   ListOrdered,
   User,
   Video,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 import AccountMenu from "@/components/AccountMenu";
@@ -39,6 +40,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   ListOrdered,
   User,
   Video,
+  Settings,
 };
 
 type AdminSidebarProps = {

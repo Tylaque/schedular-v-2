@@ -130,12 +130,15 @@ Scheduler &mdash; Multi-project scheduling platform
 </table>`;
       const subject = `You've been invited as a Super Admin on ${projectLabel}`;
 
-      await resend.emails.send({
-        from: process.env.EMAIL_FROM ?? "Scheduler <onboarding@scheduler.example.com>",
+      const result = await resend.emails.send({
+        from: process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>",
         to: email,
         subject,
         html,
       });
+      if (result.error || !result.data?.id) {
+        throw new Error(result.error?.message ?? "Resend did not return an email id");
+      }
       await logNotification({
         category: "admin_invitation",
         projectId: input.projectId ?? undefined,
@@ -157,12 +160,15 @@ Scheduler &mdash; Multi-project scheduling platform
         company_logo: "",
       };
       const rendered = renderTemplate(template, ctx);
-      await resend.emails.send({
-        from: process.env.EMAIL_FROM ?? "Scheduler <onboarding@scheduler.example.com>",
+      const result = await resend.emails.send({
+        from: process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>",
         to: email,
         subject: rendered.subject,
         html: rendered.bodyHtml,
       });
+      if (result.error || !result.data?.id) {
+        throw new Error(result.error?.message ?? "Resend did not return an email id");
+      }
       await logNotification({
         templateId: template.id,
         category: "admin_invitation",
@@ -213,12 +219,15 @@ Scheduler &mdash; Multi-project scheduling platform
 </table>`;
       const subject = `You've been invited to ${projectLabel}`;
 
-      await resend.emails.send({
-        from: process.env.EMAIL_FROM ?? "Scheduler <onboarding@scheduler.example.com>",
+      const result = await resend.emails.send({
+        from: process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>",
         to: email,
         subject,
         html,
       });
+      if (result.error || !result.data?.id) {
+        throw new Error(result.error?.message ?? "Resend did not return an email id");
+      }
       await logNotification({
         category: "admin_invitation",
         projectId: input.projectId ?? undefined,
@@ -244,3 +253,4 @@ Scheduler &mdash; Multi-project scheduling platform
 
   return { id: admin.id, name: admin.name, initials: admin.initials, email: admin.email, accountType: admin.accountType, role: admin.role };
 }
+

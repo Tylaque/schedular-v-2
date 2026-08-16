@@ -8,7 +8,8 @@ import { isAdminAvailableForSlot } from "@/lib/data/availability-ranges";
 import { isAdminCertifiedForProject } from "@/lib/data/certifications";
 import { timesOverlap } from "@/lib/timeOverlap";
 import { hoursUntilSession } from "@/lib/slotHelpers";
-import type { Prisma } from "@prisma/client";
+import { Resend } from "resend";
+import type { EmailAudience, Prisma } from "@prisma/client";
 
 const LOCK_ATTEMPTS = 20;
 const LOCK_BACKOFF_MS = 50;
@@ -79,7 +80,9 @@ export async function hasSchedulingConflict(
 
 type AdminInfo = { id: string; name: string; initials: string };
 
-async function sendNotification(category: "booking_confirmation" | "cancellation_notice" | "reschedule_notice", booking: {
+const NOTIFICATION_FROM = process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>";
+
+type BookingNotificationInput = {
   id: string;
   projectId: string;
   participantName: string;
@@ -87,37 +90,117 @@ async function sendNotification(category: "booking_confirmation" | "cancellation
   dateKey: string;
   time: string;
   adminId: string;
-}, extraCtx?: Record<string, string>) {
+};
+
+type BookingNotificationCategory = "booking_confirmation" | "cancellation_notice" | "reschedule_notice";
+
+function recipientRoleFor(admin: { role: string }): EmailAudience {
+  return admin.role === "admin" ? "admin" : "super_admin";
+}
+
+/**
+ * Sends a booking-related notification to the participant, the assigned admin,
+ * and the project owner. The participant always receives it; the assigned
+ * admin and the project owner each receive it only when their own
+ * notifyOnBooking preference is enabled.
+ *
+ * Sends a real email via Resend and writes one NotificationLog row per
+ * recipient with the actual recipientEmail/recipientRole. Send failures are
+ * logged with status "failed" and never throw into the booking transaction.
+ */
+async function sendNotification(
+  category: BookingNotificationCategory,
+  booking: BookingNotificationInput,
+  extraCtx?: Record<string, string>,
+) {
   try {
     const [project, admin] = await Promise.all([
-      db.project.findUnique({ where: { id: booking.projectId }, select: { name: true, company: true, timezone: true } }),
-      db.admin.findUnique({ where: { id: booking.adminId }, select: { name: true } }),
+      db.project.findUnique({
+        where: { id: booking.projectId },
+        select: { name: true, company: true, timezone: true, ownerId: true },
+      }),
+      db.admin.findUnique({
+        where: { id: booking.adminId },
+        select: { id: true, name: true, email: true, role: true, notifyOnBooking: true },
+      }),
     ]);
+    if (!project) return;
+
     const template = await getActiveTemplate(category, booking.projectId);
-    const ctx: Record<string, string> = {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+
+    const baseCtx: Record<string, string> = {
       participant_name: booking.participantName,
-      project_name: project?.name ?? "",
-      company_name: project?.company ?? "",
+      project_name: project.name ?? "",
+      company_name: project.company ?? "",
       session_date: booking.dateKey,
       session_time: booking.time,
       admin_name: admin?.name ?? "",
-      time_zone: project?.timezone ?? "",
-      meeting_link: `${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/manage/${booking.id}`,
-      booking_link: `${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/book/${booking.projectId}`,
+      time_zone: project.timezone ?? "",
+      meeting_link: `${baseUrl}/manage/${booking.id}`,
+      booking_link: `${baseUrl}/book/${booking.projectId}`,
       company_logo: "",
       ...extraCtx,
     };
-    const rendered = renderTemplate(template, ctx);
-    await logNotification({
-      templateId: template.id,
-      category,
-      projectId: booking.projectId,
-      recipientEmail: booking.participantEmail,
-      recipientRole: "participant",
-      subject: rendered.subject,
-      renderedBody: rendered.bodyHtml,
-      status: "sent",
-    });
+
+    type Recipient = { email: string; role: EmailAudience; adminLink?: boolean };
+    const recipients: Recipient[] = [{ email: booking.participantEmail, role: "participant" }];
+
+    if (admin?.email && admin.notifyOnBooking) {
+      recipients.push({ email: admin.email, role: recipientRoleFor(admin), adminLink: true });
+    }
+    if (project.ownerId) {
+      const owner = await db.admin.findUnique({
+        where: { id: project.ownerId },
+        select: { id: true, email: true, role: true, notifyOnBooking: true },
+      });
+      if (owner?.email && owner.notifyOnBooking && owner.id !== admin?.id) {
+        recipients.push({ email: owner.email, role: recipientRoleFor(owner), adminLink: true });
+      }
+    }
+
+    const resend = new Resend(process.env.RESEND_API_KEY ?? "");
+
+    for (const recipient of recipients) {
+      const ctx = { ...baseCtx };
+      if (recipient.adminLink) {
+        ctx.manage_booking_link = `${baseUrl}/admin/calendar`;
+      }
+      const rendered = renderTemplate(template, ctx);
+      try {
+        const result = await resend.emails.send({
+          from: NOTIFICATION_FROM,
+          to: recipient.email,
+          subject: rendered.subject,
+          html: rendered.bodyHtml,
+        });
+        if (result.error || !result.data?.id) {
+          throw new Error(result.error?.message ?? "Resend did not return an email id");
+        }
+        await logNotification({
+          templateId: template.id,
+          category,
+          projectId: booking.projectId,
+          recipientEmail: recipient.email,
+          recipientRole: recipient.role,
+          subject: rendered.subject,
+          renderedBody: rendered.bodyHtml,
+          status: "sent",
+        });
+      } catch (err) {
+        console.error(`Failed to send ${category} notification to ${recipient.email}:`, err);
+        await logNotification({
+          templateId: template.id,
+          category,
+          projectId: booking.projectId,
+          recipientEmail: recipient.email,
+          recipientRole: recipient.role,
+          subject: rendered.subject,
+          renderedBody: rendered.bodyHtml,
+          status: "failed",
+        }).catch(() => {});
+      }
+    }
   } catch (err) {
     console.error(`Failed to send ${category} notification:`, err);
   }
@@ -570,41 +653,20 @@ export async function rescheduleBookingTime(
         afterState: { dateKey: newDateKey, time: newTime, adminId: result.newBooking.adminId },
       }).catch(() => {});
 
-      (async () => {
-        try {
-          const project = await db.project.findUnique({ where: { id: original.projectId }, select: { name: true, company: true } });
-          const template = await getActiveTemplate("reschedule_notice", original.projectId);
-          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-          const ctx = {
-            participant_name: original.participantName,
-            project_name: project?.name ?? "",
-            company_name: project?.company ?? "",
-            session_date: newDateKey,
-            session_time: newTime,
-            admin_name: "",
-            time_zone: "",
-            meeting_link: "",
-            booking_link: `${baseUrl}/book/${original.projectId}`,
-            manage_booking_link: `${baseUrl}/manage/${result.newBooking.id}`,
-            company_logo: "",
-            old_session_date: original.dateKey,
-            old_session_time: original.time,
-          };
-          const rendered = renderTemplate(template, ctx);
-          await logNotification({
-            templateId: template.id,
-            category: "reschedule_notice",
-            projectId: original.projectId,
-            recipientEmail: original.participantEmail,
-            recipientRole: "participant",
-            subject: rendered.subject,
-            renderedBody: rendered.bodyHtml,
-            status: "sent",
-          });
-        } catch (err) {
-          console.error("Failed to send reschedule notification:", err);
-        }
-      })();
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+      sendNotification("reschedule_notice", {
+        id: result.newBooking.id,
+        projectId: original.projectId,
+        participantName: original.participantName,
+        participantEmail: original.participantEmail,
+        dateKey: newDateKey,
+        time: newTime,
+        adminId: result.newBooking.adminId,
+      }, {
+        manage_booking_link: `${baseUrl}/manage/${result.newBooking.id}`,
+        old_session_date: original.dateKey,
+        old_session_time: original.time,
+      }).catch(() => {});
 
       offerNextWaitlistEntry(original.projectId, original.dateKey, original.time).catch((err) => {
         console.error("Failed to offer waitlist after reschedule:", err);

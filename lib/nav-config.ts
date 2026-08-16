@@ -42,6 +42,9 @@ export const NAV_CONFIG: NavSection[] = [
   { type: "link", icon: "CalendarDays", items: [
     { label: "Calendar", href: "/admin/calendar", roles: ["super_admin", "org_owner"], icon: "CalendarDays" },
   ]},
+  { type: "link", icon: "Settings", items: [
+    { label: "Settings", href: "/admin/settings", roles: ["admin", "super_admin", "org_owner"], icon: "Settings" },
+  ]},
   { type: "dropdown", label: "Availability", icon: "Clock", items: [
     { label: "My Availability", href: "/admin/my-availability", roles: ["admin", "super_admin", "org_owner"], icon: "Clock" },
     { label: "Team Availability", href: "/admin/team-availability", roles: ["super_admin", "org_owner"], icon: "Users" },

@@ -154,12 +154,15 @@ export async function sendParticipantInvitation(participantId: string): Promise<
   const rendered = renderTemplate(template, ctx);
 
   const resend = new Resend(process.env.RESEND_API_KEY ?? "");
-  await resend.emails.send({
+  const result = await resend.emails.send({
     from: process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>",
     to: participant.email,
     subject: rendered.subject,
     html: rendered.bodyHtml,
   });
+  if (result.error || !result.data?.id) {
+    throw new Error(result.error?.message ?? "Resend did not return an email id");
+  }
 
   await logNotification({
     templateId: template.id,

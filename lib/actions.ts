@@ -962,3 +962,18 @@ export async function getZoomPoolStatusAction(): Promise<{
     activeCount: accounts.filter((a) => a.isActive).length,
   };
 }
+
+export async function updateNotificationPreferencesAction(enabled: boolean): Promise<{ ok: boolean; reason?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, reason: "unauthorized" };
+  try {
+    await db.admin.update({
+      where: { id: session.user.id },
+      data: { notifyOnBooking: enabled },
+    });
+    revalidatePath("/admin/settings");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
