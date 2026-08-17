@@ -9,13 +9,14 @@ export const dynamic = "force-dynamic";
 export default async function AdminWaitlistPage({
   searchParams,
 }: {
-  searchParams: { projectId?: string };
+  searchParams: Promise<{ projectId?: string }>;
 }) {
+  const { projectId: spProjectId } = await searchParams;
   const session = await auth();
   const role = (session?.user as any)?.role;
   const ownerId = role === "org_owner" ? undefined : session?.user?.id;
   const projects = await listProjects(ownerId);
-  const projectId = searchParams.projectId ?? projects[0]?.id ?? "";
+  const projectId = spProjectId ?? projects[0]?.id ?? "";
   const entries = projectId ? await listWaitlistForProject(projectId) : [];
 
   return (

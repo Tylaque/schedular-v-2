@@ -16,12 +16,13 @@ const AUDIENCE_BADGE: Record<string, string> = {
 export default async function AdminTemplatesPage({
   searchParams,
 }: {
-  searchParams: { projectId?: string };
+  searchParams: Promise<{ projectId?: string }>;
 }) {
+  const { projectId: spProjectId } = await searchParams;
   const session = await auth();
   const role = (session?.user as any)?.role;
   const ownerId = role === "org_owner" ? undefined : session?.user?.id;
-  const selectedProjectId = searchParams.projectId ?? "";
+  const selectedProjectId = spProjectId ?? "";
   const templates = await listTemplates(selectedProjectId || undefined);
   const projects = await listProjects(ownerId);
 

@@ -9,12 +9,13 @@ export const dynamic = "force-dynamic";
 export default async function PersonalizedBookPage({
   params,
 }: {
-  params: { project: string; participantId: string };
+  params: Promise<{ project: string; participantId: string }>;
 }) {
-  const project = await getProjectBySlug(params.project);
+  const { project: slug, participantId } = await params;
+  const project = await getProjectBySlug(slug);
   if (!project) return notFound();
 
-  const participant = await getParticipantById(params.participantId);
+  const participant = await getParticipantById(participantId);
   if (!participant) return notFound();
 
   if (participant.projectId !== project.id) return notFound();

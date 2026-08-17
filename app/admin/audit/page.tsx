@@ -37,18 +37,19 @@ const ACTION_BADGE: Record<string, string> = {
 export default async function AuditPage({
   searchParams,
 }: {
-  searchParams: { projectId?: string; action?: string; from?: string; to?: string };
+  searchParams: Promise<{ projectId?: string; action?: string; from?: string; to?: string }>;
 }) {
+  const sp = await searchParams;
   const session = await auth();
   const role = (session?.user as any)?.role;
   const ownerId = role === "org_owner" ? undefined : session?.user?.id;
   const projects = await listProjects(ownerId);
 
   const filters: Parameters<typeof listAuditLogs>[0] = {};
-  if (searchParams.projectId) filters.projectId = searchParams.projectId;
-  if (searchParams.action) filters.action = searchParams.action as AuditAction;
-  if (searchParams.from) filters.from = new Date(searchParams.from);
-  if (searchParams.to) filters.to = new Date(searchParams.to);
+  if (sp.projectId) filters.projectId = sp.projectId;
+  if (sp.action) filters.action = sp.action as AuditAction;
+  if (sp.from) filters.from = new Date(sp.from);
+  if (sp.to) filters.to = new Date(sp.to);
   if (ownerId) filters.ownerId = ownerId;
 
   const logs = await listAuditLogs(filters);
@@ -74,7 +75,7 @@ export default async function AuditPage({
               id="project"
               name="projectId"
               className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm dark:border-gray-600"
-              defaultValue={searchParams.projectId ?? ""}
+              defaultValue={sp.projectId ?? ""}
             >
               <option value="">All projects</option>
               {projects.map((p) => (
@@ -88,7 +89,7 @@ export default async function AuditPage({
               id="action"
               name="action"
               className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm dark:border-gray-600"
-              defaultValue={searchParams.action ?? ""}
+              defaultValue={sp.action ?? ""}
             >
               <option value="">All actions</option>
               {Object.entries(ACTION_LABEL).map(([value, label]) => (

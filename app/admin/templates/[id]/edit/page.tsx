@@ -5,8 +5,9 @@ import TemplateEditForm from "@/components/TemplateEditForm";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditTemplatePage({ params }: { params: { id: string } }) {
-  const template = await db.emailTemplate.findUnique({ where: { id: params.id } });
+export default async function EditTemplatePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const template = await db.emailTemplate.findUnique({ where: { id } });
   if (!template) notFound();
 
   const history = await getTemplateHistory(template.category, template.projectId ?? undefined);

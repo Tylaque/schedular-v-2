@@ -8,9 +8,10 @@ export const dynamic = "force-dynamic";
 export default async function BookPage({
   params,
 }: {
-  params: { project: string };
+  params: Promise<{ project: string }>;
 }) {
-  const project = await getProjectBySlug(params.project);
+  const { project: slug } = await params;
+  const project = await getProjectBySlug(slug);
   if (!project) return notFound();
 
   const availability = await getConsolidatedAvailability(project.id);

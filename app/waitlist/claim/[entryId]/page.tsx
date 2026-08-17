@@ -7,9 +7,10 @@ export const dynamic = "force-dynamic";
 export default async function ClaimPage({
   params,
 }: {
-  params: { entryId: string };
+  params: Promise<{ entryId: string }>;
 }) {
-  const entry = await getWaitlistEntry(params.entryId);
+  const { entryId } = await params;
+  const entry = await getWaitlistEntry(entryId);
   if (!entry) return notFound();
 
   return <ClaimOffer entry={entry} />;

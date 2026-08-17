@@ -12,12 +12,13 @@ export const dynamic = "force-dynamic";
 export default async function ParticipantsPage({
   params,
 }: {
-  params: { project: string };
+  params: Promise<{ project: string }>;
 }) {
+  const { project: slug } = await params;
   const session = await auth();
   if (!session?.user?.id) return notFound();
 
-  const project = await getProjectBySlug(params.project);
+  const project = await getProjectBySlug(slug);
   if (!project) return notFound();
 
   const user = { id: session.user.id, role: (session.user as any).role as "admin" | "super_admin" | "org_owner" };
@@ -43,7 +44,7 @@ export default async function ParticipantsPage({
             </p>
           </div>
           <Link
-            href={`/admin/projects/${params.project}/edit`}
+            href={`/admin/projects/${slug}/edit`}
             className="text-sm text-brand-600 hover:text-brand-700 font-medium"
           >
             Edit project

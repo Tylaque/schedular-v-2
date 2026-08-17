@@ -4,14 +4,15 @@ import { generateReport, REPORT_DEFINITIONS } from "@/lib/data/reports";
 
 export async function GET(
   request: Request,
-  { params }: { params: { type: string } }
+  { params }: { params: Promise<{ type: string }> }
 ) {
+  const { type } = await params;
   const { searchParams } = new URL(request.url);
   const format = searchParams.get("format") ?? "json";
 
-  const def = REPORT_DEFINITIONS.find((d) => d.slug === params.type);
+  const def = REPORT_DEFINITIONS.find((d) => d.slug === type);
   if (!def) {
-    return NextResponse.json({ error: `Unknown report type: ${params.type}` }, { status: 404 });
+    return NextResponse.json({ error: `Unknown report type: ${type}` }, { status: 404 });
   }
 
   try {
@@ -21,7 +22,7 @@ export async function GET(
     }
     const role = (session.user as any)?.role;
     const ownerId = role === "org_owner" ? undefined : session.user.id;
-    const rows = await generateReport(params.type, ownerId);
+    const rows = await generateReport(type, ownerId);
 
     if (format === "csv") {
       const header = def.columns.map((c) => c.label).join(",");
@@ -37,7 +38,7 @@ export async function GET(
       return new NextResponse(csv, {
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition": `attachment; filename="${params.type}.csv"`,
+          "Content-Disposition": `attachment; filename="${type}.csv"`,
         },
       });
     }
@@ -52,7 +53,7 @@ export async function GET(
       return new NextResponse(buffer, {
         headers: {
           "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "Content-Disposition": `attachment; filename="${params.type}.xlsx"`,
+          "Content-Disposition": `attachment; filename="${type}.xlsx"`,
         },
       });
     }

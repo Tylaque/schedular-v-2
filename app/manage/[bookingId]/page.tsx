@@ -13,19 +13,19 @@ export default async function ManagePage({
   params,
   searchParams,
 }: {
-  params: { bookingId: string };
-  searchParams: { token?: string; rescheduled?: string };
+  params: Promise<{ bookingId: string }>;
+  searchParams: Promise<{ token?: string; rescheduled?: string }>;
 }) {
-  // No booking data is queried or rendered until the participant proves
-  // knowledge of the booking email (which issues a signed, expiring token).
-  // A leaked /manage/<id> link alone therefore exposes nothing.
-  const verified = searchParams.token ? verifyManageToken(searchParams.token) : null;
-  if (!verified || verified.bookingId !== params.bookingId) {
-    return <ManageBookingLocked bookingId={params.bookingId} />;
+  const { bookingId } = await params;
+  const { token, rescheduled } = await searchParams;
+
+  const verified = token ? verifyManageToken(token) : null;
+  if (!verified || verified.bookingId !== bookingId) {
+    return <ManageBookingLocked bookingId={bookingId} />;
   }
 
   const booking = await db.booking.findUnique({
-    where: { id: params.bookingId },
+    where: { id: bookingId },
     select: {
       id: true,
       participantName: true,
@@ -90,7 +90,7 @@ export default async function ManagePage({
       inPast={inPast}
       windowOpen={windowOpen}
       hoursLeft={hoursLeft}
-      showRescheduleBanner={searchParams.rescheduled === "1"}
+      showRescheduleBanner={rescheduled === "1"}
     />
   );
 }

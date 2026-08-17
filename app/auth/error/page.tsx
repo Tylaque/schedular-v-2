@@ -3,12 +3,12 @@ import { Calendar, ShieldAlert, ArrowLeft } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default function AuthErrorPage({
+export default async function AuthErrorPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: Promise<{ error?: string }>;
 }) {
-  const error = searchParams.error;
+  const { error } = await searchParams;
   const denied = error === "AccessDenied";
   const deactivated = error === "account_deactivated";
 
