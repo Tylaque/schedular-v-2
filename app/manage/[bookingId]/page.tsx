@@ -48,9 +48,20 @@ export default async function ManagePage({
 
   if (!booking) return notFound();
 
-  // Defense-in-depth: the token is bound to this bookingId and to the email
-  // recorded on the booking.
-  if (booking.participantEmail.toLowerCase().trim() !== verified.email) return notFound();
+  // Defense-in-depth: the token is bound to this bookingId and to a specific email.
+  // Participant tokens must match the booking's participantEmail.
+  // Admin tokens must match an active admin assigned to this booking's project.
+  if (verified.scope === "a") {
+    const isAdmin = await db.projectAdmin.findFirst({
+      where: {
+        projectId: booking.project.id,
+        admin: { email: verified.email, isActive: true },
+      },
+    });
+    if (!isAdmin) return notFound();
+  } else {
+    if (booking.participantEmail.toLowerCase().trim() !== verified.email) return notFound();
+  }
 
   // A reschedule or cancel moves the booking out of "confirmed": the old
   // manage link must show a clear, accurate message — never a bare 404.

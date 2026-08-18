@@ -1,11 +1,12 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-// Signed, expiring token that unlocks the participant manage-booking page.
-// Issued only after the participant's email matches the booking's email
-// (see verifyManageEmail in app/manage/[bookingId]/actions.ts), so a leaked
-// manage link alone exposes nothing — the bearer must also prove knowledge
-// of the booking email to obtain a token.
-const TOKEN_TTL_SECONDS = 30 * 60;
+// Signed, expiring token that unlocks the manage-booking page.
+// Two scopes:
+//   "p" (participant) — 30-minute TTL, issued after email verification
+//   "a" (admin)       — 7-day TTL, embedded in booking-confirmation emails
+//                       sent to admin/super_admin recipients
+const PARTICIPANT_TTL_SECONDS = 30 * 60;
+const ADMIN_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 function secret(): string {
   const s = process.env.AUTH_SECRET;
@@ -13,6 +14,11 @@ function secret(): string {
   return s;
 }
 
+/**
+ * Decode and verify a token, returning the raw payload parts.
+ * Accepts both legacy 3-part (bookingId|email|expiry) and new
+ * 4-part (bookingId|email|expiry|scope) payloads.
+ */
 function payloadParts(token: string): string[] | null {
   const [encoded, sig] = token.split(".");
   if (!encoded || !sig) return null;
@@ -23,7 +29,7 @@ function payloadParts(token: string): string[] | null {
     return null;
   }
   const parts = payload.split("|");
-  if (parts.length !== 3) return null;
+  if (parts.length !== 3 && parts.length !== 4) return null;
 
   const expected = createHmac("sha256", secret()).update(payload).digest("base64url");
   let sigBuf: Buffer;
@@ -40,20 +46,29 @@ function payloadParts(token: string): string[] | null {
   return parts;
 }
 
+/** Sign a participant-scoped token (30-minute TTL). */
 export function signManageToken(bookingId: string, email: string): string {
-  const expSec = Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS;
+  const expSec = Math.floor(Date.now() / 1000) + PARTICIPANT_TTL_SECONDS;
   const payload = `${bookingId}|${email.toLowerCase().trim()}|${expSec}`;
+  const sig = createHmac("sha256", secret()).update(payload).digest("base64url");
+  return `${Buffer.from(payload).toString("base64url")}.${sig}`;
+}
+
+/** Sign an admin-scoped token (7-day TTL). */
+export function signManageAdminToken(bookingId: string, email: string): string {
+  const expSec = Math.floor(Date.now() / 1000) + ADMIN_TTL_SECONDS;
+  const payload = `${bookingId}|${email.toLowerCase().trim()}|${expSec}|a`;
   const sig = createHmac("sha256", secret()).update(payload).digest("base64url");
   return `${Buffer.from(payload).toString("base64url")}.${sig}`;
 }
 
 export function verifyManageToken(
   token: string
-): { bookingId: string; email: string } | null {
+): { bookingId: string; email: string; scope: "p" | "a" } | null {
   const parts = payloadParts(token);
   if (!parts) return null;
-  const [bookingId, email, expSec] = parts;
+  const [bookingId, email, expSec, scope] = parts;
   if (!bookingId || !email || !expSec) return null;
   if (Math.floor(Date.now() / 1000) > Number(expSec)) return null;
-  return { bookingId, email };
+  return { bookingId, email, scope: scope === "a" ? "a" : "p" };
 }
