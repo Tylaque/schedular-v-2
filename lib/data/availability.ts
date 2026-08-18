@@ -1,8 +1,6 @@
 import { db } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
 import { expireStaleOffers } from "@/lib/data/waitlist";
-import { isAdminAvailableForSlot, getAdminRanges } from "@/lib/data/availability-ranges";
-import { isAdminCertifiedForProject } from "@/lib/data/certifications";
 
 export async function setAdminAvailabilityBulk(
   projectId: string,
@@ -100,10 +98,30 @@ export async function getConsolidatedAvailability(
 
   // Certification gate: only certified associates count toward bookable slots.
   // Zero project requirements = all assigned associates are eligible.
+  // Load requirements once, then check each admin in-memory.
+  const requiredCerts = await db.projectCertificationRequirement.findMany({
+    where: { projectId },
+    select: { certificationId: true },
+  });
   const certifiedIds: string[] = [];
-  for (const adminId of adminIds) {
-    if (await isAdminCertifiedForProject(projectId, adminId)) {
-      certifiedIds.push(adminId);
+  if (requiredCerts.length === 0) {
+    certifiedIds.push(...adminIds);
+  } else {
+    const requiredIds = new Set(requiredCerts.map((r) => r.certificationId));
+    const heldRows = await db.adminCertification.findMany({
+      where: { adminId: { in: adminIds }, certificationId: { in: [...requiredIds] } },
+      select: { adminId: true, certificationId: true },
+    });
+    const heldByAdmin = new Map<string, Set<string>>();
+    for (const row of heldRows) {
+      if (!heldByAdmin.has(row.adminId)) heldByAdmin.set(row.adminId, new Set());
+      heldByAdmin.get(row.adminId)!.add(row.certificationId);
+    }
+    for (const adminId of adminIds) {
+      const held = heldByAdmin.get(adminId);
+      if (held && requiredIds.size === [...requiredIds].filter((id) => held.has(id)).length) {
+        certifiedIds.push(adminId);
+      }
     }
   }
   if (certifiedIds.length === 0) return {};
@@ -174,9 +192,13 @@ export async function getConsolidatedAvailability(
         if (offeredSet.has(key)) continue;
 
         // Check if at least one certified admin is range-available for this slot
+        // Uses the pre-loaded rangesByDate instead of per-slot DB queries
+        const dateRanges = rangesByDate[dateKey] ?? [];
         let slotBookable = false;
-        for (const adminId of certifiedIds) {
-          if (await isAdminAvailableForSlot(adminId, dateKey, time, project.durationMinutes)) {
+        for (const r of dateRanges) {
+          const rangeStart = parseTime(r.startTime);
+          const rangeEnd = parseTime(r.endTime);
+          if (rangeStart <= m && m + step <= rangeEnd) {
             slotBookable = true;
             break;
           }
@@ -261,10 +283,29 @@ export async function countRangeSlots(opts: {
     select: { adminId: true },
   });
 
+  const requiredCerts2 = await db.projectCertificationRequirement.findMany({
+    where: { projectId: opts.projectId },
+    select: { certificationId: true },
+  });
   const qualifiedIds: string[] = [];
-  for (const pa of projectAdmins) {
-    if (await isAdminCertifiedForProject(opts.projectId, pa.adminId)) {
-      qualifiedIds.push(pa.adminId);
+  if (requiredCerts2.length === 0) {
+    qualifiedIds.push(...projectAdmins.map((pa) => pa.adminId));
+  } else {
+    const requiredIds = new Set(requiredCerts2.map((r) => r.certificationId));
+    const heldRows = await db.adminCertification.findMany({
+      where: { adminId: { in: projectAdmins.map((pa) => pa.adminId) }, certificationId: { in: [...requiredIds] } },
+      select: { adminId: true, certificationId: true },
+    });
+    const heldByAdmin = new Map<string, Set<string>>();
+    for (const row of heldRows) {
+      if (!heldByAdmin.has(row.adminId)) heldByAdmin.set(row.adminId, new Set());
+      heldByAdmin.get(row.adminId)!.add(row.certificationId);
+    }
+    for (const pa of projectAdmins) {
+      const held = heldByAdmin.get(pa.adminId);
+      if (held && requiredIds.size === [...requiredIds].filter((id) => held.has(id)).length) {
+        qualifiedIds.push(pa.adminId);
+      }
     }
   }
   if (qualifiedIds.length === 0) return { total: 0, byAdmin: {} };
