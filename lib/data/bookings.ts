@@ -8,7 +8,6 @@ import { isAdminAvailableForSlot } from "@/lib/data/availability-ranges";
 import { isAdminCertifiedForProject } from "@/lib/data/certifications";
 import { timesOverlap } from "@/lib/timeOverlap";
 import { hoursUntilSession } from "@/lib/slotHelpers";
-import { signManageAdminToken } from "@/lib/manage-token";
 import { Resend } from "resend";
 import type { EmailAudience, Prisma } from "@prisma/client";
 
@@ -115,6 +114,7 @@ async function sendNotification(
   booking: BookingNotificationInput,
   extraCtx?: Record<string, string>,
 ) {
+  console.log(`[notify] ENTRY category=${category} bookingId=${booking.id} projectId=${booking.projectId}`);
   try {
     const [project, admin] = await Promise.all([
       db.project.findUnique({
@@ -126,9 +126,12 @@ async function sendNotification(
         select: { id: true, name: true, email: true, role: true },
       }),
     ]);
-    if (!project) return;
+    if (!project) { console.log(`[notify] ABORT project not found for projectId=${booking.projectId}`); return; }
 
     const template = await getActiveTemplate(category, booking.projectId);
+    console.log(`[notify] template=${template?.id ?? "NULL"} category=${category} projectId=${booking.projectId}`);
+    if (!template) { console.log(`[notify] ABORT no active template for category=${category} projectId=${booking.projectId}`); return; }
+
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 
     const baseCtx: Record<string, string> = {
@@ -161,19 +164,19 @@ async function sendNotification(
       }
     }
 
-    const resend = new Resend(process.env.RESEND_API_KEY ?? "");
+    console.log(`[notify] recipients=${JSON.stringify(recipients.map(r => ({ email: r.email, role: r.role, adminLink: !!r.adminLink })))}`);
+
+    const resendApiKey = process.env.RESEND_API_KEY ?? "";
+    console.log(`[notify] RESEND_API_KEY present=${resendApiKey.length > 0} length=${resendApiKey.length}`);
+    const resend = new Resend(resendApiKey);
 
     for (const recipient of recipients) {
       const ctx = { ...baseCtx };
       if (recipient.adminLink) {
-        if (recipient.role === "admin" || recipient.role === "super_admin") {
-          const adminToken = signManageAdminToken(booking.id, recipient.email);
-          ctx.manage_booking_link = `${baseUrl}/manage/${booking.id}?token=${encodeURIComponent(adminToken)}`;
-        } else {
-          ctx.manage_booking_link = `${baseUrl}/admin/calendar`;
-        }
+        ctx.manage_booking_link = `${baseUrl}/admin/calendar`;
       }
       const rendered = renderTemplate(template, ctx);
+      console.log(`[notify] SENDING to=${recipient.email} role=${recipient.role}`);
       try {
         const result = await resend.emails.send({
           from: NOTIFICATION_FROM,
@@ -184,6 +187,7 @@ async function sendNotification(
         if (result.error || !result.data?.id) {
           throw new Error(result.error?.message ?? "Resend did not return an email id");
         }
+        console.log(`[notify] SENT to=${recipient.email} resendId=${result.data.id}`);
         await logNotification({
           templateId: template.id,
           category,
@@ -194,8 +198,9 @@ async function sendNotification(
           renderedBody: rendered.bodyHtml,
           status: "sent",
         });
+        console.log(`[notify] LOGGED to=${recipient.email} status=sent`);
       } catch (err) {
-        console.error(`Failed to send ${category} notification to ${recipient.email}:`, err);
+        console.error(`[notify] SEND_FAILED to=${recipient.email} role=${recipient.role}:`, err);
         await logNotification({
           templateId: template.id,
           category,
@@ -205,11 +210,12 @@ async function sendNotification(
           subject: rendered.subject,
           renderedBody: rendered.bodyHtml,
           status: "failed",
-        }).catch(() => {});
+        }).catch((logErr) => console.error(`[notify] LOG_FAILED to=${recipient.email}:`, logErr));
       }
     }
+    console.log(`[notify] DONE category=${category} bookingId=${booking.id}`);
   } catch (err) {
-    console.error(`Failed to send ${category} notification:`, err);
+    console.error(`[notify] OUTER_CATCH category=${category} bookingId=${booking.id}:`, err);
   }
 }
 
