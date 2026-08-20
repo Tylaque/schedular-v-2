@@ -35,8 +35,9 @@ export async function getAzureSignInGate(email: string): Promise<SignInGate> {
   const normalized = email.trim().toLowerCase();
   const admin = await db.admin.findFirst({
     where: { email: { equals: normalized, mode: "insensitive" } },
-    select: { isActive: true },
+    select: { id: true, email: true, isActive: true },
   });
+  console.log(`[AUTH-DEBUG] getAzureSignInGate: normalized="${normalized}" found=${!!admin} adminId=${admin?.id ?? "null"} adminEmail=${admin?.email ?? "null"} isActive=${admin?.isActive ?? "null"}`);
   if (!admin) return { invited: false, deactivated: false };
   return { invited: true, deactivated: !admin.isActive };
 }

@@ -159,10 +159,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account }: { user?: { email?: string | null } | null; account?: { provider?: string } | null }) {
       if (account?.provider === "azure-ad") {
         const email = (user?.email ?? "").trim();
-        if (!email) return false;
+        console.log(`[AUTH-DEBUG] signIn attempt: email="${email}" provider=${account.provider}`);
+        if (!email) { console.log("[AUTH-DEBUG] signIn ABORT: empty email"); return false; }
         const { getAzureSignInGate } = await import("@/lib/data/auth-invite");
         const gate = await getAzureSignInGate(email);
-        if (!gate.invited) return false;
+        console.log(`[AUTH-DEBUG] signIn gate: invited=${gate.invited} deactivated=${gate.deactivated} email="${email}"`);
+        if (!gate.invited) { console.log(`[AUTH-DEBUG] signIn DENIED: email="${email}" not found in Admin table`); return false; }
         // A deactivated account is a real, known user hitting a real barrier —
         // redirect them to a specific message instead of the generic
         // AccessDenied (which is reserved for unknown emails to avoid leaking
