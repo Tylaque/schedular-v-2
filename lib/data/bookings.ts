@@ -8,6 +8,7 @@ import { isAdminAvailableForSlot } from "@/lib/data/availability-ranges";
 import { isAdminCertifiedForProject } from "@/lib/data/certifications";
 import { timesOverlap } from "@/lib/timeOverlap";
 import { hoursUntilSession } from "@/lib/slotHelpers";
+import { signManageAdminToken } from "@/lib/manage-token";
 import { Resend } from "resend";
 import type { EmailAudience, Prisma } from "@prisma/client";
 
@@ -173,7 +174,12 @@ async function sendNotification(
     for (const recipient of recipients) {
       const ctx = { ...baseCtx };
       if (recipient.adminLink) {
-        ctx.manage_booking_link = `${baseUrl}/admin/calendar`;
+        if (recipient.role === "admin" || recipient.role === "super_admin") {
+          const adminToken = signManageAdminToken(booking.id, recipient.email);
+          ctx.manage_booking_link = `${baseUrl}/manage/${booking.id}?token=${encodeURIComponent(adminToken)}`;
+        } else {
+          ctx.manage_booking_link = `${baseUrl}/admin/calendar`;
+        }
       }
       const rendered = renderTemplate(template, ctx);
       console.log(`[notify] SENDING to=${recipient.email} role=${recipient.role}`);
