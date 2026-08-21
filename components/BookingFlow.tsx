@@ -18,11 +18,11 @@ import { Project, TIMEZONES } from "@/lib/slotHelpers";
 import { confirmBookingAction, joinWaitlistAction } from "@/lib/actions";
 import { TimeSlotList } from "@/components/SlotPicker";
 
-type Step = "calendar" | "details" | "confirmed";
+type Step = "calendar" | "admin" | "details" | "confirmed";
 type BookingState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "error"; reason: "slot_full" | "no_admin_available" | "rate_limited" | "too_short_notice" };
+  | { status: "error"; reason: "slot_full" | "no_admin_available" | "rate_limited" | "too_short_notice" | "admin_not_eligible" };
 
 function pad(n: number) {
   return n < 10 ? `0${n}` : `${n}`;
@@ -45,12 +45,14 @@ const DOW = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 export default function BookingFlow({
   project,
   availability,
+  slotAdminMap,
   prefillName,
   prefillEmail,
   participantId,
 }: {
   project: Project & { id: string };
   availability: Record<string, string[]>;
+  slotAdminMap?: Record<string, Record<string, { id: string; name: string; initials: string }[]>>;
   prefillName?: string;
   prefillEmail?: string;
   participantId?: string;
@@ -70,6 +72,7 @@ export default function BookingFlow({
   const [wlEmail, setWlEmail] = useState("");
   const [wlSubmitted, setWlSubmitted] = useState(false);
   const [wlLoading, setWlLoading] = useState(false);
+  const [selectedAdminId, setSelectedAdminId] = useState<string | null>(null);
 
   const daysInMonth = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0).getDate();
   const firstDow = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1).getDay();
@@ -98,6 +101,7 @@ export default function BookingFlow({
       participantName: name,
       participantEmail: email,
       participantId,
+      adminId: selectedAdminId ?? undefined,
     });
     if (result.ok) {
       setConfirmedAdminName(result.adminName);
@@ -110,12 +114,13 @@ export default function BookingFlow({
         setStep("calendar");
         setSelectedDateKey(null);
         setSelectedTime(null);
+        setSelectedAdminId(null);
         setName("");
         setEmail("");
         setBookingState({ status: "idle" });
       }, 2500);
     }
-  }, [selectedDateKey, selectedTime, name, email, project.id, router, participantId]);
+  }, [selectedDateKey, selectedTime, name, email, project.id, router, participantId, selectedAdminId]);
 
   function resetAll() {
     setStep("calendar");
@@ -123,6 +128,7 @@ export default function BookingFlow({
     setSelectedTime(null);
     setName("");
     setEmail("");
+    setSelectedAdminId(null);
     setConfirmedAdminName(null);
     setBookingState({ status: "idle" });
   }
@@ -135,6 +141,8 @@ export default function BookingFlow({
         ? "Too many booking attempts. Please try again later."
         : bookingState.reason === "too_short_notice"
         ? "That slot is too close to book — please pick a time with more notice."
+        : bookingState.reason === "admin_not_eligible"
+        ? "That interviewer is no longer available for this slot — please choose another."
         : "No interviewer is available for that exact time — please pick another slot."
       : null;
 
@@ -289,7 +297,7 @@ export default function BookingFlow({
                     />
                     {selectedTime && (
                       <button
-                        onClick={() => setStep("details")}
+                        onClick={() => setStep(project.assignmentMode === "PARTICIPANT_CHOICE" ? "admin" : "details")}
                         className="mt-4 w-full bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg py-2.5"
                       >
                         Continue
@@ -299,10 +307,50 @@ export default function BookingFlow({
                 </div>
               )}
 
+              {step === "admin" && selectedDateKey && selectedTime && (
+                <div className="max-w-sm mx-auto">
+                  <button
+                    onClick={() => { setStep("calendar"); setSelectedTime(null); }}
+                    className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mb-4"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Back
+                  </button>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                    {selectedDateObj?.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} · {selectedTime}
+                  </div>
+                  <h3 className="font-bold text-gray-900 dark:text-gray-50 mb-4">Choose your interviewer</h3>
+                  <div className="flex flex-col gap-2">
+                    {(slotAdminMap?.[selectedDateKey]?.[selectedTime] ?? []).map((admin) => (
+                      <button
+                        key={admin.id}
+                        onClick={() => {
+                          setSelectedAdminId(admin.id);
+                          setStep("details");
+                        }}
+                        className={
+                          "w-full text-left px-4 py-3 rounded-lg border text-sm flex items-center gap-3 transition-colors " +
+                          (selectedAdminId === admin.id
+                            ? "border-brand-500 bg-brand-50 dark:bg-brand-900/30"
+                            : "border-gray-200 dark:border-gray-700 hover:border-brand-300 dark:hover:border-brand-600")
+                        }
+                      >
+                        <span className="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-800 flex items-center justify-center text-xs font-semibold text-brand-700 dark:text-brand-200">
+                          {admin.initials}
+                        </span>
+                        <span className="font-medium text-gray-900 dark:text-gray-50">{admin.name}</span>
+                      </button>
+                    ))}
+                    {(slotAdminMap?.[selectedDateKey]?.[selectedTime] ?? []).length === 0 && (
+                      <p className="text-sm text-gray-400 dark:text-gray-500">No interviewers available for this slot.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {step === "details" && (
                 <div className="max-w-sm mx-auto">
                   <button
-                    onClick={() => setStep("calendar")}
+                    onClick={() => setStep(project.assignmentMode === "PARTICIPANT_CHOICE" ? "admin" : "calendar")}
                     className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mb-4"
                   >
                     <ArrowLeft className="w-4 h-4" /> Back

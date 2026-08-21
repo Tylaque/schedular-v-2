@@ -118,9 +118,10 @@ export async function confirmBookingAction(input: {
   participantName: string;
   participantEmail: string;
   participantId?: string;
+  adminId?: string;
 }): Promise<
   | { ok: true; adminName: string }
-  | { ok: false; reason: "slot_full" | "no_admin_available" | "rate_limited" | "too_short_notice" }
+  | { ok: false; reason: "slot_full" | "no_admin_available" | "rate_limited" | "too_short_notice" | "admin_not_eligible" }
 > {
   if (!input.projectId || !input.participantEmail) {
     return { ok: false, reason: "slot_full" };

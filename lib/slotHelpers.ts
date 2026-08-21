@@ -28,6 +28,7 @@ export type Project = {
   availabilityPeriodDays: number;
   ownerId: string | null;
   meetingPlatformPreference: "zoom" | "teams" | "auto";
+  assignmentMode: "AUTO" | "PARTICIPANT_CHOICE";
   reminderSchedules?: { id: string; hoursBefore: number; label: string }[];
 };
 

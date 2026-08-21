@@ -27,6 +27,7 @@ export type ProjectWithAdmins = {
   ownerId: string | null;
   ownerName: string | null;
   meetingPlatformPreference: "zoom" | "teams" | "auto";
+  assignmentMode: "AUTO" | "PARTICIPANT_CHOICE";
   reminderSchedules: { id: string; hoursBefore: number; label: string }[];
   createdAt: Date;
   updatedAt: Date;
@@ -59,6 +60,7 @@ function toProjectWithAdmins(row: {
   ownerId: string | null;
   owner?: { name: string } | null;
   meetingPlatformPreference: "zoom" | "teams" | "auto";
+  assignmentMode: "AUTO" | "PARTICIPANT_CHOICE";
   reminderSchedules?: { id: string; hoursBefore: number; label: string }[];
   createdAt: Date;
   updatedAt: Date;
@@ -91,6 +93,7 @@ function toProjectWithAdmins(row: {
     ownerId: row.ownerId,
     ownerName: row.owner?.name ?? null,
     meetingPlatformPreference: row.meetingPlatformPreference,
+    assignmentMode: row.assignmentMode,
     reminderSchedules: row.reminderSchedules ?? [],
     admins: (row.admins ?? []).map((pa) => ({
       id: pa.admin.id,

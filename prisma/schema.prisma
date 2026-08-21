@@ -59,6 +59,11 @@ enum MeetingPlatformPreference {
   auto
 }
 
+enum AssignmentMode {
+  AUTO
+  PARTICIPANT_CHOICE
+}
+
 enum ZoomProvisionStatus {
   pending
   provisioned
@@ -236,6 +241,7 @@ model Project {
   ownerId                   String?
   owner                     Admin?         @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   meetingPlatformPreference MeetingPlatformPreference @default(auto)
+  assignmentMode            AssignmentMode @default(AUTO)
   createdAt                 DateTime       @default(now())
   updatedAt                 DateTime       @updatedAt
 }

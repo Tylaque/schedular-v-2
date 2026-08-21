@@ -227,12 +227,12 @@ async function sendNotification(
   }
 }
 
-export async function pickAvailableAdmin(
+export async function getEligibleAdmins(
   projectId: string,
   dateKey: string,
   time: string,
   tx?: Prisma.TransactionClient
-): Promise<AdminInfo | null> {
+): Promise<string[]> {
   const client = tx ?? db;
 
   const project = await client.project.findUnique({
@@ -243,27 +243,23 @@ export async function pickAvailableAdmin(
       maxSessionsPerAdminPerDay: true,
     },
   });
-  if (!project) return null;
+  if (!project) return [];
 
-  // Get all active admins assigned to this project
   const projectAdminRows = await client.projectAdmin.findMany({
     where: { projectId, admin: { isActive: true } },
     select: { adminId: true },
   });
   const candidateIds = projectAdminRows.map((pa) => pa.adminId);
-  if (candidateIds.length === 0) return null;
+  if (candidateIds.length === 0) return [];
 
-  // Certification gate: only associates holding all of the project's required
-  // certifications (if any) can serve the slot. Zero requirements = anyone eligible.
   const certifiedIds: string[] = [];
   for (const adminId of candidateIds) {
     if (await isAdminCertifiedForProject(projectId, adminId, client)) {
       certifiedIds.push(adminId);
     }
   }
-  if (certifiedIds.length === 0) return null;
+  if (certifiedIds.length === 0) return [];
 
-  // Check range-based availability for each candidate
   const rangeAvailable: string[] = [];
   for (const adminId of certifiedIds) {
     const available = await isAdminAvailableForSlot(
@@ -274,9 +270,8 @@ export async function pickAvailableAdmin(
     );
     if (available) rangeAvailable.push(adminId);
   }
-  if (rangeAvailable.length === 0) return null;
+  if (rangeAvailable.length === 0) return [];
 
-  // Check maxSessionsPerAdminPerDay (project-scoped — stays project-specific)
   const bookingsToday = await client.booking.findMany({
     where: {
       projectId,
@@ -299,15 +294,35 @@ export async function pickAvailableAdmin(
     }
   }
 
-  // Cross-project time-overlap check: skip any admin who has a conflicting
-  // booking on this dateKey/time in ANY project.
   for (const adminId of rangeAvailable) {
     if (blockedAdmins.has(adminId)) continue;
     const conflict = await hasSchedulingConflict(adminId, dateKey, time, project.durationMinutes, project.bufferMinutes, undefined, client);
     if (conflict) blockedAdmins.add(adminId);
   }
 
-  let available = rangeAvailable.filter((id) => !blockedAdmins.has(id));
+  return rangeAvailable.filter((id) => !blockedAdmins.has(id));
+}
+
+export async function validateAdminChoice(
+  projectId: string,
+  adminId: string,
+  dateKey: string,
+  time: string,
+  tx?: Prisma.TransactionClient
+): Promise<boolean> {
+  const eligible = await getEligibleAdmins(projectId, dateKey, time, tx);
+  return eligible.includes(adminId);
+}
+
+export async function pickAvailableAdmin(
+  projectId: string,
+  dateKey: string,
+  time: string,
+  tx?: Prisma.TransactionClient
+): Promise<AdminInfo | null> {
+  const client = tx ?? db;
+
+  const available = await getEligibleAdmins(projectId, dateKey, time, tx);
   if (available.length === 0) return null;
 
   const totalCounts = await client.booking.groupBy({
@@ -340,12 +355,49 @@ export async function pickAvailableAdmin(
   return picked;
 }
 
+export type AdminInfoBrief = { id: string; name: string; initials: string };
+
+export async function getSlotAdminMap(
+  projectId: string,
+  availability: Record<string, string[]>
+): Promise<Record<string, Record<string, AdminInfoBrief[]>>> {
+  const slotAdmins: Record<string, Record<string, AdminInfoBrief[]>> = {};
+  const client = db;
+
+  const adminCache = new Map<string, AdminInfoBrief>();
+
+  for (const [dateKey, times] of Object.entries(availability)) {
+    slotAdmins[dateKey] = {};
+    for (const time of times) {
+      const eligibleIds = await getEligibleAdmins(projectId, dateKey, time);
+      const admins: AdminInfoBrief[] = [];
+      for (const id of eligibleIds) {
+        let brief = adminCache.get(id);
+        if (!brief) {
+          const row = await client.admin.findUnique({
+            where: { id },
+            select: { id: true, name: true, initials: true },
+          });
+          if (row) {
+            brief = row;
+            adminCache.set(id, brief);
+          }
+        }
+        if (brief) admins.push(brief);
+      }
+      slotAdmins[dateKey][time] = admins;
+    }
+  }
+
+  return slotAdmins;
+}
+
 type BookingOk = {
   ok: true;
   booking: { id: string; adminId: string; dateKey: string; time: string };
   admin: AdminInfo;
 };
-type BookingErr = { ok: false; reason: "slot_full" | "no_admin_available" | "too_short_notice" };
+type BookingErr = { ok: false; reason: "slot_full" | "no_admin_available" | "too_short_notice" | "admin_not_eligible" };
 type BookingResult = BookingOk | BookingErr;
 
 export async function createBooking(input: {
@@ -354,6 +406,7 @@ export async function createBooking(input: {
   time: string;
   participantName: string;
   participantEmail: string;
+  adminId?: string;
 }): Promise<BookingResult> {
   try {
     const result: BookingResult = await db.$transaction(
@@ -372,7 +425,7 @@ export async function createBooking(input: {
 
         const project = await tx.project.findUnique({
           where: { id: input.projectId },
-          select: { sessionCapacity: true, minNoticeHours: true, timezone: true },
+          select: { sessionCapacity: true, minNoticeHours: true, timezone: true, assignmentMode: true },
         });
         if (!project) {
           return { ok: false as const, reason: "slot_full" as const };
@@ -405,23 +458,41 @@ export async function createBooking(input: {
         // independently. After taking the admin's lock we re-validate because
         // the admin may have just been booked at this slot by another project.
         let admin: AdminInfo | null = null;
-        for (let attempt = 0; attempt < 3; attempt++) {
-          const picked = await pickAvailableAdmin(
-            input.projectId,
-            input.dateKey,
-            input.time,
-            tx
-          );
-          if (!picked) break;
-          const adminLocked = await acquireAdvisoryLock(tx, `badm:${picked.id}|${input.dateKey}|${input.time}`);
-          if (!adminLocked) continue;
-          if (await isAdminEligibleForSlot(input.projectId, picked.id, input.dateKey, input.time, tx)) {
-            admin = picked;
-            break;
+
+        if (project.assignmentMode === "PARTICIPANT_CHOICE" && input.adminId) {
+          // PARTICIPANT_CHOICE: lock the participant's chosen admin, then
+          // re-validate all five eligibility gates inside the lock.
+          const adminLocked = await acquireAdvisoryLock(tx, `badm:${input.adminId}|${input.dateKey}|${input.time}`);
+          if (adminLocked && await validateAdminChoice(input.projectId, input.adminId, input.dateKey, input.time, tx)) {
+            const row = await tx.admin.findUnique({
+              where: { id: input.adminId },
+              select: { id: true, name: true, initials: true },
+            });
+            if (row) admin = row;
           }
-        }
-        if (!admin) {
-          return { ok: false as const, reason: "no_admin_available" as const };
+          if (!admin) {
+            return { ok: false as const, reason: "admin_not_eligible" as const };
+          }
+        } else {
+          // AUTO mode (default): system picks the admin. Any passed adminId is ignored.
+          for (let attempt = 0; attempt < 3; attempt++) {
+            const picked = await pickAvailableAdmin(
+              input.projectId,
+              input.dateKey,
+              input.time,
+              tx
+            );
+            if (!picked) break;
+            const adminLocked = await acquireAdvisoryLock(tx, `badm:${picked.id}|${input.dateKey}|${input.time}`);
+            if (!adminLocked) continue;
+            if (await isAdminEligibleForSlot(input.projectId, picked.id, input.dateKey, input.time, tx)) {
+              admin = picked;
+              break;
+            }
+          }
+          if (!admin) {
+            return { ok: false as const, reason: "no_admin_available" as const };
+          }
         }
 
         await tx.participant.upsert({
