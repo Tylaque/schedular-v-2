@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
 import { expireStaleOffers } from "@/lib/data/waitlist";
+import { timesOverlap } from "@/lib/timeOverlap";
 
 export async function setAdminAvailabilityBulk(
   projectId: string,
@@ -70,39 +71,56 @@ export async function setAdminAvailabilityBulk(
 export async function getConsolidatedAvailability(
   projectId: string
 ): Promise<Record<string, string[]>> {
-  await expireStaleOffers();
+  // Fire-and-forget: expire stale waitlist offers in the background.
+  // This is maintenance work — a participant loading the booking page
+  // should not wait for it. If it fails, it retries on the next render.
+  expireStaleOffers().catch(() => {});
 
-  const project = await db.project.findUnique({
-    where: { id: projectId },
-    select: {
-      sessionCapacity: true,
-      durationMinutes: true,
-      dailyStart: true,
-      dailyEnd: true,
-      includeWeekends: true,
-      availabilityPeriodDays: true,
-    },
-  });
+  const _debug = !!process.env.AVAIL_DEBUG;
+
+  // ── Phase 1: all queries that only need projectId (input) ──────────
+  const _t0 = performance.now();
+  const [project, projectAdmins, requiredCerts, bookingCounts, offeredSlots] = await Promise.all([
+    db.project.findUnique({
+      where: { id: projectId },
+      select: {
+        sessionCapacity: true,
+        durationMinutes: true,
+        dailyStart: true,
+        dailyEnd: true,
+        includeWeekends: true,
+        availabilityPeriodDays: true,
+        maxSessionsPerAdminPerDay: true,
+        bufferMinutes: true,
+      },
+    }),
+    db.projectAdmin.findMany({
+      where: { projectId, admin: { isActive: true } },
+      select: { adminId: true },
+    }),
+    db.projectCertificationRequirement.findMany({
+      where: { projectId },
+      select: { certificationId: true },
+    }),
+    db.booking.groupBy({
+      by: ["dateKey", "time"],
+      where: { projectId, status: "confirmed" },
+      _count: { id: true },
+    }),
+    db.waitlistEntry.findMany({
+      where: { projectId, status: "offered", dateKey: { not: null }, time: { not: null } },
+      select: { dateKey: true, time: true },
+    }),
+  ]);
+  if (_debug) console.log(`[avail:perf] Phase 1 (5 parallel queries): ${(performance.now() - _t0).toFixed(0)}ms`);
   if (!project) return {};
 
-  // Get all ACTIVE admins assigned to this project. Deactivated associates
-  // must never contribute bookable slots: their ranges are ignored here so the
-  // calendar can't advertise a slot that createBooking will refuse
-  // (pickAvailableAdmin filters admin.isActive === true).
-  const projectAdmins = await db.projectAdmin.findMany({
-    where: { projectId, admin: { isActive: true } },
-    select: { adminId: true },
-  });
+  // Get all ACTIVE admins assigned to this project.
   const adminIds = projectAdmins.map((pa) => pa.adminId);
   if (adminIds.length === 0) return {};
 
-  // Certification gate: only certified associates count toward bookable slots.
-  // Zero project requirements = all assigned associates are eligible.
-  // Load requirements once, then check each admin in-memory.
-  const requiredCerts = await db.projectCertificationRequirement.findMany({
-    where: { projectId },
-    select: { certificationId: true },
-  });
+  // ── Phase 2: certification gate (needs adminIds from Phase 1) ──────
+  const _t1 = performance.now();
   const certifiedIds: string[] = [];
   if (requiredCerts.length === 0) {
     certifiedIds.push(...adminIds);
@@ -124,54 +142,79 @@ export async function getConsolidatedAvailability(
       }
     }
   }
+  if (_debug) console.log(`[avail:perf] Phase 2 (cert gate): ${(performance.now() - _t1).toFixed(0)}ms`);
   if (certifiedIds.length === 0) return {};
 
-  // Determine the date window we need to cover
+  // Determine the date window
   const now = new Date();
   const fromDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const endDate = new Date(now);
   endDate.setDate(endDate.getDate() + project.availabilityPeriodDays);
   const toDate = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
 
-  // Load all ranges for all certified admins in the date window
-  const allRanges = await db.adminAvailabilityRange.findMany({
-    where: {
-      adminId: { in: certifiedIds },
-      dateKey: { gte: fromDate, lte: toDate },
-    },
-    orderBy: [{ dateKey: "asc" }, { startTime: "asc" }],
-  });
+  // Generate candidate time slots from project's dailyStart/dailyEnd/duration
+  const startMin = parseTime(project.dailyStart);
+  const endMin = parseTime(project.dailyEnd);
+  const step = project.durationMinutes;
 
-  // Group ranges by dateKey
+  // ── Phase 3: data-heavy queries that need certifiedIds ─────────────
+  const _t2 = performance.now();
+  const [allRanges, adminBookings] = await Promise.all([
+    db.adminAvailabilityRange.findMany({
+      where: {
+        adminId: { in: certifiedIds },
+        dateKey: { gte: fromDate, lte: toDate },
+      },
+      orderBy: [{ dateKey: "asc" }, { startTime: "asc" }],
+    }),
+    db.booking.findMany({
+      where: {
+        adminId: { in: certifiedIds },
+        dateKey: { gte: fromDate, lte: toDate },
+        status: "confirmed",
+      },
+      select: {
+        dateKey: true,
+        time: true,
+        adminId: true,
+        projectId: true,
+        project: { select: { durationMinutes: true, bufferMinutes: true } },
+      },
+    }),
+  ]);
+  if (_debug) console.log(`[avail:perf] Phase 3 (2 parallel queries): ${(performance.now() - _t2).toFixed(0)}ms (${adminBookings.length} bookings)`);
+
+  // ── Build in-memory indexes ────────────────────────────────────────
+  const fullMap: Record<string, number> = {};
+  for (const bc of bookingCounts) {
+    fullMap[`${bc.dateKey}|${bc.time}`] = bc._count.id;
+  }
+
+  const offeredSet = new Set(offeredSlots.map((s) => `${s.dateKey}|${s.time}`));
+
   const rangesByDate: Record<string, { adminId: string; startTime: string; endTime: string }[]> = {};
   for (const r of allRanges) {
     if (!rangesByDate[r.dateKey]) rangesByDate[r.dateKey] = [];
     rangesByDate[r.dateKey].push(r);
   }
 
-  // Generate candidate time slots from project's dailyStart/dailyEnd/duration
-  const startMin = parseTime(project.dailyStart);
-  const endMin = parseTime(project.dailyEnd);
-  const step = project.durationMinutes;
-
-  const bookingCounts = await db.booking.groupBy({
-    by: ["dateKey", "time"],
-    where: { projectId, status: "confirmed" },
-    _count: { id: true },
-  });
-
-  const fullMap: Record<string, number> = {};
-  for (const bc of bookingCounts) {
-    fullMap[`${bc.dateKey}|${bc.time}`] = bc._count.id;
+  const dailyCounts: Record<string, Record<string, number>> = {};
+  const bookingsByDate: Record<string, { adminId: string; time: string; duration: number; buffer: number }[]> = {};
+  for (const b of adminBookings) {
+    if (!bookingsByDate[b.dateKey]) bookingsByDate[b.dateKey] = [];
+    bookingsByDate[b.dateKey].push({
+      adminId: b.adminId,
+      time: b.time,
+      duration: b.project.durationMinutes,
+      buffer: b.project.bufferMinutes,
+    });
+    if (b.projectId === projectId) {
+      if (!dailyCounts[b.dateKey]) dailyCounts[b.dateKey] = {};
+      dailyCounts[b.dateKey][b.adminId] = (dailyCounts[b.dateKey][b.adminId] ?? 0) + 1;
+    }
   }
 
-  const offeredSlots = await db.waitlistEntry.findMany({
-    where: { projectId, status: "offered", dateKey: { not: null }, time: { not: null } },
-    select: { dateKey: true, time: true },
-  });
-  const offeredSet = new Set(offeredSlots.map((s) => `${s.dateKey}|${s.time}`));
-
-  // For each date in range, generate candidate slots and check availability
+  // ── Slot generation: purely in-memory ──────────────────────────────
   const map: Record<string, string[]> = {};
   const d = new Date(fromDate + "T00:00:00Z");
   const endD = new Date(toDate + "T00:00:00Z");
@@ -180,28 +223,41 @@ export async function getConsolidatedAvailability(
     const day = d.getUTCDay();
     if (project.includeWeekends || (day !== 0 && day !== 6)) {
       const dateKey = fmtDate(d);
+      const dayBookings = bookingsByDate[dateKey] ?? [];
+      const dayAdminCounts = dailyCounts[dateKey] ?? {};
 
-      // Generate all candidate time slots for this date
       for (let m = startMin; m + step <= endMin; m += step) {
         const time = formatTime(m);
         const key = `${dateKey}|${time}`;
 
-        // Already at capacity?
         const count = fullMap[key] ?? 0;
         if (count >= project.sessionCapacity) continue;
         if (offeredSet.has(key)) continue;
 
-        // Check if at least one certified admin is range-available for this slot
-        // Uses the pre-loaded rangesByDate instead of per-slot DB queries
         const dateRanges = rangesByDate[dateKey] ?? [];
         let slotBookable = false;
         for (const r of dateRanges) {
           const rangeStart = parseTime(r.startTime);
           const rangeEnd = parseTime(r.endTime);
-          if (rangeStart <= m && m + step <= rangeEnd) {
-            slotBookable = true;
-            break;
+          if (!(rangeStart <= m && m + step <= rangeEnd)) continue;
+
+          const adminDayCount = dayAdminCounts[r.adminId] ?? 0;
+          if (adminDayCount >= project.maxSessionsPerAdminPerDay) continue;
+
+          const newWindow = step + project.bufferMinutes;
+          let hasConflict = false;
+          for (const eb of dayBookings) {
+            if (eb.adminId !== r.adminId) continue;
+            const existingWindow = eb.duration + eb.buffer;
+            if (timesOverlap(time, newWindow, eb.time, existingWindow)) {
+              hasConflict = true;
+              break;
+            }
           }
+          if (hasConflict) continue;
+
+          slotBookable = true;
+          break;
         }
 
         if (slotBookable) {
@@ -213,6 +269,7 @@ export async function getConsolidatedAvailability(
     d.setUTCDate(d.getUTCDate() + 1);
   }
 
+  if (_debug) console.log(`[avail:perf] TOTAL: ${(performance.now() - _t0).toFixed(0)}ms`);
   return map;
 }
 

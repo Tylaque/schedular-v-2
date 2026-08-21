@@ -10,6 +10,7 @@ import { timesOverlap } from "@/lib/timeOverlap";
 import { hoursUntilSession } from "@/lib/slotHelpers";
 import { signManageAdminToken } from "@/lib/manage-token";
 import { Resend } from "resend";
+import { stripHtml } from "@/lib/html-to-text";
 import type { EmailAudience, Prisma } from "@prisma/client";
 
 const LOCK_ATTEMPTS = 20;
@@ -189,6 +190,7 @@ async function sendNotification(
           to: recipient.email,
           subject: rendered.subject,
           html: rendered.bodyHtml,
+          text: stripHtml(rendered.bodyHtml),
         });
         if (result.error || !result.data?.id) {
           throw new Error(result.error?.message ?? "Resend did not return an email id");

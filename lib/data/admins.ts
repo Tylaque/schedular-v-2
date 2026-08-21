@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Resend } from "resend";
+import { stripHtml } from "@/lib/html-to-text";
 import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
 import { logNotification } from "@/lib/data/notifications";
 import { createPasswordToken } from "@/lib/data/password-reset";
@@ -135,6 +136,7 @@ Scheduler &mdash; Multi-project scheduling platform
         to: email,
         subject,
         html,
+        text: stripHtml(html),
       });
       if (result.error || !result.data?.id) {
         throw new Error(result.error?.message ?? "Resend did not return an email id");
@@ -165,6 +167,7 @@ Scheduler &mdash; Multi-project scheduling platform
         to: email,
         subject: rendered.subject,
         html: rendered.bodyHtml,
+        text: stripHtml(rendered.bodyHtml),
       });
       if (result.error || !result.data?.id) {
         throw new Error(result.error?.message ?? "Resend did not return an email id");
@@ -224,6 +227,7 @@ Scheduler &mdash; Multi-project scheduling platform
         to: email,
         subject,
         html,
+        text: stripHtml(html),
       });
       if (result.error || !result.data?.id) {
         throw new Error(result.error?.message ?? "Resend did not return an email id");

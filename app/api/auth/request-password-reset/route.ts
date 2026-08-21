@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { stripHtml } from "@/lib/html-to-text";
 import { db } from "@/lib/db";
 import { createPasswordToken } from "@/lib/data/password-reset";
 import { logNotification } from "@/lib/data/notifications";
@@ -67,6 +68,7 @@ Scheduler &mdash; Multi-project scheduling platform
           to: email,
           subject: "Reset your Scheduler password",
           html,
+          text: stripHtml(html),
         });
 
         await logNotification({
@@ -109,6 +111,7 @@ Scheduler &mdash; Multi-project scheduling platform
           to: email,
           subject: "Activate your Scheduler account",
           html,
+          text: stripHtml(html),
         });
 
         await logNotification({

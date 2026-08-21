@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Resend } from "resend";
+import { stripHtml } from "@/lib/html-to-text";
 import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
 import { logNotification } from "@/lib/data/notifications";
 import type { ParticipantStatus, Prisma } from "@prisma/client";
@@ -159,6 +160,7 @@ export async function sendParticipantInvitation(participantId: string): Promise<
     to: participant.email,
     subject: rendered.subject,
     html: rendered.bodyHtml,
+    text: stripHtml(rendered.bodyHtml),
   });
   if (result.error || !result.data?.id) {
     throw new Error(result.error?.message ?? "Resend did not return an email id");
