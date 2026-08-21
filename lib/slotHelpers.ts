@@ -28,6 +28,7 @@ export type Project = {
   availabilityPeriodDays: number;
   ownerId: string | null;
   meetingPlatformPreference: "zoom" | "teams" | "auto";
+  reminderSchedules?: { id: string; hoursBefore: number; label: string }[];
 };
 
 export type SlotGridDay = {

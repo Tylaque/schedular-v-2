@@ -38,6 +38,8 @@ import {
 import type { CertificationRecord } from "@/lib/data/certifications";
 import { createZoomAccount, setZoomAccountActive, deleteZoomAccount, syncZoomAccountsFromDirectory, listZoomPoolAccounts } from "@/lib/data/zoom";
 import { listZoomPoolUsers, zoomPoolConfigured, getZoomPoolCredentials } from "@/lib/zoom/client";
+import { upsertReminderSchedules, getReminderSchedules } from "@/lib/data/reminder-schedules";
+import type { ReminderScheduleInput } from "@/lib/data/reminder-schedules";
 
 export async function saveAvailabilityAction(
   projectId: string,
@@ -79,6 +81,7 @@ export async function createProjectAction(formData: {
   certificationIds?: string[];
   autoCompleteBookings?: boolean;
   meetingPlatformPreference?: "zoom" | "teams" | "auto";
+  reminderSchedules?: ReminderScheduleInput[];
 }) {
   const session = await auth();
   if (!session?.user?.id) return;
@@ -100,6 +103,9 @@ export async function createProjectAction(formData: {
         actorLabel: certificationActorLabel(session.user),
       },
     });
+  }
+  if (formData.reminderSchedules && formData.reminderSchedules.length > 0) {
+    await upsertReminderSchedules(created.id, formData.reminderSchedules);
   }
   revalidatePath("/admin/projects");
   redirect("/admin/projects");
@@ -161,6 +167,7 @@ export async function updateProjectAction(
     ownerId?: string;
     autoCompleteBookings?: boolean;
     meetingPlatformPreference?: "zoom" | "teams" | "auto";
+    reminderSchedules?: ReminderScheduleInput[];
   }
 ): Promise<{
   ok: true;
@@ -189,6 +196,9 @@ export async function updateProjectAction(
   const effectiveOwnerId = role === "org_owner" ? formData.ownerId : session.user.id;
   const wasActive = project.status === "active";
   const result = await dataUpdateProject(slug, { ...formData, ownerId: effectiveOwnerId });
+  if (formData.reminderSchedules) {
+    await upsertReminderSchedules(project.id, formData.reminderSchedules);
+  }
   revalidatePath("/admin/projects");
   revalidatePath(`/admin/projects/${slug}/edit`);
   revalidatePath(`/admin/projects/${project.id}/participants`);
@@ -210,7 +220,7 @@ export async function updateProjectAction(
 }
 
 export async function saveTemplateAction(formData: {
-  category: "admin_invitation" | "availability_request" | "participant_invitation" | "booking_confirmation" | "reminder_24h" | "reminder_1h" | "reschedule_notice" | "cancellation_notice" | "waitlist_offer";
+  category: "admin_invitation" | "availability_request" | "participant_invitation" | "booking_confirmation" | "reminder_24h" | "reminder_1h" | "reminder" | "reschedule_notice" | "cancellation_notice" | "waitlist_offer";
   audience: "admin" | "participant" | "super_admin";
   projectId: string | null;
   subject: string;

@@ -29,6 +29,7 @@ export async function logNotification(input: {
   subject: string;
   renderedBody: string;
   status: NotificationStatus;
+  hoursBefore?: number;
 }) {
   return db.notificationLog.create({
     data: {
@@ -40,6 +41,7 @@ export async function logNotification(input: {
       subject: input.subject,
       renderedBody: input.renderedBody,
       status: input.status,
+      hoursBefore: input.hoursBefore ?? null,
     },
   });
 }

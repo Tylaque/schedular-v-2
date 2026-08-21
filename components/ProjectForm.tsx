@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Plus, Trash2 } from "lucide-react";
 import { createProjectAction, updateProjectAction, inviteAssociateAction, setProjectCertificationRequirementsAction } from "@/lib/actions";
 import type { Project } from "@/lib/slotHelpers";
 import { OwnerGraphStatus } from "@/components/OwnerGraphStatus";
@@ -46,6 +46,7 @@ type FormData = {
   availabilityPeriodDays: number;
   availabilityLockDate: string;
   meetingPlatformPreference: "zoom" | "teams" | "auto";
+  reminderSchedules: { hoursBefore: number; label: string }[];
 };
 
 type ValidationErrors = Partial<Record<keyof FormData, string>>;
@@ -123,6 +124,10 @@ export default function ProjectForm({
         availabilityPeriodDays: initialProject.availabilityPeriodDays,
         availabilityLockDate: `${initialProject.availabilityLockDate.getFullYear()}-${String(initialProject.availabilityLockDate.getMonth() + 1).padStart(2, "0")}-${String(initialProject.availabilityLockDate.getDate()).padStart(2, "0")}`,
         meetingPlatformPreference: initialProject.meetingPlatformPreference ?? "auto",
+        reminderSchedules: (initialProject as any).reminderSchedules?.map((s: any) => ({ hoursBefore: s.hoursBefore, label: s.label })) ?? [
+          { hoursBefore: 24, label: "24 Hour Reminder" },
+          { hoursBefore: 1, label: "1 Hour Reminder" },
+        ],
       };
     }
     return {
@@ -149,6 +154,10 @@ export default function ProjectForm({
       availabilityPeriodDays: 14,
       availabilityLockDate: futureDateString(30),
       meetingPlatformPreference: "auto",
+      reminderSchedules: [
+        { hoursBefore: 24, label: "24 Hour Reminder" },
+        { hoursBefore: 1, label: "1 Hour Reminder" },
+      ],
     };
   }
 
@@ -252,6 +261,7 @@ export default function ProjectForm({
       ownerId: data.ownerId || undefined,
       certificationIds: requiredCertIds,
       meetingPlatformPreference: data.meetingPlatformPreference,
+      reminderSchedules: data.reminderSchedules,
     };
 
     try {
@@ -531,6 +541,74 @@ export default function ProjectForm({
             {errors.availabilityLockDate && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.availabilityLockDate}</p>}
           </div>
         </div>
+      </div>
+
+      {/* Reminder Schedule */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm dark:bg-gray-900 dark:border-gray-700">
+        <h2 className="text-sm font-bold text-gray-900 mb-1 dark:text-gray-50">Reminder Schedule</h2>
+        <p className="text-xs text-gray-500 mb-4 dark:text-gray-400">
+          Configure how many hours before a session to send email reminders. Default: 24h and 1h reminders.
+        </p>
+        <div className="flex flex-col gap-3">
+          {data.reminderSchedules.map((schedule, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0.25}
+                max={720}
+                step={0.25}
+                value={schedule.hoursBefore}
+                onChange={(e) => {
+                  const updated = [...data.reminderSchedules];
+                  updated[idx] = { ...updated[idx], hoursBefore: parseFloat(e.target.value) || 0 };
+                  update("reminderSchedules", updated);
+                }}
+                className="w-24 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
+                placeholder="Hours"
+              />
+              <span className="text-xs text-gray-500 dark:text-gray-400">hrs before</span>
+              <input
+                type="text"
+                value={schedule.label}
+                onChange={(e) => {
+                  const updated = [...data.reminderSchedules];
+                  updated[idx] = { ...updated[idx], label: e.target.value };
+                  update("reminderSchedules", updated);
+                }}
+                className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
+                placeholder="Label (e.g. 3 Days Before)"
+                maxLength={100}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  update("reminderSchedules", data.reminderSchedules.filter((_, i) => i !== idx));
+                }}
+                className="p-2 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
+                title="Remove reminder"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+          {data.reminderSchedules.length < 10 && (
+            <button
+              type="button"
+              onClick={() => {
+                update("reminderSchedules", [
+                  ...data.reminderSchedules,
+                  { hoursBefore: 24, label: "" },
+                ]);
+              }}
+              className="flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 self-start"
+            >
+              <Plus className="w-3 h-3" /> Add Reminder
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-gray-400 mt-2 dark:text-gray-500">
+          Maximum 10 reminders. Hours range: 0.25 (15 min) to 720 (30 days).
+        </p>
       </div>
 
       {/* Meeting platform */}

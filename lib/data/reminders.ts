@@ -2,13 +2,19 @@ import { db } from "@/lib/db";
 import { logNotification } from "@/lib/data/notifications";
 import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
 import { hoursUntilSession } from "@/lib/slotHelpers";
+import { getReminderSchedules } from "@/lib/data/reminder-schedules";
 import { Resend } from "resend";
 import { stripHtml } from "@/lib/html-to-text";
 
 const NOTIFICATION_FROM =
   process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>";
 
-type ReminderResult = { sent24h: number; sent1h: number; errors: number };
+type ReminderResult = Record<string, number> & { errors: number };
+
+const DEFAULT_SCHEDULES = [
+  { hoursBefore: 24, label: "24 Hour Reminder" },
+  { hoursBefore: 1, label: "1 Hour Reminder" },
+];
 
 function todayKeyUTC(): string {
   const now = new Date();
@@ -21,22 +27,8 @@ function addDays(dateKey: string, days: number): string {
   return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
 }
 
-/**
- * Find confirmed bookings that need a reminder and send them.
- *
- * Called by the /api/cron/send-reminders endpoint on a 30-minute schedule.
- * Deduplicates via NotificationLog — each (category, projectId, recipientEmail)
- * pair is sent at most once per calendar day.
- *
- * Time windows (using hoursUntilSession):
- *   - reminder_24h: 22–25 hours before session
- *   - reminder_1h:  0.5–1.75 hours before session
- *
- * The windows are deliberately wider than 1 hour / 24 hours so the 30-minute
- * cron interval always catches them.
- */
 export async function sendReminders(): Promise<ReminderResult> {
-  const results: ReminderResult = { sent24h: 0, sent1h: 0, errors: 0 };
+  const results: ReminderResult = { errors: 0 };
   const resend = new Resend(process.env.RESEND_API_KEY ?? "");
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   const today = todayKeyUTC();
@@ -64,79 +56,93 @@ export async function sendReminders(): Promise<ReminderResult> {
     },
   });
 
+  const scheduleCache = new Map<string, { hoursBefore: number; label: string }[]>();
+
   for (const booking of bookings) {
     const tz = booking.project.timezone || "Africa/Nairobi";
     const hours = hoursUntilSession(booking.dateKey, booking.time, tz);
 
-    let category: "reminder_24h" | "reminder_1h" | null = null;
-    if (hours >= 22 && hours <= 25) {
-      category = "reminder_24h";
-    } else if (hours >= 0.5 && hours <= 1.75) {
-      category = "reminder_1h";
+    if (!scheduleCache.has(booking.projectId)) {
+      const dbSchedules = await getReminderSchedules(booking.projectId);
+      scheduleCache.set(
+        booking.projectId,
+        dbSchedules.length > 0
+          ? dbSchedules.map((s) => ({ hoursBefore: s.hoursBefore, label: s.label }))
+          : DEFAULT_SCHEDULES
+      );
     }
-    if (!category) continue;
+    const schedules = scheduleCache.get(booking.projectId)!;
 
-    const alreadySent = await db.notificationLog.findFirst({
-      where: {
-        category,
-        projectId: booking.projectId,
-        recipientEmail: booking.participantEmail,
-        createdAt: { gte: new Date(today + "T00:00:00Z") },
-      },
-      select: { id: true },
-    });
-    if (alreadySent) continue;
+    for (const schedule of schedules) {
+      if (hours < schedule.hoursBefore - 1 || hours > schedule.hoursBefore + 0.75) continue;
 
-    try {
-      const template = await getActiveTemplate(category, booking.projectId);
-      const ctx = {
-        participant_name: booking.participantName,
-        project_name: booking.project.name ?? "",
-        company_name: booking.project.company ?? "",
-        session_date: booking.dateKey,
-        session_time: booking.time,
-        admin_name: booking.admin.name ?? "",
-        time_zone: tz,
-        meeting_link: `${baseUrl}/manage/${booking.id}`,
-        booking_link: `${baseUrl}/book/${booking.projectId}`,
-        manage_booking_link: `${baseUrl}/manage/${booking.id}`,
-        company_logo: "",
-      };
-      const rendered = renderTemplate(template, ctx);
+      const category = "reminder" as const;
+      const dedupKey = `${category}_${schedule.hoursBefore}`;
 
-      const sendResult = await resend.emails.send({
-        from: NOTIFICATION_FROM,
-        to: booking.participantEmail,
-        subject: rendered.subject,
-        html: rendered.bodyHtml,
-        text: stripHtml(rendered.bodyHtml),
+      const alreadySent = await db.notificationLog.findFirst({
+        where: {
+          category,
+          projectId: booking.projectId,
+          recipientEmail: booking.participantEmail,
+          hoursBefore: schedule.hoursBefore,
+          createdAt: { gte: new Date(today + "T00:00:00Z") },
+        },
+        select: { id: true },
       });
+      if (alreadySent) continue;
 
-      const status = sendResult.error || !sendResult.data?.id ? "failed" : "sent";
+      try {
+        const template = await getActiveTemplate(category, booking.projectId);
+        const ctx = {
+          participant_name: booking.participantName,
+          project_name: booking.project.name ?? "",
+          company_name: booking.project.company ?? "",
+          session_date: booking.dateKey,
+          session_time: booking.time,
+          admin_name: booking.admin.name ?? "",
+          time_zone: tz,
+          meeting_link: `${baseUrl}/manage/${booking.id}`,
+          booking_link: `${baseUrl}/book/${booking.projectId}`,
+          manage_booking_link: `${baseUrl}/manage/${booking.id}`,
+          company_logo: "",
+          reminder_label: schedule.label,
+        };
+        const rendered = renderTemplate(template, ctx);
 
-      await logNotification({
-        templateId: template.id,
-        category,
-        projectId: booking.projectId,
-        recipientEmail: booking.participantEmail,
-        recipientRole: "participant",
-        subject: rendered.subject,
-        renderedBody: rendered.bodyHtml,
-        status,
-      });
+        const sendResult = await resend.emails.send({
+          from: NOTIFICATION_FROM,
+          to: booking.participantEmail,
+          subject: rendered.subject,
+          html: rendered.bodyHtml,
+          text: stripHtml(rendered.bodyHtml),
+        });
 
-      if (status === "sent") {
-        if (category === "reminder_24h") results.sent24h++;
-        else results.sent1h++;
-      } else {
+        const status = sendResult.error || !sendResult.data?.id ? "failed" : "sent";
+
+        await logNotification({
+          templateId: template.id,
+          category,
+          projectId: booking.projectId,
+          recipientEmail: booking.participantEmail,
+          recipientRole: "participant",
+          subject: rendered.subject,
+          renderedBody: rendered.bodyHtml,
+          status,
+          hoursBefore: schedule.hoursBefore,
+        });
+
+        if (status === "sent") {
+          results[dedupKey] = (results[dedupKey] || 0) + 1;
+        } else {
+          results.errors++;
+        }
+      } catch (err) {
+        console.error(
+          `[reminders] Failed to send ${dedupKey} for booking ${booking.id}:`,
+          err
+        );
         results.errors++;
       }
-    } catch (err) {
-      console.error(
-        `[reminders] Failed to send ${category} for booking ${booking.id}:`,
-        err
-      );
-      results.errors++;
     }
   }
 

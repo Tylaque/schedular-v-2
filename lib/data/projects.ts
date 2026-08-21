@@ -27,6 +27,7 @@ export type ProjectWithAdmins = {
   ownerId: string | null;
   ownerName: string | null;
   meetingPlatformPreference: "zoom" | "teams" | "auto";
+  reminderSchedules: { id: string; hoursBefore: number; label: string }[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -58,6 +59,7 @@ function toProjectWithAdmins(row: {
   ownerId: string | null;
   owner?: { name: string } | null;
   meetingPlatformPreference: "zoom" | "teams" | "auto";
+  reminderSchedules?: { id: string; hoursBefore: number; label: string }[];
   createdAt: Date;
   updatedAt: Date;
 }): ProjectWithAdmins {
@@ -89,6 +91,7 @@ function toProjectWithAdmins(row: {
     ownerId: row.ownerId,
     ownerName: row.owner?.name ?? null,
     meetingPlatformPreference: row.meetingPlatformPreference,
+    reminderSchedules: row.reminderSchedules ?? [],
     admins: (row.admins ?? []).map((pa) => ({
       id: pa.admin.id,
       name: pa.admin.name,
@@ -116,7 +119,11 @@ export async function listProjects(ownerId?: string): Promise<ProjectWithAdmins[
 export async function getProjectBySlug(slug: string): Promise<ProjectWithAdmins | null> {
   const row = await db.project.findUnique({
     where: { slug },
-    include: { admins: { include: { admin: true } }, owner: { select: { name: true } } },
+    include: {
+      admins: { include: { admin: true } },
+      owner: { select: { name: true } },
+      reminderSchedules: { orderBy: { hoursBefore: "desc" }, select: { id: true, hoursBefore: true, label: true } },
+    },
   });
   return row ? toProjectWithAdmins(row) : null;
 }

@@ -17,6 +17,7 @@ export const ALL_CATEGORIES: EmailCategoryTuple[] = [
   { value: "booking_confirmation", label: "Booking Confirmation", defaultAudience: "participant" },
   { value: "reminder_24h", label: "24h Reminder", defaultAudience: "participant" },
   { value: "reminder_1h", label: "1h Reminder", defaultAudience: "participant" },
+  { value: "reminder", label: "Reminder", defaultAudience: "participant" },
   { value: "reschedule_notice", label: "Reschedule Notice", defaultAudience: "participant" },
   { value: "cancellation_notice", label: "Cancellation Notice", defaultAudience: "participant" },
   { value: "waitlist_offer", label: "Waitlist Offer", defaultAudience: "participant" },
@@ -38,6 +39,7 @@ export const PLACEHOLDER_TOKENS = [
   "manage_booking_link",
   "company_logo",
   "company_name",
+  "reminder_label",
 ];
 
 export const MOCK_PREVIEW_CONTEXT: Record<string, string> = {
@@ -53,6 +55,7 @@ export const MOCK_PREVIEW_CONTEXT: Record<string, string> = {
   manage_booking_link: "http://localhost:3000/manage/cmrbookingid123",
   company_logo: "",
   company_name: "Career Connections",
+  reminder_label: "24 Hour Reminder",
 };
 
 export function renderTemplate(

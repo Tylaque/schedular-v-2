@@ -151,6 +151,24 @@ Scheduler &mdash; Multi-project scheduling platform
 </div>`,
     },
     {
+      category: "reminder",
+      audience: "participant",
+      subject: "Reminder: {{reminder_label}} — {{project_name}}",
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+<p>Hi {{participant_name}},</p>
+<p>This is a reminder that your <strong>{{project_name}}</strong> session is coming up.</p>
+<div style="border:2px dashed #DCE1FB;border-radius:12px;padding:20px;margin:20px 0;background:#EEF1FD;">
+<p style="margin:0 0 8px;"><strong>{{project_name}}</strong></p>
+<p style="margin:0 0 4px;">{{session_date}} · {{session_time}}</p>
+<p style="margin:0 0 4px;">{{time_zone}}</p>
+<p style="margin:0;">Interviewer: {{admin_name}}</p>
+</div>
+<p style="margin:24px 0;"><a href="{{meeting_link}}" style="background:#4338CA;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Join meeting</a></p>
+<p>Please ensure you have a quiet space and a working camera/microphone.</p>
+<p>See you there!<br/>{{company_name}}</p>
+</div>`,
+    },
+    {
       category: "reschedule_notice",
       audience: "participant",
       subject: "Rescheduled: {{project_name}} on {{session_date}}",
