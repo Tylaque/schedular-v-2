@@ -136,6 +136,38 @@ export async function softDeleteSessionType(
 }
 
 /**
+ * Reactivate a soft-deleted session type. Sets isActive = true.
+ */
+export async function reactivateSessionType(
+  id: string,
+  actor?: ActorInfo
+): Promise<boolean> {
+  const before = await db.sessionType.findUnique({
+    where: { id },
+    select: { id: true, name: true, description: true, isActive: true },
+  });
+  if (!before || before.isActive) return false;
+
+  await db.sessionType.update({
+    where: { id },
+    data: { isActive: true },
+  });
+  if (actor) {
+    await recordAudit({
+      action: "session_type_updated",
+      actorType: "admin",
+      actorId: actor.actorId,
+      actorLabel: actor.actorLabel,
+      entityType: "SessionType",
+      entityId: id,
+      beforeState: before,
+      afterState: { ...before, isActive: true },
+    });
+  }
+  return true;
+}
+
+/**
  * Resolve the display name for a booking's session type.
  *
  * Priority:

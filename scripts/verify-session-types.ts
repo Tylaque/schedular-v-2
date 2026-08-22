@@ -4,6 +4,7 @@ import {
   createSessionType,
   updateSessionType,
   softDeleteSessionType,
+  reactivateSessionType,
   listSessionTypes,
   listAllSessionTypes,
   ensureSeedSessionTypes,
@@ -275,6 +276,21 @@ async function main() {
     check("T8b: booking with non-existent type has null sessionTypeId", bookingRow?.sessionTypeId === null);
     check("T8c: booking with non-existent type inherits project default name", bookingRow?.sessionTypeName === "Interview", `got=${bookingRow?.sessionTypeName}`);
   }
+
+  // ════════════════════════════════════════════════════════════
+  // T9: Reactivate a soft-deleted session type
+  // ════════════════════════════════════════════════════════════
+  const reactivateResult = await reactivateSessionType(bkToSoftDelete.id, { actorId: owner.id, actorLabel: "Test Owner" });
+  check("T9a: reactivate returns true", reactivateResult === true);
+  const afterReactivate = await listSessionTypes();
+  check("T9b: reactivated type reappears in listSessionTypes", afterReactivate.some((s) => s.id === bkToSoftDelete.id));
+  const reactivateAuditCount = await db.auditLog.count({
+    where: { entityType: "SessionType", entityId: bkToSoftDelete.id },
+  });
+  check("T9c: audit log has entries for both soft-delete and reactivate", reactivateAuditCount >= 2, `count=${reactivateAuditCount}`);
+  // Reactivate on already-active should return false
+  const reactivateAgain = await reactivateSessionType(bkToSoftDelete.id);
+  check("T9d: reactivate on already-active returns false", reactivateAgain === false);
 
   // ════════════════════════════════════════════════════════════
   // Summary

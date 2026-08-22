@@ -642,7 +642,7 @@ export default function ProjectForm({
               onClick={() => update("meetingPlatformPreference", opt.value)}
               className={`rounded-lg border p-3 text-left transition-colors ${
                 data.meetingPlatformPreference === opt.value
-                  ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
+                  ? "border-brand-500 bg-brand-50 dark:bg-gray-800"
                   : "border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600"
               }`}
             >
@@ -672,7 +672,7 @@ export default function ProjectForm({
               onClick={() => update("assignmentMode", opt.value)}
               className={`rounded-lg border p-3 text-left transition-colors ${
                 data.assignmentMode === opt.value
-                  ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
+                  ? "border-brand-500 bg-brand-50 dark:bg-gray-800"
                   : "border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600"
               }`}
             >

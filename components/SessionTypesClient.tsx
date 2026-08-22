@@ -1,20 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, RefreshCw } from "lucide-react";
 import {
   createSessionTypeAction,
   updateSessionTypeAction,
   deleteSessionTypeAction,
+  reactivateSessionTypeAction,
 } from "@/lib/actions";
 import type { SessionTypeRecord } from "@/lib/data/session-types";
 
 export default function SessionTypesClient({
   sessionTypes,
+  allSessionTypes,
 }: {
   sessionTypes: SessionTypeRecord[];
+  allSessionTypes: SessionTypeRecord[];
 }) {
   const [items, setItems] = useState(sessionTypes);
+  const [allItems, setAllItems] = useState(allSessionTypes);
+  const [showDeactivated, setShowDeactivated] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -38,7 +43,9 @@ export default function SessionTypesClient({
     try {
       const result = await createSessionTypeAction(createName, createDesc);
       if (result.ok) {
-        setItems((prev) => [...prev, { id: result.id, name: result.name, description: result.description, isActive: result.isActive }]);
+        const newItem = { id: result.id, name: result.name, description: result.description, isActive: result.isActive };
+        setItems((prev) => [...prev, newItem]);
+        setAllItems((prev) => [...prev, newItem]);
         setCreateName("");
         setCreateDesc("");
         setMsg({ type: "ok", text: "Session type added." });
@@ -88,12 +95,36 @@ export default function SessionTypesClient({
       const result = await deleteSessionTypeAction(id);
       if (result.ok) {
         setItems((prev) => prev.filter((c) => c.id !== id));
+        setAllItems((prev) => prev.map((c) => (c.id === id ? { ...c, isActive: false } : c)));
         setMsg({ type: "ok", text: "Session type deactivated." });
       } else {
         setMsg({ type: "err", text: result.reason });
       }
     } catch (err) {
       showError(err, "Failed to deactivate session type.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleReactivate(id: string) {
+    setSaving(true);
+    setMsg(null);
+    try {
+      const result = await reactivateSessionTypeAction(id);
+      if (result.ok) {
+        setAllItems((prev) => prev.map((c) => (c.id === id ? { ...c, isActive: true } : c)));
+        setItems((prev) => {
+          const reactivated = allItems.find((c) => c.id === id);
+          if (!reactivated) return prev;
+          return [...prev, { ...reactivated, isActive: true }].sort((a, b) => a.name.localeCompare(b.name));
+        });
+        setMsg({ type: "ok", text: "Session type reactivated." });
+      } else {
+        setMsg({ type: "err", text: result.reason });
+      }
+    } catch (err) {
+      showError(err, "Failed to reactivate session type.");
     } finally {
       setSaving(false);
     }
@@ -224,6 +255,49 @@ export default function SessionTypesClient({
           </tbody>
         </table>
       </div>
+
+      {allItems.some((c) => !c.isActive) && (
+        <div className="mt-6">
+          <button
+            onClick={() => setShowDeactivated(!showDeactivated)}
+            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1 mb-3"
+          >
+            {showDeactivated ? "Hide" : "Show"} deactivated ({allItems.filter((c) => !c.isActive).length})
+          </button>
+          {showDeactivated && (
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-900">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-950">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Name</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Description</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allItems.filter((c) => !c.isActive).map((c) => (
+                    <tr key={c.id} className="border-b border-gray-100 last:border-b-0 opacity-60 dark:border-gray-800">
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-50">{c.name}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{c.description || "\u2014"}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end">
+                          <button
+                            onClick={() => handleReactivate(c.id)}
+                            disabled={saving}
+                            className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-600 hover:text-emerald-700 disabled:opacity-50 dark:text-emerald-400 dark:hover:text-emerald-300"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" /> Reactivate
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

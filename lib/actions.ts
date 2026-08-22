@@ -27,6 +27,7 @@ import {
   createSessionType as dataCreateSessionType,
   updateSessionType as dataUpdateSessionType,
   softDeleteSessionType as dataSoftDeleteSessionType,
+  reactivateSessionType as dataReactivateSessionType,
   ensureSeedSessionTypes,
   type ActorInfo,
 } from "@/lib/data/session-types";
@@ -957,6 +958,22 @@ export async function deleteSessionTypeAction(
   const deleted = await dataSoftDeleteSessionType(id, sessionTypeActor(session as any));
   if (!deleted) {
     return { ok: false, reason: "Session type not found or already deactivated." };
+  }
+  revalidatePath("/admin/session-types");
+  return { ok: true };
+}
+
+export async function reactivateSessionTypeAction(
+  id: string
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  if (!session?.user?.id || !isOrgOwner(role)) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  const reactivated = await dataReactivateSessionType(id, sessionTypeActor(session as any));
+  if (!reactivated) {
+    return { ok: false, reason: "Session type not found or already active." };
   }
   revalidatePath("/admin/session-types");
   return { ok: true };
