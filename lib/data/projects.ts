@@ -153,6 +153,7 @@ export async function createProject(input: {
   ownerId?: string;
   autoCompleteBookings?: boolean;
   meetingPlatformPreference?: "zoom" | "teams" | "auto";
+  assignmentMode?: "AUTO" | "PARTICIPANT_CHOICE";
 }): Promise<ProjectWithAdmins> {
   let slug = slugify(input.name);
 
@@ -187,6 +188,7 @@ export async function createProject(input: {
       brandingPrimaryColor: input.branding.primaryColor,
       brandingSenderName: input.branding.senderName,
       meetingPlatformPreference: input.meetingPlatformPreference ?? "auto",
+      assignmentMode: input.assignmentMode ?? "AUTO",
       ownerId: input.ownerId ?? null,
       admins: {
         create: input.adminIds.map((adminId) => ({ adminId })),
@@ -238,6 +240,7 @@ export async function updateProject(
     ownerId?: string;
     autoCompleteBookings?: boolean;
     meetingPlatformPreference?: "zoom" | "teams" | "auto";
+    assignmentMode?: "AUTO" | "PARTICIPANT_CHOICE";
   }
 ): Promise<{ project: ProjectWithAdmins; offboarding: OffboardingSummary }> {
   const existing = await db.project.findUnique({ where: { slug } });
@@ -312,6 +315,9 @@ export async function updateProject(
     }
     if (updates.meetingPlatformPreference !== undefined) {
       updateData.meetingPlatformPreference = updates.meetingPlatformPreference;
+    }
+    if (updates.assignmentMode !== undefined) {
+      updateData.assignmentMode = updates.assignmentMode;
     }
 
     return tx.project.update({

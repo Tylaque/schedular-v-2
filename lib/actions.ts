@@ -81,6 +81,7 @@ export async function createProjectAction(formData: {
   certificationIds?: string[];
   autoCompleteBookings?: boolean;
   meetingPlatformPreference?: "zoom" | "teams" | "auto";
+  assignmentMode?: "AUTO" | "PARTICIPANT_CHOICE";
   reminderSchedules?: ReminderScheduleInput[];
 }) {
   const session = await auth();
@@ -168,6 +169,7 @@ export async function updateProjectAction(
     ownerId?: string;
     autoCompleteBookings?: boolean;
     meetingPlatformPreference?: "zoom" | "teams" | "auto";
+    assignmentMode?: "AUTO" | "PARTICIPANT_CHOICE";
     reminderSchedules?: ReminderScheduleInput[];
   }
 ): Promise<{

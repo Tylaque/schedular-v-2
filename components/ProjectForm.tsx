@@ -46,6 +46,7 @@ type FormData = {
   availabilityPeriodDays: number;
   availabilityLockDate: string;
   meetingPlatformPreference: "zoom" | "teams" | "auto";
+  assignmentMode: "AUTO" | "PARTICIPANT_CHOICE";
   reminderSchedules: { hoursBefore: number; label: string }[];
 };
 
@@ -124,6 +125,7 @@ export default function ProjectForm({
         availabilityPeriodDays: initialProject.availabilityPeriodDays,
         availabilityLockDate: `${initialProject.availabilityLockDate.getFullYear()}-${String(initialProject.availabilityLockDate.getMonth() + 1).padStart(2, "0")}-${String(initialProject.availabilityLockDate.getDate()).padStart(2, "0")}`,
         meetingPlatformPreference: initialProject.meetingPlatformPreference ?? "auto",
+        assignmentMode: initialProject.assignmentMode ?? "AUTO",
         reminderSchedules: (initialProject as any).reminderSchedules?.map((s: any) => ({ hoursBefore: s.hoursBefore, label: s.label })) ?? [
           { hoursBefore: 24, label: "24 Hour Reminder" },
           { hoursBefore: 1, label: "1 Hour Reminder" },
@@ -154,6 +156,7 @@ export default function ProjectForm({
       availabilityPeriodDays: 14,
       availabilityLockDate: futureDateString(30),
       meetingPlatformPreference: "auto",
+      assignmentMode: "AUTO",
       reminderSchedules: [
         { hoursBefore: 24, label: "24 Hour Reminder" },
         { hoursBefore: 1, label: "1 Hour Reminder" },
@@ -261,6 +264,7 @@ export default function ProjectForm({
       ownerId: data.ownerId || undefined,
       certificationIds: requiredCertIds,
       meetingPlatformPreference: data.meetingPlatformPreference,
+      assignmentMode: data.assignmentMode,
       reminderSchedules: data.reminderSchedules,
     };
 
@@ -632,6 +636,36 @@ export default function ProjectForm({
               onClick={() => update("meetingPlatformPreference", opt.value)}
               className={`rounded-lg border p-3 text-left transition-colors ${
                 data.meetingPlatformPreference === opt.value
+                  ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
+                  : "border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600"
+              }`}
+            >
+              <span className="block text-sm font-semibold text-gray-900 dark:text-gray-50">{opt.title}</span>
+              <span className="block text-xs text-gray-500 mt-1 dark:text-gray-400">{opt.desc}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Assignment mode */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm dark:bg-gray-900 dark:border-gray-700">
+        <h2 className="text-sm font-bold text-gray-900 mb-1 dark:text-gray-50">Admin assignment</h2>
+        <p className="text-xs text-gray-500 mb-4 dark:text-gray-400">
+          How the interviewer is chosen when a participant books a session. Automatic assigns the least-loaded eligible associate. Participant choice lets the participant pick their interviewer from a list.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {(
+            [
+              { value: "AUTO", title: "Automatic", desc: "System assigns the least-loaded eligible associate." },
+              { value: "PARTICIPANT_CHOICE", title: "Participant choice", desc: "Participant picks their interviewer." },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => update("assignmentMode", opt.value)}
+              className={`rounded-lg border p-3 text-left transition-colors ${
+                data.assignmentMode === opt.value
                   ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
                   : "border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600"
               }`}

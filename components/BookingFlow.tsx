@@ -83,6 +83,10 @@ export default function BookingFlow({
   const selectedSlots = selectedDateKey ? availability[selectedDateKey] || [] : [];
   const selectedDateObj = selectedDateKey ? new Date(selectedDateKey) : null;
 
+  // Coarse day-level filter: grays out entire days where all slots fall within
+  // the notice window. The backend (getConsolidatedAvailability) now performs
+  // the real min-notice filtering per-slot using IANA-timezone-aware calculation,
+  // so this is a UX optimization — not the source of truth.
   function isPast(d: Date) {
     const cutoff = new Date(today);
     cutoff.setHours(cutoff.getHours() + project.minNoticeHours);

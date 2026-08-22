@@ -431,8 +431,9 @@ export async function createBooking(input: {
           return { ok: false as const, reason: "slot_full" as const };
         }
 
-        // Server-side min-notice gate: the UI disables too-short-notice (and
-        // past) slots, but the booking API must enforce the rule itself too.
+        // Server-side min-notice gate: the availability display now hides
+        // slots within the notice window, but the booking API enforces the
+        // rule too as a defense-in-depth measure.
         // Negative hoursUntilSession also rejects slots already in the past.
         const hoursUntil = hoursUntilSession(input.dateKey, input.time, project.timezone);
         if (hoursUntil < project.minNoticeHours) {

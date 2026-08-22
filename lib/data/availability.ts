@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
 import { expireStaleOffers } from "@/lib/data/waitlist";
 import { timesOverlap } from "@/lib/timeOverlap";
+import { hoursUntilSession } from "@/lib/slotHelpers";
 
 export async function setAdminAvailabilityBulk(
   projectId: string,
@@ -92,6 +93,8 @@ export async function getConsolidatedAvailability(
         availabilityPeriodDays: true,
         maxSessionsPerAdminPerDay: true,
         bufferMinutes: true,
+        minNoticeHours: true,
+        timezone: true,
       },
     }),
     db.projectAdmin.findMany({
@@ -233,6 +236,11 @@ export async function getConsolidatedAvailability(
         const count = fullMap[key] ?? 0;
         if (count >= project.sessionCapacity) continue;
         if (offeredSet.has(key)) continue;
+
+        // Min-notice gate: hide slots that fall within the project's notice window.
+        // Uses the same IANA-timezone-aware calculation as the booking-time check
+        // in createBooking (bookings.ts).
+        if (hoursUntilSession(dateKey, time, project.timezone) < project.minNoticeHours) continue;
 
         const dateRanges = rangesByDate[dateKey] ?? [];
         let slotBookable = false;
