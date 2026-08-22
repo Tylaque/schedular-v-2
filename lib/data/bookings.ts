@@ -396,6 +396,8 @@ type BookingOk = {
   ok: true;
   booking: { id: string; adminId: string; dateKey: string; time: string };
   admin: AdminInfo;
+  sessionTypeId: string | null;
+  sessionTypeName: string | null;
 };
 type BookingErr = { ok: false; reason: "slot_full" | "no_admin_available" | "too_short_notice" | "admin_not_eligible" };
 type BookingResult = BookingOk | BookingErr;
@@ -407,6 +409,7 @@ export async function createBooking(input: {
   participantName: string;
   participantEmail: string;
   adminId?: string;
+  sessionTypeId?: string;
 }): Promise<BookingResult> {
   try {
     const result: BookingResult = await db.$transaction(
@@ -425,7 +428,10 @@ export async function createBooking(input: {
 
         const project = await tx.project.findUnique({
           where: { id: input.projectId },
-          select: { sessionCapacity: true, minNoticeHours: true, timezone: true, assignmentMode: true },
+          select: {
+            sessionCapacity: true, minNoticeHours: true, timezone: true, assignmentMode: true,
+            defaultSessionType: { select: { id: true, name: true } },
+          },
         });
         if (!project) {
           return { ok: false as const, reason: "slot_full" as const };
@@ -512,6 +518,26 @@ export async function createBooking(input: {
           },
         });
 
+        // Session type resolution: snapshot the name at booking time for
+        // audit accuracy. If an explicit sessionTypeId is provided, validate
+        // it exists and is active, then snapshot. Otherwise inherit the
+        // project's default type at write time.
+        let resolvedSessionTypeId: string | null = null;
+        let resolvedSessionTypeName: string | null = null;
+        if (input.sessionTypeId) {
+          const st = await tx.sessionType.findUnique({
+            where: { id: input.sessionTypeId },
+            select: { id: true, name: true, isActive: true },
+          });
+          if (st && st.isActive) {
+            resolvedSessionTypeId = st.id;
+            resolvedSessionTypeName = st.name;
+          }
+        }
+        if (!resolvedSessionTypeName && project.defaultSessionType) {
+          resolvedSessionTypeName = project.defaultSessionType.name;
+        }
+
         const booking = await tx.booking.create({
           data: {
             projectId: input.projectId,
@@ -521,6 +547,8 @@ export async function createBooking(input: {
             dateKey: input.dateKey,
             time: input.time,
             status: "confirmed",
+            sessionTypeId: resolvedSessionTypeId,
+            sessionTypeName: resolvedSessionTypeName,
           },
           select: { id: true, adminId: true, dateKey: true, time: true },
         });
@@ -531,7 +559,7 @@ export async function createBooking(input: {
           await rescindOffersForSlot(input.projectId, input.dateKey, input.time, tx);
         }
 
-        return { ok: true as const, booking, admin };
+        return { ok: true as const, booking, admin, sessionTypeId: resolvedSessionTypeId, sessionTypeName: resolvedSessionTypeName };
       },
       {
         isolationLevel: "ReadCommitted",
@@ -554,6 +582,8 @@ export async function createBooking(input: {
           participantName: input.participantName,
           participantEmail: input.participantEmail,
           adminId: result.booking.adminId,
+          sessionTypeId: result.sessionTypeId,
+          sessionTypeName: result.sessionTypeName,
         },
       }).catch(() => {});
 

@@ -23,6 +23,13 @@ import { previewAdminUnavailable, commitAdminUnavailable, previewDateShift, comm
 import { isOrgOwner, isSuperAdmin } from "@/lib/authz";
 import { changeAdminRole, promoteToOrgOwner, deactivateAdmin, reactivateAdmin } from "@/lib/data/team";
 import { setAdminRangesForDate } from "@/lib/data/availability-ranges";
+import {
+  createSessionType as dataCreateSessionType,
+  updateSessionType as dataUpdateSessionType,
+  softDeleteSessionType as dataSoftDeleteSessionType,
+  ensureSeedSessionTypes,
+  type ActorInfo,
+} from "@/lib/data/session-types";
 import { sendInvitationsOnActivation } from "@/lib/data/participants";
 import { updateParticipantStatus } from "@/lib/data/participants";
 import { addParticipant, sendParticipantInvitationsForProject, removeParticipant } from "@/lib/data/participants";
@@ -83,6 +90,7 @@ export async function createProjectAction(formData: {
   meetingPlatformPreference?: "zoom" | "teams" | "auto";
   assignmentMode?: "AUTO" | "PARTICIPANT_CHOICE";
   reminderSchedules?: ReminderScheduleInput[];
+  defaultSessionTypeId?: string | null;
 }) {
   const session = await auth();
   if (!session?.user?.id) return;
@@ -120,6 +128,7 @@ export async function confirmBookingAction(input: {
   participantEmail: string;
   participantId?: string;
   adminId?: string;
+  sessionTypeId?: string;
 }): Promise<
   | { ok: true; adminName: string }
   | { ok: false; reason: "slot_full" | "no_admin_available" | "rate_limited" | "too_short_notice" | "admin_not_eligible" }
@@ -171,6 +180,7 @@ export async function updateProjectAction(
     meetingPlatformPreference?: "zoom" | "teams" | "auto";
     assignmentMode?: "AUTO" | "PARTICIPANT_CHOICE";
     reminderSchedules?: ReminderScheduleInput[];
+    defaultSessionTypeId?: string | null;
   }
 ): Promise<{
   ok: true;
@@ -863,6 +873,92 @@ export async function setProjectCertificationRequirementsAction(
   });
   revalidatePath("/admin/projects");
   revalidatePath(`/admin/projects/${project.slug}/edit`);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Session Types — org_owner only
+// ---------------------------------------------------------------------------
+
+function sessionTypeActor(session: { user: { name?: string | null; email?: string | null; id: string } }): ActorInfo {
+  return {
+    actorId: session.user.id,
+    actorLabel: session.user.name || session.user.email || "Unknown",
+  };
+}
+
+export async function createSessionTypeAction(
+  name: string,
+  description?: string
+): Promise<
+  | { ok: true; id: string; name: string; description: string; isActive: boolean }
+  | { ok: false; reason: string }
+> {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  if (!session?.user?.id || !isOrgOwner(role)) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  if (!name?.trim()) {
+    return { ok: false, reason: "Name is required." };
+  }
+  try {
+    const record = await dataCreateSessionType({
+      name,
+      description,
+      ...sessionTypeActor(session as any),
+    });
+    revalidatePath("/admin/session-types");
+    return { ok: true, ...record };
+  } catch (e: any) {
+    if (e?.code === "P2002") {
+      return { ok: false, reason: "A session type with that name already exists." };
+    }
+    throw e;
+  }
+}
+
+export async function updateSessionTypeAction(
+  id: string,
+  name: string,
+  description?: string
+): Promise<
+  | { ok: true; id: string; name: string; description: string; isActive: boolean }
+  | { ok: false; reason: string }
+> {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  if (!session?.user?.id || !isOrgOwner(role)) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  if (!name?.trim()) {
+    return { ok: false, reason: "Name is required." };
+  }
+  const updated = await dataUpdateSessionType(id, {
+    name,
+    description,
+    ...sessionTypeActor(session as any),
+  });
+  if (!updated) {
+    return { ok: false, reason: "Session type not found." };
+  }
+  revalidatePath("/admin/session-types");
+  return { ok: true, ...updated };
+}
+
+export async function deleteSessionTypeAction(
+  id: string
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+  if (!session?.user?.id || !isOrgOwner(role)) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  const deleted = await dataSoftDeleteSessionType(id, sessionTypeActor(session as any));
+  if (!deleted) {
+    return { ok: false, reason: "Session type not found or already deactivated." };
+  }
+  revalidatePath("/admin/session-types");
   return { ok: true };
 }
 

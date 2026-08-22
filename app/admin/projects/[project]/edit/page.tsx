@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { getProjectBySlug } from "@/lib/data/projects";
 import { canManageProject } from "@/lib/authz";
 import { listCertifications, getProjectCertificationRequirements, getCertificationAssignments } from "@/lib/data/certifications";
+import { listSessionTypes } from "@/lib/data/session-types";
 import ProjectForm from "@/components/ProjectForm";
 
 export const dynamic = "force-dynamic";
@@ -24,10 +25,11 @@ export default async function EditProjectPage({
   const user = { id: session.user.id, role: (session.user as any).role as "admin" | "super_admin" | "org_owner" };
   if (!canManageProject(user, project)) return notFound();
 
-  const [certifications, requirements, assignments] = await Promise.all([
+  const [certifications, requirements, assignments, sessionTypes] = await Promise.all([
     listCertifications(),
     getProjectCertificationRequirements(project.id),
     getCertificationAssignments(),
+    listSessionTypes(),
   ]);
   const certificationsByAdmin: Record<string, string[]> = {};
   for (const a of assignments) {
@@ -58,6 +60,7 @@ export default async function EditProjectPage({
           certifications={certifications}
           initialRequirements={requirements.map((r) => r.certificationId)}
           certificationsByAdmin={certificationsByAdmin}
+          sessionTypes={sessionTypes}
         />
     </div>
   );

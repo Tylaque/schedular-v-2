@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import ProjectForm from "@/components/ProjectForm";
 import { auth } from "@/auth";
 import { listCertifications, getCertificationAssignments } from "@/lib/data/certifications";
+import { listSessionTypes } from "@/lib/data/session-types";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +11,10 @@ export default async function NewProjectPage() {
   const session = await auth();
   const currentUserRole = (session?.user as any)?.role;
 
-  const [certifications, assignments] = await Promise.all([
+  const [certifications, assignments, sessionTypes] = await Promise.all([
     listCertifications(),
     getCertificationAssignments(),
+    listSessionTypes(),
   ]);
   const certificationsByAdmin: Record<string, string[]> = {};
   for (const a of assignments) {
@@ -33,6 +35,7 @@ export default async function NewProjectPage() {
           currentUserRole={currentUserRole}
           certifications={certifications}
           certificationsByAdmin={certificationsByAdmin}
+          sessionTypes={sessionTypes}
         />
     </div>
   );

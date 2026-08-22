@@ -47,6 +47,7 @@ type FormData = {
   availabilityLockDate: string;
   meetingPlatformPreference: "zoom" | "teams" | "auto";
   assignmentMode: "AUTO" | "PARTICIPANT_CHOICE";
+  defaultSessionTypeId: string;
   reminderSchedules: { hoursBefore: number; label: string }[];
 };
 
@@ -69,6 +70,7 @@ export default function ProjectForm({
   certifications = [],
   initialRequirements = [],
   certificationsByAdmin = {},
+  sessionTypes = [],
 }: {
   mode: "create" | "edit";
   initialProject?: Project;
@@ -76,6 +78,7 @@ export default function ProjectForm({
   certifications?: { id: string; name: string; description: string }[];
   initialRequirements?: string[];
   certificationsByAdmin?: Record<string, string[]>;
+  sessionTypes?: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const isEdit = mode === "edit";
@@ -126,6 +129,7 @@ export default function ProjectForm({
         availabilityLockDate: `${initialProject.availabilityLockDate.getFullYear()}-${String(initialProject.availabilityLockDate.getMonth() + 1).padStart(2, "0")}-${String(initialProject.availabilityLockDate.getDate()).padStart(2, "0")}`,
         meetingPlatformPreference: initialProject.meetingPlatformPreference ?? "auto",
         assignmentMode: initialProject.assignmentMode ?? "AUTO",
+        defaultSessionTypeId: (initialProject as any).defaultSessionTypeId ?? "",
         reminderSchedules: (initialProject as any).reminderSchedules?.map((s: any) => ({ hoursBefore: s.hoursBefore, label: s.label })) ?? [
           { hoursBefore: 24, label: "24 Hour Reminder" },
           { hoursBefore: 1, label: "1 Hour Reminder" },
@@ -157,6 +161,7 @@ export default function ProjectForm({
       availabilityLockDate: futureDateString(30),
       meetingPlatformPreference: "auto",
       assignmentMode: "AUTO",
+      defaultSessionTypeId: "",
       reminderSchedules: [
         { hoursBefore: 24, label: "24 Hour Reminder" },
         { hoursBefore: 1, label: "1 Hour Reminder" },
@@ -265,6 +270,7 @@ export default function ProjectForm({
       certificationIds: requiredCertIds,
       meetingPlatformPreference: data.meetingPlatformPreference,
       assignmentMode: data.assignmentMode,
+      defaultSessionTypeId: data.defaultSessionTypeId || null,
       reminderSchedules: data.reminderSchedules,
     };
 
@@ -675,6 +681,24 @@ export default function ProjectForm({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Default session type */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm dark:bg-gray-900 dark:border-gray-700">
+        <h2 className="text-sm font-bold text-gray-900 mb-1 dark:text-gray-50">Default session type</h2>
+        <p className="text-xs text-gray-500 mb-4 dark:text-gray-400">
+          The session type assigned to bookings that don&apos;t specify one. Choose &ldquo;None&rdquo; if this project doesn&apos;t use session types.
+        </p>
+        <select
+          value={data.defaultSessionTypeId}
+          onChange={(e) => update("defaultSessionTypeId", e.target.value)}
+          className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white dark:border-gray-600 dark:bg-gray-800 min-w-[200px]"
+        >
+          <option value="">None (no default type)</option>
+          {sessionTypes?.map((st) => (
+            <option key={st.id} value={st.id}>{st.name}</option>
+          ))}
+        </select>
       </div>
 
       {/* Required certifications */}

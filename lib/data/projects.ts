@@ -28,6 +28,8 @@ export type ProjectWithAdmins = {
   ownerName: string | null;
   meetingPlatformPreference: "zoom" | "teams" | "auto";
   assignmentMode: "AUTO" | "PARTICIPANT_CHOICE";
+  defaultSessionTypeId: string | null;
+  defaultSessionTypeName: string | null;
   reminderSchedules: { id: string; hoursBefore: number; label: string }[];
   createdAt: Date;
   updatedAt: Date;
@@ -61,6 +63,8 @@ function toProjectWithAdmins(row: {
   owner?: { name: string } | null;
   meetingPlatformPreference: "zoom" | "teams" | "auto";
   assignmentMode: "AUTO" | "PARTICIPANT_CHOICE";
+  defaultSessionTypeId: string | null;
+  defaultSessionType?: { id: string; name: string } | null;
   reminderSchedules?: { id: string; hoursBefore: number; label: string }[];
   createdAt: Date;
   updatedAt: Date;
@@ -94,6 +98,8 @@ function toProjectWithAdmins(row: {
     ownerName: row.owner?.name ?? null,
     meetingPlatformPreference: row.meetingPlatformPreference,
     assignmentMode: row.assignmentMode,
+    defaultSessionTypeId: row.defaultSessionTypeId,
+    defaultSessionTypeName: row.defaultSessionType?.name ?? null,
     reminderSchedules: row.reminderSchedules ?? [],
     admins: (row.admins ?? []).map((pa) => ({
       id: pa.admin.id,
@@ -113,7 +119,7 @@ export async function listProjects(ownerId?: string): Promise<ProjectWithAdmins[
   const where = ownerId ? { ownerId } : {};
   const rows = await db.project.findMany({
     where,
-    include: { admins: { include: { admin: true } }, owner: { select: { name: true } } },
+    include: { admins: { include: { admin: true } }, owner: { select: { name: true } }, defaultSessionType: { select: { id: true, name: true } } },
     orderBy: { createdAt: "desc" },
   });
   return rows.map(toProjectWithAdmins);
@@ -122,11 +128,12 @@ export async function listProjects(ownerId?: string): Promise<ProjectWithAdmins[
 export async function getProjectBySlug(slug: string): Promise<ProjectWithAdmins | null> {
   const row = await db.project.findUnique({
     where: { slug },
-    include: {
-      admins: { include: { admin: true } },
-      owner: { select: { name: true } },
-      reminderSchedules: { orderBy: { hoursBefore: "desc" }, select: { id: true, hoursBefore: true, label: true } },
-    },
+      include: {
+        admins: { include: { admin: true } },
+        owner: { select: { name: true } },
+        defaultSessionType: { select: { id: true, name: true } },
+        reminderSchedules: { orderBy: { hoursBefore: "desc" }, select: { id: true, hoursBefore: true, label: true } },
+      },
   });
   return row ? toProjectWithAdmins(row) : null;
 }
@@ -154,6 +161,7 @@ export async function createProject(input: {
   autoCompleteBookings?: boolean;
   meetingPlatformPreference?: "zoom" | "teams" | "auto";
   assignmentMode?: "AUTO" | "PARTICIPANT_CHOICE";
+  defaultSessionTypeId?: string | null;
 }): Promise<ProjectWithAdmins> {
   let slug = slugify(input.name);
 
@@ -189,6 +197,7 @@ export async function createProject(input: {
       brandingSenderName: input.branding.senderName,
       meetingPlatformPreference: input.meetingPlatformPreference ?? "auto",
       assignmentMode: input.assignmentMode ?? "AUTO",
+      defaultSessionTypeId: input.defaultSessionTypeId ?? null,
       ownerId: input.ownerId ?? null,
       admins: {
         create: input.adminIds.map((adminId) => ({ adminId })),
@@ -241,6 +250,7 @@ export async function updateProject(
     autoCompleteBookings?: boolean;
     meetingPlatformPreference?: "zoom" | "teams" | "auto";
     assignmentMode?: "AUTO" | "PARTICIPANT_CHOICE";
+    defaultSessionTypeId?: string | null;
   }
 ): Promise<{ project: ProjectWithAdmins; offboarding: OffboardingSummary }> {
   const existing = await db.project.findUnique({ where: { slug } });
@@ -318,6 +328,9 @@ export async function updateProject(
     }
     if (updates.assignmentMode !== undefined) {
       updateData.assignmentMode = updates.assignmentMode;
+    }
+    if (updates.defaultSessionTypeId !== undefined) {
+      updateData.defaultSessionTypeId = updates.defaultSessionTypeId;
     }
 
     return tx.project.update({

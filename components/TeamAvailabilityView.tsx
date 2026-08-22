@@ -1,7 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, BarChart3 } from "lucide-react";
+
+type CapacityInfo = {
+  dateKey: string;
+  startTime: string;
+  endTime: string;
+  capacity: {
+    totalSlots: number;
+    bookableSlots: number;
+    bookedSlots: number;
+  };
+  bookableTimes: string[];
+};
 
 type TeamAvailabilityEntry = {
   adminId: string;
@@ -9,6 +21,7 @@ type TeamAvailabilityEntry = {
   projectNames: string[];
   projectIds: string[];
   ranges: { dateKey: string; startTime: string; endTime: string }[];
+  capacity?: CapacityInfo[];
 };
 
 function pad(n: number) {
@@ -30,6 +43,7 @@ export default function TeamAvailabilityView() {
   const [toDate, setToDate] = useState(defaultTo());
   const [adminId, setAdminId] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [mode, setMode] = useState<"raw" | "remaining">("raw");
   const [data, setData] = useState<TeamAvailabilityEntry[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -37,6 +51,7 @@ export default function TeamAvailabilityView() {
     const params = new URLSearchParams({ from: fromDate, to: toDate });
     if (adminId) params.set("adminId", adminId);
     if (projectId) params.set("projectId", projectId);
+    if (mode === "remaining") params.set("mode", "remaining");
     setLoading(true);
     try {
       const res = await fetch(`/api/team-availability?${params}`);
@@ -50,7 +65,7 @@ export default function TeamAvailabilityView() {
     } finally {
       setLoading(false);
     }
-  }, [fromDate, toDate, adminId, projectId]);
+  }, [fromDate, toDate, adminId, projectId, mode]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -132,6 +147,21 @@ export default function TeamAvailabilityView() {
             {projectOptions.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
           </select>
         </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1 dark:text-gray-400">View</label>
+          <button
+            type="button"
+            onClick={() => setMode(mode === "raw" ? "remaining" : "raw")}
+            className={`text-sm font-medium rounded-lg px-3 py-1.5 border transition-colors ${
+              mode === "remaining"
+                ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-200 dark:border-brand-700"
+                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+            }`}
+          >
+            <BarChart3 className="w-4 h-4 inline-block mr-1 -mt-0.5" />
+            {mode === "raw" ? "Remaining capacity" : "Declared ranges"}
+          </button>
+        </div>
       </div>
 
       {loading && (
@@ -146,7 +176,7 @@ export default function TeamAvailabilityView() {
         </div>
       )}
 
-      {!loading && data.length > 0 && (
+      {!loading && data.length > 0 && mode === "raw" && (
         <div className="space-y-4">
           {data.map((entry) => (
             <div key={entry.adminId} className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 dark:border-gray-700 dark:bg-gray-900">
@@ -175,6 +205,64 @@ export default function TeamAvailabilityView() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && data.length > 0 && mode === "remaining" && (
+        <div className="space-y-4">
+          {data.map((entry) => (
+            <div key={entry.adminId} className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 dark:border-gray-700 dark:bg-gray-900">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50">{entry.adminName}</h3>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {entry.projectNames.length > 0 ? entry.projectNames.join(", ") : "No assigned projects"}
+                </span>
+              </div>
+
+              {(!entry.capacity || entry.capacity.length === 0) ? (
+                <p className="text-xs text-gray-400 dark:text-gray-500">No availability submitted in this date range.</p>
+              ) : (
+                <div className="space-y-2">
+                  {entry.capacity.map((cap) => {
+                    const pct = cap.capacity.totalSlots > 0
+                      ? Math.round((cap.capacity.bookableSlots / cap.capacity.totalSlots) * 100)
+                      : 0;
+                    return (
+                      <div key={`${cap.dateKey}-${cap.startTime}`} className="flex items-start gap-3">
+                        <span className="text-xs font-medium text-gray-600 w-28 shrink-0 dark:text-gray-300">{cap.dateKey}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{cap.startTime}–{cap.endTime}</span>
+                            <span className={`text-xs font-semibold ${pct === 0 ? "text-red-600 dark:text-red-400" : pct < 50 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                              {cap.capacity.bookableSlots}/{cap.capacity.totalSlots} bookable
+                            </span>
+                          </div>
+                          {cap.capacity.bookableSlots > 0 && cap.capacity.bookableSlots < cap.capacity.totalSlots && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {cap.bookableTimes.map((t, i) => (
+                                <span
+                                  key={`${cap.dateKey}-${t}-${i}`}
+                                  className="inline-block rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-xs font-medium dark:bg-emerald-900/30 dark:text-emerald-300"
+                                >
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {cap.capacity.bookableSlots === cap.capacity.totalSlots && (
+                            <span className="text-xs text-gray-400 dark:text-gray-500">All slots open</span>
+                          )}
+                          {cap.capacity.bookableSlots === 0 && (
+                            <span className="text-xs text-red-500 dark:text-red-400">Fully booked</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -137,6 +137,18 @@ model Admin {
   createdAt          DateTime            @default(now())
 }
 
+model SessionType {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String   @default("")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  projects Project[]
+  bookings Booking[]
+}
+
 model Certification {
   id                 String   @id @default(cuid())
   name               String   @unique
@@ -242,6 +254,8 @@ model Project {
   owner                     Admin?         @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   meetingPlatformPreference MeetingPlatformPreference @default(auto)
   assignmentMode            AssignmentMode @default(AUTO)
+  defaultSessionTypeId      String?
+  defaultSessionType        SessionType?   @relation(fields: [defaultSessionTypeId], references: [id], onDelete: SetNull)
   createdAt                 DateTime       @default(now())
   updatedAt                 DateTime       @updatedAt
 }
@@ -362,6 +376,9 @@ model Booking {
   zoomProvisionStatus   ZoomProvisionStatus?
   zoomErrorDetail       String?
   meetingFallbackReason String?
+  sessionTypeId         String?
+  sessionType           SessionType? @relation(fields: [sessionTypeId], references: [id], onDelete: SetNull)
+  sessionTypeName       String?
   createdAt             DateTime      @default(now())
 
   // No @@unique here — the old partial unique index (Booking_project_slot_confirmed_unique)
@@ -448,6 +465,9 @@ enum AuditAction {
   zoom_fallback_to_teams
   zoom_pool_full_no_fallback
   zoom_provision_failed
+  session_type_created
+  session_type_updated
+  session_type_deleted
 }
 
 model AuditLog {

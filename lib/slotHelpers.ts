@@ -29,6 +29,8 @@ export type Project = {
   ownerId: string | null;
   meetingPlatformPreference: "zoom" | "teams" | "auto";
   assignmentMode: "AUTO" | "PARTICIPANT_CHOICE";
+  defaultSessionTypeId?: string | null;
+  defaultSessionType?: { id: string; name: string } | null;
   reminderSchedules?: { id: string; hoursBefore: number; label: string }[];
 };
 

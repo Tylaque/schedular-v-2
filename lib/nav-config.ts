@@ -50,6 +50,7 @@ export const NAV_CONFIG: NavSection[] = [
   { type: "dropdown", label: "Manage", icon: "Users", items: [
     { label: "Team", href: "/admin/team", roles: ["super_admin", "org_owner"], icon: "Users" },
     { label: "Certifications", href: "/admin/certifications", roles: ["org_owner"], icon: "BadgeCheck" },
+    { label: "Session Types", href: "/admin/session-types", roles: ["org_owner"], icon: "Tag" },
     { label: "Zoom Pool", href: "/admin/zoom-pool", roles: ["super_admin", "org_owner"], icon: "Video" },
     { label: "Templates", href: "/admin/templates", roles: ["super_admin", "org_owner"], icon: "Mail" },
   ]},
