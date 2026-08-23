@@ -27,6 +27,33 @@ let meetingCounter = 1000;
 const calls: string[] = [];
 let failUser: string | null = null;
 
+// --- Mock Resend email server ---
+const sentEmails: { to: string; subject: string }[] = [];
+let emailCounter = 0;
+
+function makeResendMock(): Promise<http.Server> {
+  const server = http.createServer((req, res) => {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      res.setHeader("Content-Type", "application/json");
+      if (req.method === "GET" && req.url === "/__health") {
+        res.writeHead(200).end(JSON.stringify({ ok: true }));
+        return;
+      }
+      if (req.method === "POST" && (req.url === "/emails" || req.url === "/emails/")) {
+        emailCounter++;
+        const payload = body ? JSON.parse(body) : {};
+        sentEmails.push({ to: payload.to ?? null, subject: payload.subject ?? null });
+        res.writeHead(200).end(JSON.stringify({ id: `mock-email-${emailCounter}` }));
+        return;
+      }
+      res.writeHead(404).end(JSON.stringify({ message: "mock-resend: not found" }));
+    });
+  });
+  return new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(server)));
+}
+
 function makeServer(): Promise<http.Server> {
   const server = http.createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
@@ -89,6 +116,13 @@ async function main() {
   process.env.ZOOM_ACCOUNT_ID = "mock-account-id";
   process.env.ZOOM_CLIENT_ID = "mock-client-id";
   process.env.ZOOM_CLIENT_SECRET = "mock-client-secret";
+
+  const resendMock = await makeResendMock();
+  const resendPort = (resendMock.address() as any).port;
+  const origResendBaseUrl = process.env.RESEND_BASE_URL;
+  const origResendApiKey = process.env.RESEND_API_KEY;
+  process.env.RESEND_BASE_URL = `http://127.0.0.1:${resendPort}`;
+  process.env.RESEND_API_KEY = "mock-resend-key";
 
   const ts = Date.now().toString().slice(-8);
   const owner = await db.admin.create({
@@ -185,7 +219,9 @@ async function main() {
   const auditA = await db.auditLog.findFirst({ where: { action: "zoom_fallback_to_teams", entityId: b3.id } });
   check("audit zoom_fallback_to_teams written", auditA != null, JSON.stringify(auditA));
   const notifA = await db.notificationLog.findFirst({ where: { category: "zoom_fallback_to_teams", projectId: pAuto.id, recipientEmail: owner.email } });
-  check("owner emailed (zoom_fallback_to_teams)", notifA != null && notifA.recipientRole === "super_admin", JSON.stringify(notifA));
+  check("owner emailed (zoom_fallback_to_teams)", notifA != null && notifA.recipientRole === "super_admin" && notifA.status === "sent", JSON.stringify(notifA));
+  const emailA = sentEmails.find((e) => e.to === owner.email && e.subject?.includes("zoom_fallback_to_teams"));
+  check("Resend email actually sent to owner (fallback)", emailA != null, JSON.stringify(emailA));
 
   console.log("\n[B] Zoom-only preference — pool full, no fallback");
   const b4 = await makeBooking(pZoom.id, d1, "10:00", 4);
@@ -196,7 +232,9 @@ async function main() {
   const auditB = await db.auditLog.findFirst({ where: { action: "zoom_pool_full_no_fallback", entityId: b4.id } });
   check("audit zoom_pool_full_no_fallback written", auditB != null);
   const notifB = await db.notificationLog.findFirst({ where: { category: "zoom_pool_full_no_fallback", projectId: pZoom.id, recipientEmail: owner.email } });
-  check("owner emailed (zoom_pool_full_no_fallback)", notifB != null, JSON.stringify(notifB));
+  check("owner emailed (zoom_pool_full_no_fallback)", notifB != null && notifB.status === "sent", JSON.stringify(notifB));
+  const emailB = sentEmails.find((e) => e.to === owner.email && e.subject?.includes("zoom_pool_full_no_fallback"));
+  check("Resend email actually sent to owner (zoom-only pool full)", emailB != null, JSON.stringify(emailB));
 
   console.log("\n[C] Teams-only preference — Zoom never called");
   const callCountC = calls.length;
@@ -219,7 +257,9 @@ async function main() {
   const auditD = await db.auditLog.findFirst({ where: { action: "zoom_fallback_to_teams", entityId: b6.id } });
   check("audit zoom_fallback_to_teams written (API failure)", auditD != null);
   const notifD = await db.notificationLog.findFirst({ where: { category: "zoom_fallback_to_teams", projectId: pAuto.id, recipientEmail: owner.email }, orderBy: { createdAt: "desc" } });
-  check("owner emailed again (fallback)", notifD != null);
+  check("owner emailed again (fallback)", notifD != null && notifD.status === "sent");
+  const emailD = sentEmails.filter((e) => e.to === owner.email);
+  check("Resend email actually sent (API failure fallback)", emailD.length >= 3, `count=${emailD.length}`);
 
   console.log("\n[D2] Zoom-only preference — API failure, no fallback");
   failUser = "zu-1";
@@ -232,7 +272,9 @@ async function main() {
   const auditD2 = await db.auditLog.findFirst({ where: { action: "zoom_provision_failed", entityId: b9.id } });
   check("audit zoom_provision_failed written (zoom-only)", auditD2 != null);
   const notifD2 = await db.notificationLog.findFirst({ where: { category: "zoom_pool_full_no_fallback", projectId: pZoom.id, recipientEmail: owner.email }, orderBy: { createdAt: "desc" } });
-  check("owner emailed (zoom_pool_full_no_fallback)", notifD2 != null);
+  check("owner emailed (zoom_pool_full_no_fallback)", notifD2 != null && notifD2.status === "sent");
+  const emailD2 = sentEmails.filter((e) => e.to === owner.email && e.subject?.includes("zoom_pool_full_no_fallback"));
+  check("Resend email actually sent (zoom-only API failure)", emailD2.length >= 2, `count=${emailD2.length}`);
 
   console.log("\n[E] Race — two concurrent claims, one free account");
   await setZoomAccountActive(acc2.id, false);
@@ -273,6 +315,9 @@ async function main() {
   check("no leftover pool accounts", leftoverAccounts === 0, String(leftoverAccounts));
 
   server.close();
+  resendMock.close();
+  if (origResendBaseUrl !== undefined) process.env.RESEND_BASE_URL = origResendBaseUrl; else delete process.env.RESEND_BASE_URL;
+  if (origResendApiKey !== undefined) process.env.RESEND_API_KEY = origResendApiKey; else delete process.env.RESEND_API_KEY;
   console.log(failures === 0 ? "\nALL CHECKS PASSED" : `\n${failures} CHECK(S) FAILED`);
   process.exit(failures === 0 ? 0 : 1);
 }

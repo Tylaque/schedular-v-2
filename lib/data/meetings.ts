@@ -14,14 +14,18 @@
 //
 // An audit event is recorded on every fallback outcome.
 
+import { Resend } from "resend";
 import { db } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
 import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
 import { logNotification } from "@/lib/data/notifications";
+import { stripHtml } from "@/lib/html-to-text";
 import { createMeetingEvent, deleteMeetingEvent, updateMeetingEventTime } from "@/lib/graph/client";
 import { createZoomMeeting, deleteZoomMeeting, updateZoomMeetingTime, zoomPoolConfigured } from "@/lib/zoom/client";
 import { claimZoomAccountForBooking, bookingToUtcISO } from "@/lib/data/zoom";
 import type { ZoomAccount } from "@prisma/client";
+
+const NOTIFICATION_FROM = process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>";
 
 export type ZoomFallbackReason = "zoom_pool_full_no_fallback" | "zoom_provision_failed";
 
@@ -101,16 +105,54 @@ async function notifyOwnerAndAudit(input: {
     };
 
     const rendered = renderTemplate(template, ctx);
-    await logNotification({
-      templateId: template.id,
-      category,
-      projectId: input.project.id,
-      recipientEmail: owner.email,
-      recipientRole: "super_admin",
-      subject: rendered.subject,
-      renderedBody: rendered.bodyHtml,
-      status: "sent",
-    });
+    const resendApiKey = process.env.RESEND_API_KEY ?? "";
+    if (!resendApiKey) {
+      await logNotification({
+        templateId: template.id,
+        category,
+        projectId: input.project.id,
+        recipientEmail: owner.email,
+        recipientRole: "super_admin",
+        subject: rendered.subject,
+        renderedBody: rendered.bodyHtml,
+        status: "failed",
+      });
+      return;
+    }
+    const resend = new Resend(resendApiKey);
+    try {
+      const result = await resend.emails.send({
+        from: NOTIFICATION_FROM,
+        to: owner.email,
+        subject: rendered.subject,
+        html: rendered.bodyHtml,
+        text: stripHtml(rendered.bodyHtml),
+      });
+      if (result.error || !result.data?.id) {
+        throw new Error(result.error?.message ?? "Resend did not return an email id");
+      }
+      await logNotification({
+        templateId: template.id,
+        category,
+        projectId: input.project.id,
+        recipientEmail: owner.email,
+        recipientRole: "super_admin",
+        subject: rendered.subject,
+        renderedBody: rendered.bodyHtml,
+        status: "sent",
+      });
+    } catch (sendErr) {
+      await logNotification({
+        templateId: template.id,
+        category,
+        projectId: input.project.id,
+        recipientEmail: owner.email,
+        recipientRole: "super_admin",
+        subject: rendered.subject,
+        renderedBody: rendered.bodyHtml,
+        status: "failed",
+      }).catch(() => {});
+    }
   } catch (err) {
     console.error("Failed to send Zoom fallback owner notification:", err);
   }

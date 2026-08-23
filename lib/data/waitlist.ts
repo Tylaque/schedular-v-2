@@ -1,9 +1,13 @@
+import { Resend } from "resend";
 import { db } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
 import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
 import { logNotification } from "@/lib/data/notifications";
+import { stripHtml } from "@/lib/html-to-text";
 import { createBooking } from "@/lib/data/bookings";
 import type { Prisma } from "@prisma/client";
+
+const NOTIFICATION_FROM = process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>";
 
 export async function joinWaitlist(input: {
   projectId: string;
@@ -158,16 +162,54 @@ export async function offerNextWaitlistEntry(
       meeting_link: "",
     };
     const rendered = renderTemplate(template, ctx);
-    await logNotification({
-      templateId: template.id,
-      category: "waitlist_offer",
-      projectId,
-      recipientEmail: entry.email,
-      recipientRole: "participant",
-      subject: rendered.subject,
-      renderedBody: rendered.bodyHtml,
-      status: "sent",
-    });
+    const resendApiKey = process.env.RESEND_API_KEY ?? "";
+    if (!resendApiKey) {
+      await logNotification({
+        templateId: template.id,
+        category: "waitlist_offer",
+        projectId,
+        recipientEmail: entry.email,
+        recipientRole: "participant",
+        subject: rendered.subject,
+        renderedBody: rendered.bodyHtml,
+        status: "failed",
+      });
+      return updated;
+    }
+    const resend = new Resend(resendApiKey);
+    try {
+      const result = await resend.emails.send({
+        from: NOTIFICATION_FROM,
+        to: entry.email,
+        subject: rendered.subject,
+        html: rendered.bodyHtml,
+        text: stripHtml(rendered.bodyHtml),
+      });
+      if (result.error || !result.data?.id) {
+        throw new Error(result.error?.message ?? "Resend did not return an email id");
+      }
+      await logNotification({
+        templateId: template.id,
+        category: "waitlist_offer",
+        projectId,
+        recipientEmail: entry.email,
+        recipientRole: "participant",
+        subject: rendered.subject,
+        renderedBody: rendered.bodyHtml,
+        status: "sent",
+      });
+    } catch (sendErr) {
+      await logNotification({
+        templateId: template.id,
+        category: "waitlist_offer",
+        projectId,
+        recipientEmail: entry.email,
+        recipientRole: "participant",
+        subject: rendered.subject,
+        renderedBody: rendered.bodyHtml,
+        status: "failed",
+      }).catch(() => {});
+    }
   } catch (err) {
     console.error("Failed to send waitlist offer notification:", err);
   }
