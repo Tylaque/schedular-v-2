@@ -23,6 +23,8 @@ import { stripHtml } from "@/lib/html-to-text";
 import { createMeetingEvent, deleteMeetingEvent, updateMeetingEventTime } from "@/lib/graph/client";
 import { createZoomMeeting, deleteZoomMeeting, updateZoomMeetingTime, zoomPoolConfigured } from "@/lib/zoom/client";
 import { claimZoomAccountForBooking, bookingToUtcISO } from "@/lib/data/zoom";
+import { log } from "@/lib/log";
+import { sendIntegrationFailureAlert } from "@/lib/data/monitoring-alerts";
 import type { ZoomAccount } from "@prisma/client";
 
 const NOTIFICATION_FROM = process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>";
@@ -154,7 +156,12 @@ async function notifyOwnerAndAudit(input: {
       }).catch(() => {});
     }
   } catch (err) {
-    console.error("Failed to send Zoom fallback owner notification:", err);
+    log("error", "zoom", "Failed to send Zoom fallback owner notification", {
+      projectId: input.project.id,
+      bookingId: input.booking.id,
+      reason: input.reason,
+      error: String(err),
+    });
   }
 }
 
@@ -179,6 +186,13 @@ async function provisionTeamsMeeting(
       insufficient_permissions: "failed_insufficient_permissions" as const,
       unknown: "failed_unknown" as const,
     };
+    log("error", "teams", "Teams provisioning failed", {
+      projectId: project.id,
+      bookingId: booking.id,
+      error: result.error,
+      detail: result.detail,
+      teamsProvisionStatus: statusMap[result.error],
+    });
     await db.booking.update({
       where: { id: booking.id },
       data: {
@@ -196,6 +210,19 @@ async function provisionTeamsMeeting(
         fellBackToTeams: true,
         detail: { teamsProvisionStatus: statusMap[result.error] },
       });
+      sendIntegrationFailureAlert({
+        projectId: project.id,
+        bookingId: booking.id,
+        failureType: "teams_failed_after_zoom_fallback",
+        detail: `Teams fallback failed after ${zoomFallbackReason}: ${result.error}${result.detail ? ` — ${result.detail}` : ""}`,
+      }).catch(() => {});
+    } else {
+      sendIntegrationFailureAlert({
+        projectId: project.id,
+        bookingId: booking.id,
+        failureType: "teams_provision_failed",
+        detail: `Teams error: ${result.error}${result.detail ? ` — ${result.detail}` : ""}`,
+      }).catch(() => {});
     }
     return;
   }
@@ -245,6 +272,12 @@ async function markZoomFailed(
     fellBackToTeams: false,
     detail: { zoomErrorDetail: detail },
   });
+  sendIntegrationFailureAlert({
+    projectId: project.id,
+    bookingId: booking.id,
+    failureType: "zoom_failed_no_fallback",
+    detail: `Zoom failed (${reason}): ${detail}`,
+  }).catch(() => {});
 }
 
 /**
@@ -372,7 +405,17 @@ export async function removeMeeting(projectId: string, bookingId: string): Promi
   if (booking.teamsMeetingId) {
     const result = await deleteMeetingEvent(project.ownerId, booking.teamsMeetingId);
     if ("error" in result) {
-      console.error("Failed to delete Teams meeting for booking", bookingId, result.error);
+      log("error", "teams", "Failed to delete Teams meeting", {
+        bookingId,
+        teamsMeetingId: booking.teamsMeetingId,
+        error: result.error,
+      });
+      sendIntegrationFailureAlert({
+        projectId,
+        bookingId,
+        failureType: "meeting_delete_failed",
+        detail: `Teams delete failed: ${result.error}`,
+      }).catch(() => {});
     }
   }
 
@@ -382,7 +425,11 @@ export async function removeMeeting(projectId: string, bookingId: string): Promi
         await deleteZoomMeeting(booking.zoomMeetingId);
       }
     } catch (err) {
-      console.error("Failed to delete Zoom meeting for booking", bookingId, err);
+      log("error", "zoom", "Failed to delete Zoom meeting", {
+        bookingId,
+        zoomMeetingId: booking.zoomMeetingId,
+        error: String(err),
+      });
     }
   }
 }
@@ -428,7 +475,13 @@ export async function updateMeetingTime(
         );
       }
     } catch (err) {
-      console.error("Failed to update Zoom meeting time for booking", bookingId, err);
+      log("error", "zoom", "Failed to update Zoom meeting time", {
+        bookingId,
+        zoomMeetingId: booking.zoomMeetingId,
+        newDateKey,
+        newTime,
+        error: String(err),
+      });
     }
     return;
   }
@@ -445,7 +498,19 @@ export async function updateMeetingTime(
       calendarEventId: booking.calendarEventId,
     });
     if ("error" in result) {
-      console.error("Failed to update Teams meeting time for booking", bookingId, result.error);
+      log("error", "teams", "Failed to update Teams meeting time", {
+        bookingId,
+        calendarEventId: booking.calendarEventId,
+        newDateKey,
+        newTime,
+        error: result.error,
+      });
+      sendIntegrationFailureAlert({
+        projectId,
+        bookingId,
+        failureType: "meeting_update_failed",
+        detail: `Teams reschedule failed: ${result.error}`,
+      }).catch(() => {});
     }
   }
 }

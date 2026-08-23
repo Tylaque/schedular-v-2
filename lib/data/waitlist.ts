@@ -5,6 +5,8 @@ import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
 import { logNotification } from "@/lib/data/notifications";
 import { stripHtml } from "@/lib/html-to-text";
 import { createBooking } from "@/lib/data/bookings";
+import { log } from "@/lib/log";
+import { sendIntegrationFailureAlert } from "@/lib/data/monitoring-alerts";
 import type { Prisma } from "@prisma/client";
 
 const NOTIFICATION_FROM = process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>";
@@ -199,6 +201,18 @@ export async function offerNextWaitlistEntry(
         status: "sent",
       });
     } catch (sendErr) {
+      log("error", "email", "Waitlist offer email send failed", {
+        projectId,
+        entryId: entry.id,
+        recipientEmail: entry.email,
+        error: String(sendErr),
+      });
+      sendIntegrationFailureAlert({
+        projectId,
+        bookingId: entry.id,
+        failureType: "email_send_failed",
+        detail: `Waitlist offer to ${entry.email} failed: ${String(sendErr)}`,
+      }).catch(() => {});
       await logNotification({
         templateId: template.id,
         category: "waitlist_offer",
@@ -211,7 +225,11 @@ export async function offerNextWaitlistEntry(
       }).catch(() => {});
     }
   } catch (err) {
-    console.error("Failed to send waitlist offer notification:", err);
+    log("error", "email", "Failed to send waitlist offer notification", {
+      projectId,
+      entryId: entry.id,
+      error: String(err),
+    });
   }
 
   return updated;

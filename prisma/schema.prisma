@@ -83,6 +83,7 @@ enum EmailCategory {
   zoom_fallback_to_teams
   zoom_pool_full_no_fallback
   reminder
+  integration_failure
 }
 
 enum EmailAudience {
@@ -438,7 +439,10 @@ model NotificationLog {
   renderedBody   String
   status         NotificationStatus
   hoursBefore    Float?
+  dedupKey       String?
   createdAt      DateTime            @default(now())
+
+  @@index([dedupKey, createdAt])
 }
 
 enum AuditAction {

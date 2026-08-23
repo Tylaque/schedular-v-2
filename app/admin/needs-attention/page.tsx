@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
-import { listFlaggedBookings } from "@/lib/data/needs-attention";
+import { listFlaggedBookings, listFailedProvisionings } from "@/lib/data/needs-attention";
 import { isOrgOwner, isSuperAdmin } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { isAdminEligibleForSlot } from "@/lib/data/bookings";
@@ -18,7 +18,10 @@ export default async function NeedsAttentionPage() {
   if (!isOrgOwner(role) && !isSuperAdmin(role)) notFound();
 
   const ownerId = role === "org_owner" ? undefined : session.user.id;
-  const flagged = await listFlaggedBookings(ownerId);
+  const [flagged, failedProvisionings] = await Promise.all([
+    listFlaggedBookings(ownerId),
+    listFailedProvisionings(ownerId),
+  ]);
 
   const flaggedWithEligible = await Promise.all(
     flagged.map(async (b) => {
@@ -70,13 +73,13 @@ export default async function NeedsAttentionPage() {
           Dashboard
         </Link>
       </div>
-      {flaggedWithEligible.length === 0 ? (
+      {flaggedWithEligible.length === 0 && failedProvisionings.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-lg p-12 text-center shadow-sm dark:bg-gray-900 dark:border-gray-700">
           <AlertTriangle className="w-8 h-8 text-gray-300 mx-auto mb-3 dark:text-gray-400" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">No bookings need manual attention.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">No items need attention.</p>
         </div>
       ) : (
-        <NeedsAttentionClient flagged={flaggedWithEligible} />
+        <NeedsAttentionClient flagged={flaggedWithEligible} failedProvisionings={failedProvisionings} />
       )}
     </div>
   );
