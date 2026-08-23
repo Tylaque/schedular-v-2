@@ -486,6 +486,7 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([projectId, createdAt])
+  @@index([createdAt])
 }
 
 model PasswordResetToken {
@@ -498,4 +499,10 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
 
   @@index([adminId])
+}
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
