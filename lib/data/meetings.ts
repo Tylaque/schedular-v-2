@@ -25,6 +25,7 @@ import { createZoomMeeting, deleteZoomMeeting, updateZoomMeetingTime, zoomPoolCo
 import { claimZoomAccountForBooking, bookingToUtcISO } from "@/lib/data/zoom";
 import { log } from "@/lib/log";
 import { sendIntegrationFailureAlert } from "@/lib/data/monitoring-alerts";
+import { signManageToken } from "@/lib/manage-token";
 import type { ZoomAccount } from "@prisma/client";
 
 const NOTIFICATION_FROM = process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>";
@@ -100,9 +101,9 @@ async function notifyOwnerAndAudit(input: {
       session_date: input.booking.dateKey,
       session_time: input.booking.time,
       time_zone: input.project.timezone,
-      meeting_link: "",
+      meeting_link: "No meeting link available yet — details will follow",
       booking_link: `${baseUrl}/book/${input.project.id}`,
-      manage_booking_link: `${baseUrl}/manage/${input.booking.id}`,
+      manage_booking_link: `${baseUrl}/manage/${input.booking.id}?token=${encodeURIComponent(signManageToken(input.booking.id, owner.email))}`,
       company_logo: "",
     };
 

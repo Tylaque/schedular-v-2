@@ -588,7 +588,8 @@ export async function createBooking(input: {
       }).catch(() => {});
 
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-      sendNotification("booking_confirmation", {
+      // 1. Immediate send with placeholder link.
+      await sendNotification("booking_confirmation", {
         id: result.booking.id,
         projectId: input.projectId,
         participantName: input.participantName,
@@ -597,12 +598,51 @@ export async function createBooking(input: {
         time: input.time,
         adminId: result.booking.adminId,
       }, {
+        meeting_link: "No meeting link available yet — details will follow",
         manage_booking_link: `${baseUrl}/manage/${result.booking.id}`,
       }).catch(() => {});
 
-      provisionMeeting(input.projectId, result.booking.id).catch((err) => {
+      // 2. Provision, then send a follow-up either way.
+      try {
+        await provisionMeeting(input.projectId, result.booking.id);
+        // Re-fetch booking to get the real join URL set by provisionMeeting.
+        const updatedBooking = await db.booking.findUnique({
+          where: { id: result.booking.id },
+          select: {
+            zoomJoinUrl: true,
+            teamsJoinUrl: true,
+            meetingPlatform: true,
+          },
+        });
+        const joinUrl = updatedBooking?.meetingPlatform === "zoom"
+          ? updatedBooking.zoomJoinUrl
+          : updatedBooking?.teamsJoinUrl;
+        await sendNotification("booking_confirmation", {
+          id: result.booking.id,
+          projectId: input.projectId,
+          participantName: input.participantName,
+          participantEmail: input.participantEmail,
+          dateKey: input.dateKey,
+          time: input.time,
+          adminId: result.booking.adminId,
+        }, {
+          meeting_link: joinUrl ?? "Meeting link not available",
+          manage_booking_link: `${baseUrl}/manage/${result.booking.id}`,
+        }).catch(() => {});
+      } catch (err) {
+        await sendNotification("booking_confirmation", {
+          id: result.booking.id,
+          projectId: input.projectId,
+          participantName: input.participantName,
+          participantEmail: input.participantEmail,
+          dateKey: input.dateKey,
+          time: input.time,
+          adminId: result.booking.adminId,
+        }, {
+          manage_booking_link: `${baseUrl}/manage/${result.booking.id}`,
+        }).catch(() => {});
         console.error("Failed to provision meeting:", err);
-      });
+      }
     }
 
     return result;
