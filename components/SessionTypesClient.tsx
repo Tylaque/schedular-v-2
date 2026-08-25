@@ -10,6 +10,13 @@ import {
 } from "@/lib/actions";
 import type { SessionTypeRecord } from "@/lib/data/session-types";
 
+type Classification = "STANDARD" | "FEEDBACK";
+
+const CLASSIFICATION_OPTIONS: { value: Classification; label: string; hint: string }[] = [
+  { value: "STANDARD", label: "Standard", hint: "Show interviewer name in notifications" },
+  { value: "FEEDBACK", label: "Feedback", hint: "Hide interviewer name in participant notifications" },
+];
+
 export default function SessionTypesClient({
   sessionTypes,
   allSessionTypes,
@@ -25,9 +32,11 @@ export default function SessionTypesClient({
 
   const [createName, setCreateName] = useState("");
   const [createDesc, setCreateDesc] = useState("");
+  const [createClass, setCreateClass] = useState<Classification>("STANDARD");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
+  const [editClass, setEditClass] = useState<Classification>("STANDARD");
 
   function showError(err: unknown, fallback: string) {
     const reason =
@@ -41,13 +50,14 @@ export default function SessionTypesClient({
     setSaving(true);
     setMsg(null);
     try {
-      const result = await createSessionTypeAction(createName, createDesc);
+      const result = await createSessionTypeAction(createName, createDesc, createClass);
       if (result.ok) {
-        const newItem = { id: result.id, name: result.name, description: result.description, isActive: result.isActive };
+        const newItem = { id: result.id, name: result.name, description: result.description, classification: result.classification as Classification, isActive: result.isActive };
         setItems((prev) => [...prev, newItem]);
         setAllItems((prev) => [...prev, newItem]);
         setCreateName("");
         setCreateDesc("");
+        setCreateClass("STANDARD");
         setMsg({ type: "ok", text: "Session type added." });
       } else {
         setMsg({ type: "err", text: result.reason });
@@ -63,6 +73,7 @@ export default function SessionTypesClient({
     setEditingId(item.id);
     setEditName(item.name);
     setEditDesc(item.description);
+    setEditClass(item.classification as Classification);
   }
 
   async function handleUpdate() {
@@ -70,9 +81,9 @@ export default function SessionTypesClient({
     setSaving(true);
     setMsg(null);
     try {
-      const result = await updateSessionTypeAction(editingId, editName, editDesc);
+      const result = await updateSessionTypeAction(editingId, editName, editDesc, editClass);
       if (result.ok) {
-        setItems((prev) => prev.map((c) => (c.id === editingId ? { ...c, name: result.name, description: result.description } : c)));
+        setItems((prev) => prev.map((c) => (c.id === editingId ? { ...c, name: result.name, description: result.description, classification: result.classification as Classification } : c)));
         setEditingId(null);
         setMsg({ type: "ok", text: "Session type updated." });
       } else {
@@ -163,6 +174,15 @@ export default function SessionTypesClient({
             placeholder="Short description (optional)"
             className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white dark:border-gray-600 dark:bg-gray-800"
           />
+          <select
+            value={createClass}
+            onChange={(e) => setCreateClass(e.target.value as Classification)}
+            className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white dark:border-gray-600 dark:bg-gray-800"
+          >
+            {CLASSIFICATION_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label} — {opt.hint}</option>
+            ))}
+          </select>
         </div>
         <button
           onClick={handleCreate}
@@ -179,6 +199,7 @@ export default function SessionTypesClient({
             <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-950">
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Name</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Description</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Classification</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Actions</th>
             </tr>
           </thead>
@@ -203,6 +224,17 @@ export default function SessionTypesClient({
                     />
                   </td>
                   <td className="px-4 py-3">
+                    <select
+                      value={editClass}
+                      onChange={(e) => setEditClass(e.target.value as Classification)}
+                      className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white dark:border-gray-600 dark:bg-gray-800"
+                    >
+                      {CLASSIFICATION_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={handleUpdate}
@@ -224,6 +256,15 @@ export default function SessionTypesClient({
                 <tr key={c.id} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors dark:border-gray-800 dark:hover:bg-gray-800">
                   <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-50">{c.name}</td>
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{c.description || "\u2014"}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center text-xs font-medium rounded-full px-2.5 py-0.5 ${
+                      c.classification === "FEEDBACK"
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                        : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                    }`}>
+                      {CLASSIFICATION_OPTIONS.find(o => o.value === c.classification)?.label ?? c.classification}
+                    </span>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
                       <button
@@ -247,7 +288,7 @@ export default function SessionTypesClient({
             )}
             {items.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                   No session types yet. Add the first one above.
                 </td>
               </tr>
@@ -271,6 +312,7 @@ export default function SessionTypesClient({
                   <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-950">
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Name</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Description</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Classification</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Actions</th>
                   </tr>
                 </thead>
@@ -279,6 +321,15 @@ export default function SessionTypesClient({
                     <tr key={c.id} className="border-b border-gray-100 last:border-b-0 opacity-60 dark:border-gray-800">
                       <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-50">{c.name}</td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{c.description || "\u2014"}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center text-xs font-medium rounded-full px-2.5 py-0.5 ${
+                          c.classification === "FEEDBACK"
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                            : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                        }`}>
+                          {CLASSIFICATION_OPTIONS.find(o => o.value === c.classification)?.label ?? c.classification}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end">
                           <button

@@ -890,9 +890,10 @@ function sessionTypeActor(session: { user: { name?: string | null; email?: strin
 
 export async function createSessionTypeAction(
   name: string,
-  description?: string
+  description?: string,
+  classification?: "STANDARD" | "FEEDBACK"
 ): Promise<
-  | { ok: true; id: string; name: string; description: string; isActive: boolean }
+  | { ok: true; id: string; name: string; description: string; classification: string; isActive: boolean }
   | { ok: false; reason: string }
 > {
   const session = await auth();
@@ -907,6 +908,7 @@ export async function createSessionTypeAction(
     const record = await dataCreateSessionType({
       name,
       description,
+      classification,
       ...sessionTypeActor(session as any),
     });
     revalidatePath("/admin/session-types");
@@ -922,9 +924,10 @@ export async function createSessionTypeAction(
 export async function updateSessionTypeAction(
   id: string,
   name: string,
-  description?: string
+  description?: string,
+  classification?: "STANDARD" | "FEEDBACK"
 ): Promise<
-  | { ok: true; id: string; name: string; description: string; isActive: boolean }
+  | { ok: true; id: string; name: string; description: string; classification: string; isActive: boolean }
   | { ok: false; reason: string }
 > {
   const session = await auth();
@@ -938,6 +941,7 @@ export async function updateSessionTypeAction(
   const updated = await dataUpdateSessionType(id, {
     name,
     description,
+    classification,
     ...sessionTypeActor(session as any),
   });
   if (!updated) {

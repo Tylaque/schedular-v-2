@@ -40,6 +40,7 @@ export const PLACEHOLDER_TOKENS = [
   "company_logo",
   "company_name",
   "reminder_label",
+  "is_feedback",
 ];
 
 export const MOCK_PREVIEW_CONTEXT: Record<string, string> = {
@@ -56,7 +57,29 @@ export const MOCK_PREVIEW_CONTEXT: Record<string, string> = {
   company_logo: "",
   company_name: "Career Connections",
   reminder_label: "24 Hour Reminder",
+  is_feedback: "",
 };
+
+/**
+ * Process {{#unless KEY}}...{{/unless KEY}} conditional blocks.
+ * If context[KEY] is any truthy string, the block content is removed entirely.
+ * If the key is absent or falsy, only the tags are removed — content is kept.
+ * Blocks can be nested (innermost matched first via non-greedy regex + loop).
+ */
+function processUnlessBlocks(
+  text: string,
+  context: Record<string, string>
+): string {
+  const re = /\{\{#unless\s+(\w+)\}\}([\s\S]*?)\{\{\/unless\s+\1\}\}/g;
+  let prev = "";
+  while (prev !== text) {
+    prev = text;
+    text = text.replace(re, (_match, key: string, content: string) => {
+      return context[key] ? "" : content;
+    });
+  }
+  return text;
+}
 
 export function renderTemplate(
   template: { subject: string; bodyHtml: string },
@@ -64,6 +87,10 @@ export function renderTemplate(
 ): { subject: string; bodyHtml: string } {
   let subject = template.subject;
   let bodyHtml = template.bodyHtml;
+
+  subject = processUnlessBlocks(subject, context);
+  bodyHtml = processUnlessBlocks(bodyHtml, context);
+
   for (const key of Object.keys(context)) {
     const re = new RegExp(`\\{\\{${key}\\}\\}`, "g");
     subject = subject.replace(re, context[key]);

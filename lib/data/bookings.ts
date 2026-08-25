@@ -136,6 +136,16 @@ async function sendNotification(
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 
+    // Resolve session-type classification for conditional template blocks.
+    let isFeedback = false;
+    try {
+      const bookingRecord = await db.booking.findUnique({
+        where: { id: booking.id },
+        select: { sessionType: { select: { classification: true } } },
+      });
+      isFeedback = bookingRecord?.sessionType?.classification === "FEEDBACK";
+    } catch {}
+
     const baseCtx: Record<string, string> = {
       participant_name: booking.participantName,
       project_name: project.name ?? "",
@@ -147,6 +157,7 @@ async function sendNotification(
       meeting_link: `${baseUrl}/manage/${booking.id}`,
       booking_link: `${baseUrl}/book/${booking.projectId}`,
       company_logo: "",
+      is_feedback: isFeedback ? "true" : "",
       ...extraCtx,
     };
 

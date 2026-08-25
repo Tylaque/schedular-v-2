@@ -113,8 +113,8 @@ Scheduler &mdash; Multi-project scheduling platform
 <p style="margin:0 0 8px;"><strong>{{project_name}}</strong></p>
 <p style="margin:0 0 4px;">{{session_date}} · {{session_time}}</p>
 <p style="margin:0 0 4px;">{{time_zone}}</p>
-<p style="margin:0 0 4px;">Interviewer: {{admin_name}}</p>
-<p style="margin:12px 0 0;"><a href="{{meeting_link}}" style="color:#4338CA;font-weight:600;">Join Microsoft Teams meeting</a></p>
+{{#unless is_feedback}}<p style="margin:0 0 4px;">Interviewer: {{admin_name}}</p>
+{{/unless is_feedback}}<p style="margin:12px 0 0;"><a href="{{meeting_link}}" style="color:#4338CA;font-weight:600;">Join Microsoft Teams meeting</a></p>
 </div>
 <p style="margin:16px 0;"><a href="{{manage_booking_link}}" style="color:#4338CA;">Manage your booking</a> — reschedule or cancel while the self-service window is open.</p>
 <p>The meeting link will also appear on your calendar invitation shortly.</p>
@@ -132,8 +132,8 @@ Scheduler &mdash; Multi-project scheduling platform
 <p style="margin:0 0 8px;"><strong>{{project_name}}</strong></p>
 <p style="margin:0 0 4px;">{{session_date}} · {{session_time}}</p>
 <p style="margin:0 0 4px;">{{time_zone}}</p>
-<p style="margin:0;">Interviewer: {{admin_name}}</p>
-</div>
+{{#unless is_feedback}}<p style="margin:0;">Interviewer: {{admin_name}}</p>
+{{/unless is_feedback}}</div>
 <p style="margin:24px 0;"><a href="{{meeting_link}}" style="background:#4338CA;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Join meeting</a></p>
 <p>Best,<br/>{{company_name}}</p>
 </div>`,
@@ -161,8 +161,8 @@ Scheduler &mdash; Multi-project scheduling platform
 <p style="margin:0 0 8px;"><strong>{{project_name}}</strong></p>
 <p style="margin:0 0 4px;">{{session_date}} · {{session_time}}</p>
 <p style="margin:0 0 4px;">{{time_zone}}</p>
-<p style="margin:0;">Interviewer: {{admin_name}}</p>
-</div>
+{{#unless is_feedback}}<p style="margin:0;">Interviewer: {{admin_name}}</p>
+{{/unless is_feedback}}</div>
 <p style="margin:24px 0;"><a href="{{meeting_link}}" style="background:#4338CA;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Join meeting</a></p>
 <p>Please ensure you have a quiet space and a working camera/microphone.</p>
 <p>See you there!<br/>{{company_name}}</p>

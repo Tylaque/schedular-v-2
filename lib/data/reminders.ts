@@ -53,6 +53,9 @@ export async function sendReminders(): Promise<ReminderResult> {
       admin: {
         select: { name: true },
       },
+      sessionType: {
+        select: { classification: true },
+      },
     },
   });
 
@@ -93,6 +96,7 @@ export async function sendReminders(): Promise<ReminderResult> {
 
       try {
         const template = await getActiveTemplate(category, booking.projectId);
+        const isFeedback = booking.sessionType?.classification === "FEEDBACK";
         const ctx = {
           participant_name: booking.participantName,
           project_name: booking.project.name ?? "",
@@ -106,6 +110,7 @@ export async function sendReminders(): Promise<ReminderResult> {
           manage_booking_link: `${baseUrl}/manage/${booking.id}`,
           company_logo: "",
           reminder_label: schedule.label,
+          is_feedback: isFeedback ? "true" : "",
         };
         const rendered = renderTemplate(template, ctx);
 

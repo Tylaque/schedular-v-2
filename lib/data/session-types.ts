@@ -1,10 +1,12 @@
 import { db } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
+import type { SessionTypeClassification } from "@prisma/client";
 
 export type SessionTypeRecord = {
   id: string;
   name: string;
   description: string;
+  classification: SessionTypeClassification;
   isActive: boolean;
 };
 
@@ -19,15 +21,15 @@ export type ActorInfo = {
  */
 export async function ensureSeedSessionTypes(): Promise<void> {
   const seeds = [
-    { id: "seed_session_interview", name: "Interview", description: "Standard interview session" },
-    { id: "seed_session_feedback", name: "Feedback", description: "Feedback and review session" },
-    { id: "seed_session_coaching", name: "Coaching", description: "Coaching and mentoring session" },
+    { id: "seed_session_interview", name: "Interview", description: "Standard interview session", classification: "STANDARD" as const },
+    { id: "seed_session_feedback", name: "Feedback", description: "Feedback and review session", classification: "FEEDBACK" as const },
+    { id: "seed_session_coaching", name: "Coaching", description: "Coaching and mentoring session", classification: "STANDARD" as const },
   ];
   for (const s of seeds) {
     await db.sessionType.upsert({
       where: { id: s.id },
-      create: { id: s.id, name: s.name, description: s.description, isActive: true },
-      update: {},
+      create: { id: s.id, name: s.name, description: s.description, classification: s.classification, isActive: true },
+      update: { classification: s.classification },
     });
   }
 }
@@ -36,25 +38,26 @@ export async function listSessionTypes(): Promise<SessionTypeRecord[]> {
   return db.sessionType.findMany({
     where: { isActive: true },
     orderBy: { name: "asc" },
-    select: { id: true, name: true, description: true, isActive: true },
+    select: { id: true, name: true, description: true, classification: true, isActive: true },
   });
 }
 
 export async function listAllSessionTypes(): Promise<SessionTypeRecord[]> {
   return db.sessionType.findMany({
     orderBy: { name: "asc" },
-    select: { id: true, name: true, description: true, isActive: true },
+    select: { id: true, name: true, description: true, classification: true, isActive: true },
   });
 }
 
 export async function createSessionType(
-  input: { name: string; description?: string } & Partial<ActorInfo>
+  input: { name: string; description?: string; classification?: SessionTypeClassification } & Partial<ActorInfo>
 ): Promise<SessionTypeRecord> {
   const name = input.name.trim();
   const description = input.description?.trim() ?? "";
+  const classification = input.classification ?? "STANDARD";
   const sessionType = await db.sessionType.create({
-    data: { name, description, isActive: true },
-    select: { id: true, name: true, description: true, isActive: true },
+    data: { name, description, classification, isActive: true },
+    select: { id: true, name: true, description: true, classification: true, isActive: true },
   });
   if (input.actorId) {
     await recordAudit({
@@ -64,7 +67,7 @@ export async function createSessionType(
       actorLabel: input.actorLabel ?? "System Admin",
       entityType: "SessionType",
       entityId: sessionType.id,
-      afterState: { name, description },
+      afterState: { name, description, classification },
     });
   }
   return sessionType;
@@ -72,20 +75,21 @@ export async function createSessionType(
 
 export async function updateSessionType(
   id: string,
-  input: { name: string; description?: string } & Partial<ActorInfo>
+  input: { name: string; description?: string; classification?: SessionTypeClassification } & Partial<ActorInfo>
 ): Promise<SessionTypeRecord | null> {
   const before = await db.sessionType.findUnique({
     where: { id },
-    select: { name: true, description: true, isActive: true },
+    select: { name: true, description: true, classification: true, isActive: true },
   });
   if (!before || !before.isActive) return null;
 
   const name = input.name.trim();
   const description = input.description?.trim() ?? "";
+  const classification = input.classification ?? before.classification;
   const sessionType = await db.sessionType.update({
     where: { id },
-    data: { name, description },
-    select: { id: true, name: true, description: true, isActive: true },
+    data: { name, description, classification },
+    select: { id: true, name: true, description: true, classification: true, isActive: true },
   });
   if (input.actorId) {
     await recordAudit({
@@ -96,7 +100,7 @@ export async function updateSessionType(
       entityType: "SessionType",
       entityId: id,
       beforeState: before,
-      afterState: { name, description },
+      afterState: { name, description, classification },
     });
   }
   return sessionType;
@@ -113,7 +117,7 @@ export async function softDeleteSessionType(
 ): Promise<boolean> {
   const before = await db.sessionType.findUnique({
     where: { id },
-    select: { id: true, name: true, description: true, isActive: true },
+    select: { id: true, name: true, description: true, classification: true, isActive: true },
   });
   if (!before || !before.isActive) return false;
 
@@ -144,7 +148,7 @@ export async function reactivateSessionType(
 ): Promise<boolean> {
   const before = await db.sessionType.findUnique({
     where: { id },
-    select: { id: true, name: true, description: true, isActive: true },
+    select: { id: true, name: true, description: true, classification: true, isActive: true },
   });
   if (!before || before.isActive) return false;
 
