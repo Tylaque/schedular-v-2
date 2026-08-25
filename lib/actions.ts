@@ -90,6 +90,7 @@ export async function createProjectAction(formData: {
   autoCompleteBookings?: boolean;
   meetingPlatformPreference?: "zoom" | "teams" | "auto";
   assignmentMode?: "AUTO" | "PARTICIPANT_CHOICE";
+  maxBookingsPerParticipant?: number | null;
   reminderSchedules?: ReminderScheduleInput[];
   defaultSessionTypeId?: string | null;
 }) {
@@ -132,7 +133,7 @@ export async function confirmBookingAction(input: {
   sessionTypeId?: string;
 }): Promise<
   | { ok: true; adminName: string }
-  | { ok: false; reason: "slot_full" | "no_admin_available" | "rate_limited" | "too_short_notice" | "admin_not_eligible" }
+  | { ok: false; reason: "slot_full" | "no_admin_available" | "rate_limited" | "too_short_notice" | "admin_not_eligible" | "max_bookings_reached" }
 > {
   if (!input.projectId || !input.participantEmail) {
     return { ok: false, reason: "slot_full" };
@@ -180,6 +181,7 @@ export async function updateProjectAction(
     autoCompleteBookings?: boolean;
     meetingPlatformPreference?: "zoom" | "teams" | "auto";
     assignmentMode?: "AUTO" | "PARTICIPANT_CHOICE";
+    maxBookingsPerParticipant?: number | null;
     reminderSchedules?: ReminderScheduleInput[];
     defaultSessionTypeId?: string | null;
   }
@@ -1106,4 +1108,42 @@ export async function updateNotificationPreferencesAction(enabled: boolean): Pro
   } catch (err) {
     return { ok: false, reason: err instanceof Error ? err.message : "Unknown error" };
   }
+}
+
+export async function getFilteredAvailabilityAction(
+  projectId: string,
+  participantEmail: string,
+): Promise<Record<string, string[]>> {
+  const { getConsolidatedAvailability } = await import("@/lib/data/availability");
+  return getConsolidatedAvailability(projectId, { participantEmail });
+}
+
+export async function getManageLinkAction(
+  bookingId: string,
+): Promise<{ ok: true; url: string } | { ok: false; reason: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, reason: "unauthorized" };
+
+  const booking = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: {
+      id: true,
+      projectId: true,
+      participantEmail: true,
+    },
+  });
+  if (!booking) return { ok: false, reason: "not_found" };
+
+  const isAdmin = await db.projectAdmin.findFirst({
+    where: {
+      projectId: booking.projectId,
+      admin: { email: session.user.email!, isActive: true },
+    },
+  });
+  if (!isAdmin) return { ok: false, reason: "unauthorized" };
+
+  const { signManageAdminToken } = await import("@/lib/manage-token");
+  const token = signManageAdminToken(bookingId, session.user.email!);
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  return { ok: true, url: `${baseUrl}/manage/${bookingId}?token=${encodeURIComponent(token)}` };
 }

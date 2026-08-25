@@ -10,11 +10,13 @@ import {
   Loader2,
   Copy,
   Check,
+  LinkIcon,
 } from "lucide-react";
 import {
   addParticipantAction,
   sendInvitesNowAction,
   removeParticipantAction,
+  getManageLinkAction,
 } from "@/lib/actions";
 
 type Participant = {
@@ -28,11 +30,13 @@ type Participant = {
 
 export default function ParticipantsClient({
   participants,
+  bookingsByEmail,
   projectId,
   projectSlug,
   projectStatus,
 }: {
   participants: Participant[];
+  bookingsByEmail: Record<string, { bookingId: string; dateKey: string; time: string }[]>;
   projectId: string;
   projectSlug: string;
   projectStatus: string;
@@ -50,6 +54,8 @@ export default function ParticipantsClient({
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number } | null>(null);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [manageLinkId, setManageLinkId] = useState<string | null>(null);
+  const [manageLinkLoading, setManageLinkLoading] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const baseUrl =
@@ -151,6 +157,24 @@ export default function ParticipantsClient({
     await navigator.clipboard.writeText(link);
     setCopiedId(participantId);
     setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  async function copyManageLink(bookingId: string, participantEmail: string) {
+    setManageLinkLoading(bookingId);
+    try {
+      const result = await getManageLinkAction(bookingId);
+      if (result.ok) {
+        await navigator.clipboard.writeText(result.url);
+        setManageLinkId(bookingId);
+        setTimeout(() => setManageLinkId(null), 2000);
+      } else {
+        setMsg({ type: "err", text: result.reason === "unauthorized" ? "You don't have permission." : "Failed to generate manage link." });
+      }
+    } catch {
+      setMsg({ type: "err", text: "Failed to copy manage link." });
+    } finally {
+      setManageLinkLoading(null);
+    }
   }
 
   const STATUS_BADGE: Record<string, string> = {
@@ -336,6 +360,25 @@ export default function ParticipantsClient({
                             <Copy className="w-4 h-4" />
                           )}
                         </button>
+                        {(bookingsByEmail[p.email.toLowerCase().trim()] ?? []).length > 0 && (
+                          <button
+                            onClick={() => {
+                              const first = bookingsByEmail[p.email.toLowerCase().trim()]![0]!;
+                              copyManageLink(first.bookingId, p.email);
+                            }}
+                            disabled={manageLinkLoading !== null}
+                            className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 dark:hover:bg-gray-800 dark:text-gray-500 dark:hover:text-blue-400"
+                            title="Copy manage link"
+                          >
+                            {manageLinkId === bookingsByEmail[p.email.toLowerCase().trim()]?.[0]?.bookingId ? (
+                              <Check className="w-4 h-4 text-green-500" />
+                            ) : manageLinkLoading === bookingsByEmail[p.email.toLowerCase().trim()]?.[0]?.bookingId ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <LinkIcon className="w-4 h-4" />
+                            )}
+                          </button>
+                        )}
                         <button
                           onClick={() => handleRemove(p.id)}
                           className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 dark:hover:bg-red-900/40 dark:text-gray-500"

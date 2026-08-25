@@ -240,6 +240,7 @@ model Project {
   bufferMinutes             Int
   maxSessionsPerAdminPerDay Int
   sessionCapacity           Int            @default(1)
+  maxBookingsPerParticipant Int?
   autoCompleteBookings      Boolean        @default(false)
   selfServiceWindowHours    Int            @default(4)
   status                    ProjectStatus  @default(draft)

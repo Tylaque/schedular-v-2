@@ -47,6 +47,7 @@ type FormData = {
   availabilityLockDate: string;
   meetingPlatformPreference: "zoom" | "teams" | "auto";
   assignmentMode: "AUTO" | "PARTICIPANT_CHOICE";
+  maxBookingsPerParticipant: number | null;
   defaultSessionTypeId: string;
   reminderSchedules: { hoursBefore: number; label: string }[];
 };
@@ -129,6 +130,7 @@ export default function ProjectForm({
         availabilityLockDate: `${initialProject.availabilityLockDate.getFullYear()}-${String(initialProject.availabilityLockDate.getMonth() + 1).padStart(2, "0")}-${String(initialProject.availabilityLockDate.getDate()).padStart(2, "0")}`,
         meetingPlatformPreference: initialProject.meetingPlatformPreference ?? "auto",
         assignmentMode: initialProject.assignmentMode ?? "AUTO",
+        maxBookingsPerParticipant: initialProject.maxBookingsPerParticipant ?? null,
         defaultSessionTypeId: (initialProject as any).defaultSessionTypeId ?? "",
         reminderSchedules: (initialProject as any).reminderSchedules?.map((s: any) => ({ hoursBefore: s.hoursBefore, label: s.label })) ?? [
           { hoursBefore: 24, label: "24 Hour Reminder" },
@@ -161,6 +163,7 @@ export default function ProjectForm({
       availabilityLockDate: futureDateString(30),
       meetingPlatformPreference: "auto",
       assignmentMode: "AUTO",
+      maxBookingsPerParticipant: null,
       defaultSessionTypeId: "",
       reminderSchedules: [
         { hoursBefore: 24, label: "24 Hour Reminder" },
@@ -231,6 +234,7 @@ export default function ProjectForm({
     if (data.bufferMinutes < 0) errs.bufferMinutes = "Cannot be negative.";
     if (data.maxSessionsPerAdminPerDay <= 0) errs.maxSessionsPerAdminPerDay = "Must be at least 1.";
     if (data.sessionCapacity <= 0) errs.sessionCapacity = "Must be at least 1.";
+    if (data.maxBookingsPerParticipant != null && data.maxBookingsPerParticipant < 1) errs.maxBookingsPerParticipant = "Must be at least 1 when set.";
     if (data.availabilityPeriodDays < 1 || data.availabilityPeriodDays > 365) errs.availabilityPeriodDays = "Must be 1–365 days.";
     if (!data.availabilityLockDate) errs.availabilityLockDate = "Required.";
     return errs;
@@ -261,6 +265,7 @@ export default function ProjectForm({
       bufferMinutes: data.bufferMinutes,
       maxSessionsPerAdminPerDay: data.maxSessionsPerAdminPerDay,
       sessionCapacity: data.sessionCapacity,
+      maxBookingsPerParticipant: data.maxBookingsPerParticipant,
       autoCompleteBookings: data.autoCompleteBookings,
       availabilityLockDate: new Date(data.availabilityLockDate + "T00:00:00"),
       branding,
@@ -539,6 +544,19 @@ export default function ProjectForm({
               className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
             />
             {errors.sessionCapacity && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.sessionCapacity}</p>}
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Max bookings per participant</label>
+            <input
+              type="number"
+              min={1}
+              placeholder="Unlimited"
+              value={data.maxBookingsPerParticipant ?? ""}
+              onChange={(e) => update("maxBookingsPerParticipant", e.target.value === "" ? null : Math.max(1, Number(e.target.value) || 1))}
+              className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
+            />
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Leave empty for unlimited. When set, participants cannot exceed this number of confirmed bookings.</p>
+            {errors.maxBookingsPerParticipant && <p className="text-xs text-red-600 mt-1 dark:text-red-300">{errors.maxBookingsPerParticipant}</p>}
           </div>
           <div className="sm:col-span-2">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Availability lock date</label>

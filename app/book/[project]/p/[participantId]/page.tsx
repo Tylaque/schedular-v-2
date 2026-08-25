@@ -21,7 +21,7 @@ export default async function PersonalizedBookPage({
 
   if (participant.projectId !== project.id) return notFound();
 
-  const availability = await getConsolidatedAvailability(project.id);
+  const availability = await getConsolidatedAvailability(project.id, { participantEmail: participant.email });
 
   const slotAdminMap =
     project.assignmentMode === "PARTICIPANT_CHOICE"

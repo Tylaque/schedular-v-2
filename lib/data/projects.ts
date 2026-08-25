@@ -28,6 +28,7 @@ export type ProjectWithAdmins = {
   ownerName: string | null;
   meetingPlatformPreference: "zoom" | "teams" | "auto";
   assignmentMode: "AUTO" | "PARTICIPANT_CHOICE";
+  maxBookingsPerParticipant: number | null;
   defaultSessionTypeId: string | null;
   defaultSessionTypeName: string | null;
   reminderSchedules: { id: string; hoursBefore: number; label: string }[];
@@ -63,6 +64,7 @@ function toProjectWithAdmins(row: {
   owner?: { name: string } | null;
   meetingPlatformPreference: "zoom" | "teams" | "auto";
   assignmentMode: "AUTO" | "PARTICIPANT_CHOICE";
+  maxBookingsPerParticipant: number | null;
   defaultSessionTypeId: string | null;
   defaultSessionType?: { id: string; name: string } | null;
   reminderSchedules?: { id: string; hoursBefore: number; label: string }[];
@@ -98,6 +100,7 @@ function toProjectWithAdmins(row: {
     ownerName: row.owner?.name ?? null,
     meetingPlatformPreference: row.meetingPlatformPreference,
     assignmentMode: row.assignmentMode,
+    maxBookingsPerParticipant: row.maxBookingsPerParticipant ?? null,
     defaultSessionTypeId: row.defaultSessionTypeId,
     defaultSessionTypeName: row.defaultSessionType?.name ?? null,
     reminderSchedules: row.reminderSchedules ?? [],
@@ -161,6 +164,7 @@ export async function createProject(input: {
   autoCompleteBookings?: boolean;
   meetingPlatformPreference?: "zoom" | "teams" | "auto";
   assignmentMode?: "AUTO" | "PARTICIPANT_CHOICE";
+  maxBookingsPerParticipant?: number | null;
   defaultSessionTypeId?: string | null;
 }): Promise<ProjectWithAdmins> {
   let slug = slugify(input.name);
@@ -197,6 +201,7 @@ export async function createProject(input: {
       brandingSenderName: input.branding.senderName,
       meetingPlatformPreference: input.meetingPlatformPreference ?? "auto",
       assignmentMode: input.assignmentMode ?? "AUTO",
+      maxBookingsPerParticipant: input.maxBookingsPerParticipant ?? null,
       defaultSessionTypeId: input.defaultSessionTypeId ?? null,
       ownerId: input.ownerId ?? null,
       admins: {
@@ -250,6 +255,7 @@ export async function updateProject(
     autoCompleteBookings?: boolean;
     meetingPlatformPreference?: "zoom" | "teams" | "auto";
     assignmentMode?: "AUTO" | "PARTICIPANT_CHOICE";
+    maxBookingsPerParticipant?: number | null;
     defaultSessionTypeId?: string | null;
   }
 ): Promise<{ project: ProjectWithAdmins; offboarding: OffboardingSummary }> {
@@ -331,6 +337,9 @@ export async function updateProject(
     }
     if (updates.defaultSessionTypeId !== undefined) {
       updateData.defaultSessionTypeId = updates.defaultSessionTypeId;
+    }
+    if (updates.maxBookingsPerParticipant !== undefined) {
+      updateData.maxBookingsPerParticipant = updates.maxBookingsPerParticipant;
     }
 
     return tx.project.update({

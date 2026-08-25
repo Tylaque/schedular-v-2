@@ -403,6 +403,17 @@ export async function getSlotAdminMap(
   return slotAdmins;
 }
 
+export async function getParticipantBookingCount(
+  projectId: string,
+  participantEmail: string,
+  tx?: Prisma.TransactionClient,
+): Promise<number> {
+  const client = tx ?? db;
+  return client.booking.count({
+    where: { projectId, participantEmail: participantEmail.toLowerCase().trim(), status: "confirmed" },
+  });
+}
+
 type BookingOk = {
   ok: true;
   booking: { id: string; adminId: string; dateKey: string; time: string };
@@ -410,7 +421,7 @@ type BookingOk = {
   sessionTypeId: string | null;
   sessionTypeName: string | null;
 };
-type BookingErr = { ok: false; reason: "slot_full" | "no_admin_available" | "too_short_notice" | "admin_not_eligible" };
+type BookingErr = { ok: false; reason: "slot_full" | "no_admin_available" | "too_short_notice" | "admin_not_eligible" | "max_bookings_reached" };
 type BookingResult = BookingOk | BookingErr;
 
 export async function createBooking(input: {
@@ -441,6 +452,7 @@ export async function createBooking(input: {
           where: { id: input.projectId },
           select: {
             sessionCapacity: true, minNoticeHours: true, timezone: true, assignmentMode: true,
+            maxBookingsPerParticipant: true,
             defaultSessionType: { select: { id: true, name: true } },
           },
         });
@@ -468,6 +480,15 @@ export async function createBooking(input: {
         if (existingCount >= project.sessionCapacity) {
           await rescindOffersForSlot(input.projectId, input.dateKey, input.time, tx);
           return { ok: false as const, reason: "slot_full" as const };
+        }
+
+        if (project.maxBookingsPerParticipant != null) {
+          const participantCount = await getParticipantBookingCount(
+            input.projectId, input.participantEmail, tx,
+          );
+          if (participantCount >= project.maxBookingsPerParticipant) {
+            return { ok: false as const, reason: "max_bookings_reached" as const };
+          }
         }
 
         // Admin assignment is serialized per (admin, slot): two concurrent

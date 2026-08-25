@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
 import { expireStaleOffers } from "@/lib/data/waitlist";
+import { getParticipantBookingCount } from "@/lib/data/bookings";
 import { timesOverlap } from "@/lib/timeOverlap";
 import { hoursUntilSession } from "@/lib/slotHelpers";
 
@@ -70,7 +71,8 @@ export async function setAdminAvailabilityBulk(
  *  - No waitlist offer is pending for that slot
  */
 export async function getConsolidatedAvailability(
-  projectId: string
+  projectId: string,
+  opts?: { participantEmail?: string },
 ): Promise<Record<string, string[]>> {
   // Fire-and-forget: expire stale waitlist offers in the background.
   // This is maintenance work — a participant loading the booking page
@@ -95,6 +97,7 @@ export async function getConsolidatedAvailability(
         bufferMinutes: true,
         minNoticeHours: true,
         timezone: true,
+        maxBookingsPerParticipant: true,
       },
     }),
     db.projectAdmin.findMany({
@@ -117,6 +120,11 @@ export async function getConsolidatedAvailability(
   ]);
   if (_debug) console.log(`[avail:perf] Phase 1 (5 parallel queries): ${(performance.now() - _t0).toFixed(0)}ms`);
   if (!project) return {};
+
+  if (opts?.participantEmail && project.maxBookingsPerParticipant != null) {
+    const count = await getParticipantBookingCount(projectId, opts.participantEmail);
+    if (count >= project.maxBookingsPerParticipant) return {};
+  }
 
   // Get all ACTIVE admins assigned to this project.
   const adminIds = projectAdmins.map((pa) => pa.adminId);

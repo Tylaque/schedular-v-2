@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { getProjectBySlug } from "@/lib/data/projects";
 import { listParticipantsForProject } from "@/lib/data/participants";
 import { canManageProject } from "@/lib/authz";
+import { db } from "@/lib/db";
 import ParticipantsClient from "@/components/ParticipantsClient";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,22 @@ export default async function ParticipantsPage({
   if (!canManageProject(user, project)) return notFound();
 
   const participants = await listParticipantsForProject(project.id);
+
+  const participantEmails = participants.map((p) => p.email.toLowerCase().trim());
+  const bookings = await db.booking.findMany({
+    where: {
+      projectId: project.id,
+      participantEmail: { in: participantEmails },
+      status: "confirmed",
+    },
+    select: { id: true, participantEmail: true, dateKey: true, time: true },
+  });
+  const bookingsByEmail: Record<string, { bookingId: string; dateKey: string; time: string }[]> = {};
+  for (const b of bookings) {
+    const key = b.participantEmail.toLowerCase().trim();
+    if (!bookingsByEmail[key]) bookingsByEmail[key] = [];
+    bookingsByEmail[key].push({ bookingId: b.id, dateKey: b.dateKey, time: b.time });
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
@@ -59,6 +76,7 @@ export default async function ParticipantsPage({
             lastInvitedAt: p.lastInvitedAt,
             createdAt: p.createdAt,
           }))}
+          bookingsByEmail={bookingsByEmail}
           projectId={project.id}
           projectSlug={project.slug}
           projectStatus={project.status}

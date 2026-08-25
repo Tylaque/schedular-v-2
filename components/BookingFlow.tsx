@@ -15,14 +15,14 @@ import {
   Loader2,
 } from "lucide-react";
 import { Project, TIMEZONES } from "@/lib/slotHelpers";
-import { confirmBookingAction, joinWaitlistAction } from "@/lib/actions";
+import { confirmBookingAction, joinWaitlistAction, getFilteredAvailabilityAction } from "@/lib/actions";
 import { TimeSlotList } from "@/components/SlotPicker";
 
 type Step = "calendar" | "admin" | "details" | "confirmed";
 type BookingState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "error"; reason: "slot_full" | "no_admin_available" | "rate_limited" | "too_short_notice" | "admin_not_eligible" };
+  | { status: "error"; reason: "slot_full" | "no_admin_available" | "rate_limited" | "too_short_notice" | "admin_not_eligible" | "max_bookings_reached" };
 
 function pad(n: number) {
   return n < 10 ? `0${n}` : `${n}`;
@@ -73,6 +73,11 @@ export default function BookingFlow({
   const [wlSubmitted, setWlSubmitted] = useState(false);
   const [wlLoading, setWlLoading] = useState(false);
   const [selectedAdminId, setSelectedAdminId] = useState<string | null>(null);
+  const [availabilityState, setAvailabilityState] = useState(availability);
+  const [emailPromptDone, setEmailPromptDone] = useState(!!prefillEmail);
+  const [emailPromptLoading, setEmailPromptLoading] = useState(false);
+  const [emailPromptEmail, setEmailPromptEmail] = useState("");
+  const [atLimit, setAtLimit] = useState(false);
 
   const daysInMonth = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0).getDate();
   const firstDow = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1).getDay();
@@ -80,7 +85,7 @@ export default function BookingFlow({
   for (let i = 0; i < firstDow; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(monthCursor.getFullYear(), monthCursor.getMonth(), d));
 
-  const selectedSlots = selectedDateKey ? availability[selectedDateKey] || [] : [];
+  const selectedSlots = selectedDateKey ? availabilityState[selectedDateKey] || [] : [];
   const selectedDateObj = selectedDateKey ? new Date(selectedDateKey) : null;
 
   // Coarse day-level filter: grays out entire days where all slots fall within
@@ -147,6 +152,8 @@ export default function BookingFlow({
         ? "That slot is too close to book — please pick a time with more notice."
         : bookingState.reason === "admin_not_eligible"
         ? "That interviewer is no longer available for this slot — please choose another."
+        : bookingState.reason === "max_bookings_reached"
+        ? "You've reached the maximum number of bookings for this project."
         : "No interviewer is available for that exact time — please pick another slot."
       : null;
 
@@ -194,6 +201,56 @@ export default function BookingFlow({
 
             <div className="p-6">
               {step === "calendar" && (
+                <>
+                {project.maxBookingsPerParticipant != null && !prefillEmail && !emailPromptDone && (
+                  <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
+                      Enter your email to see available times. You can book up to {project.maxBookingsPerParticipant} session(s) per project.
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        type="email"
+                        value={emailPromptEmail}
+                        onChange={(e) => setEmailPromptEmail(e.target.value)}
+                        placeholder="your@email.com"
+                        className="flex-1 text-sm border border-blue-300 dark:border-blue-700 rounded-lg px-3 py-2 dark:bg-gray-800"
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter" && emailPromptEmail.trim()) {
+                            setEmailPromptLoading(true);
+                            const filtered = await getFilteredAvailabilityAction(project.id, emailPromptEmail.trim());
+                            setAvailabilityState(filtered);
+                            setEmail(emailPromptEmail.trim());
+                            setEmailPromptDone(true);
+                            setEmailPromptLoading(false);
+                            if (Object.keys(filtered).length === 0) setAtLimit(true);
+                          }
+                        }}
+                      />
+                      <button
+                        disabled={!emailPromptEmail.trim() || emailPromptLoading}
+                        onClick={async () => {
+                          setEmailPromptLoading(true);
+                          const filtered = await getFilteredAvailabilityAction(project.id, emailPromptEmail.trim());
+                          setAvailabilityState(filtered);
+                          setEmail(emailPromptEmail.trim());
+                          setEmailPromptDone(true);
+                          setEmailPromptLoading(false);
+                          if (Object.keys(filtered).length === 0) setAtLimit(true);
+                        }}
+                        className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white"
+                      >
+                        {emailPromptLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Show times"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {atLimit && emailPromptDone && (
+                  <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                      You've reached the maximum number of bookings ({project.maxBookingsPerParticipant}) for this project.
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-[1fr_200px] gap-6">
                   <div>
                     <div className="flex items-center justify-between mb-3">
@@ -225,8 +282,8 @@ export default function BookingFlow({
                       {cells.map((d, i) => {
                         if (!d) return <div key={i} />;
                         const key = dateKey(d);
-                        const slots = availability[key] || [];
-                        const hasAvailRow = key in availability;
+                        const slots = availabilityState[key] || [];
+                        const hasAvailRow = key in availabilityState;
                         const disabled = !hasAvailRow || isPast(d);
                         const selected = key === selectedDateKey;
                         return (
@@ -309,6 +366,7 @@ export default function BookingFlow({
                     )}
                   </div>
                 </div>
+                </>
               )}
 
               {step === "admin" && selectedDateKey && selectedTime && (
