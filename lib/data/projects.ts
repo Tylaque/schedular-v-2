@@ -29,6 +29,7 @@ export type ProjectWithAdmins = {
   meetingPlatformPreference: "zoom" | "teams" | "auto";
   assignmentMode: "AUTO" | "PARTICIPANT_CHOICE";
   maxBookingsPerParticipant: number | null;
+  lockRescheduleToOriginalAdmin: boolean;
   defaultSessionTypeId: string | null;
   defaultSessionTypeName: string | null;
   reminderSchedules: { id: string; hoursBefore: number; label: string }[];
@@ -65,6 +66,7 @@ function toProjectWithAdmins(row: {
   meetingPlatformPreference: "zoom" | "teams" | "auto";
   assignmentMode: "AUTO" | "PARTICIPANT_CHOICE";
   maxBookingsPerParticipant: number | null;
+  lockRescheduleToOriginalAdmin: boolean;
   defaultSessionTypeId: string | null;
   defaultSessionType?: { id: string; name: string } | null;
   reminderSchedules?: { id: string; hoursBefore: number; label: string }[];
@@ -101,6 +103,7 @@ function toProjectWithAdmins(row: {
     meetingPlatformPreference: row.meetingPlatformPreference,
     assignmentMode: row.assignmentMode,
     maxBookingsPerParticipant: row.maxBookingsPerParticipant ?? null,
+    lockRescheduleToOriginalAdmin: row.lockRescheduleToOriginalAdmin,
     defaultSessionTypeId: row.defaultSessionTypeId,
     defaultSessionTypeName: row.defaultSessionType?.name ?? null,
     reminderSchedules: row.reminderSchedules ?? [],
@@ -256,6 +259,7 @@ export async function updateProject(
     meetingPlatformPreference?: "zoom" | "teams" | "auto";
     assignmentMode?: "AUTO" | "PARTICIPANT_CHOICE";
     maxBookingsPerParticipant?: number | null;
+    lockRescheduleToOriginalAdmin?: boolean;
     defaultSessionTypeId?: string | null;
   }
 ): Promise<{ project: ProjectWithAdmins; offboarding: OffboardingSummary }> {
@@ -340,6 +344,9 @@ export async function updateProject(
     }
     if (updates.maxBookingsPerParticipant !== undefined) {
       updateData.maxBookingsPerParticipant = updates.maxBookingsPerParticipant;
+    }
+    if (updates.lockRescheduleToOriginalAdmin !== undefined) {
+      updateData.lockRescheduleToOriginalAdmin = updates.lockRescheduleToOriginalAdmin;
     }
 
     return tx.project.update({

@@ -105,6 +105,8 @@ async function notifyOwnerAndAudit(input: {
       booking_link: `${baseUrl}/book/${input.project.id}`,
       manage_booking_link: `${baseUrl}/manage/${input.booking.id}?token=${encodeURIComponent(signManageToken(input.booking.id, owner.email))}`,
       company_logo: "",
+      meeting_platform_label: input.fellBackToTeams ? "Microsoft Teams" : "Zoom",
+      no_meeting_link: "true",
     };
 
     const rendered = renderTemplate(template, ctx);

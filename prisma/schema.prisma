@@ -89,6 +89,7 @@ enum EmailCategory {
   zoom_pool_full_no_fallback
   reminder
   integration_failure
+  verification_pin
 }
 
 enum EmailAudience {
@@ -241,6 +242,7 @@ model Project {
   maxSessionsPerAdminPerDay Int
   sessionCapacity           Int            @default(1)
   maxBookingsPerParticipant Int?
+  lockRescheduleToOriginalAdmin Boolean @default(true)
   autoCompleteBookings      Boolean        @default(false)
   selfServiceWindowHours    Int            @default(4)
   status                    ProjectStatus  @default(draft)
@@ -414,6 +416,20 @@ model WaitlistEntry {
 
   @@index([projectId, status, createdAt])
   @@index([projectId, dateKey, time, status])
+}
+
+model VerificationPin {
+  id            String   @id @default(cuid())
+  bookingId     String
+  email         String
+  pinHash       String
+  attempts      Int      @default(0)
+  maxAttempts   Int      @default(5)
+  used          Boolean  @default(false)
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  @@index([bookingId, email])
 }
 
 model EmailTemplate {

@@ -41,6 +41,9 @@ export const PLACEHOLDER_TOKENS = [
   "company_name",
   "reminder_label",
   "is_feedback",
+  "meeting_platform_label",
+  "has_meeting_link",
+  "no_meeting_link",
 ];
 
 export const MOCK_PREVIEW_CONTEXT: Record<string, string> = {
@@ -58,6 +61,9 @@ export const MOCK_PREVIEW_CONTEXT: Record<string, string> = {
   company_name: "Career Connections",
   reminder_label: "24 Hour Reminder",
   is_feedback: "",
+  meeting_platform_label: "Microsoft Teams",
+  has_meeting_link: "true",
+  no_meeting_link: "",
 };
 
 /**

@@ -32,6 +32,7 @@ export default async function ManagePage({
       participantEmail: true,
       dateKey: true,
       time: true,
+      adminId: true,
       meetingPlatform: true,
       teamsJoinUrl: true,
       zoomJoinUrl: true,
@@ -41,6 +42,7 @@ export default async function ManagePage({
         select: {
           id: true, name: true, company: true, timezone: true,
           selfServiceWindowHours: true, durationMinutes: true, slug: true,
+          lockRescheduleToOriginalAdmin: true,
         },
       },
     },
@@ -74,7 +76,10 @@ export default async function ManagePage({
   const hoursLeft = hoursUntilSession(booking.dateKey, booking.time, project.timezone);
   const windowOpen = !inPast && hoursLeft >= project.selfServiceWindowHours;
 
-  const availability = await getConsolidatedAvailability(project.id);
+  // When lockRescheduleToOriginalAdmin is ON, filter availability to only the
+  // originally-assigned admin's slots.
+  const lockToAdminId = project.lockRescheduleToOriginalAdmin ? booking.adminId : undefined;
+  const availability = await getConsolidatedAvailability(project.id, { lockToAdminId });
 
   return (
     <ManageBooking
@@ -102,6 +107,7 @@ export default async function ManagePage({
       windowOpen={windowOpen}
       hoursLeft={hoursLeft}
       showRescheduleBanner={rescheduled === "1"}
+      lockedAdminHasNoSlots={project.lockRescheduleToOriginalAdmin && Object.keys(availability).length === 0}
     />
   );
 }

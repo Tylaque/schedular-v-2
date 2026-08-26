@@ -121,7 +121,7 @@ async function sendNotification(
     const [project, admin] = await Promise.all([
       db.project.findUnique({
         where: { id: booking.projectId },
-        select: { name: true, company: true, timezone: true, ownerId: true },
+        select: { name: true, company: true, timezone: true, ownerId: true, meetingPlatformPreference: true },
       }),
       db.admin.findUnique({
         where: { id: booking.adminId },
@@ -138,12 +138,18 @@ async function sendNotification(
 
     // Resolve session-type classification for conditional template blocks.
     let isFeedback = false;
+    let meetingPlatformLabel = "";
     try {
       const bookingRecord = await db.booking.findUnique({
         where: { id: booking.id },
-        select: { sessionType: { select: { classification: true } } },
+        select: {
+          sessionType: { select: { classification: true } },
+          meetingPlatform: true,
+        },
       });
       isFeedback = bookingRecord?.sessionType?.classification === "FEEDBACK";
+      const platform = bookingRecord?.meetingPlatform ?? project?.meetingPlatformPreference;
+      meetingPlatformLabel = platform === "zoom" ? "Zoom" : platform === "teams" ? "Microsoft Teams" : "Video call";
     } catch {}
 
     const baseCtx: Record<string, string> = {
@@ -158,8 +164,17 @@ async function sendNotification(
       booking_link: `${baseUrl}/book/${booking.projectId}`,
       company_logo: "",
       is_feedback: isFeedback ? "true" : "",
+      meeting_platform_label: meetingPlatformLabel,
+      has_meeting_link: "",
+      no_meeting_link: "true",
       ...extraCtx,
     };
+
+    // Set has_meeting_link if the meeting_link override is an actual URL
+    if (extraCtx?.meeting_link && (extraCtx.meeting_link.startsWith("http://") || extraCtx.meeting_link.startsWith("https://"))) {
+      baseCtx.has_meeting_link = "true";
+      baseCtx.no_meeting_link = "";
+    }
 
     type Recipient = { email: string; role: EmailAudience; adminLink?: boolean };
     const recipients: Recipient[] = [{ email: booking.participantEmail, role: "participant" }];
@@ -737,6 +752,7 @@ export async function cancelBooking(bookingId: string, actor?: { actorType: stri
     time: booking.time,
     adminId: booking.adminId,
   }, {
+    booking_link: `${baseUrl}/manage/${booking.id}`,
     manage_booking_link: `${baseUrl}/manage/${booking.id}`,
   }).catch(() => {});
 
@@ -858,6 +874,7 @@ export async function rescheduleBookingTime(
         time: newTime,
         adminId: result.newBooking.adminId,
       }, {
+        booking_link: `${baseUrl}/manage/${result.newBooking.id}`,
         manage_booking_link: `${baseUrl}/manage/${result.newBooking.id}`,
         old_session_date: original.dateKey,
         old_session_time: original.time,

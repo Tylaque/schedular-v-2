@@ -35,6 +35,7 @@ export default function ManageBooking({
   windowOpen,
   hoursLeft,
   showRescheduleBanner,
+  lockedAdminHasNoSlots,
 }: {
   booking: Booking;
   project: Project;
@@ -43,6 +44,7 @@ export default function ManageBooking({
   windowOpen: boolean;
   hoursLeft: number;
   showRescheduleBanner: boolean;
+  lockedAdminHasNoSlots: boolean;
 }) {
   const router = useRouter();
   const [cancelling, setCancelling] = useState(false);
@@ -222,7 +224,14 @@ export default function ManageBooking({
                   Reschedule to a new time
                 </h2>
 
-                <SlotPicker
+                {lockedAdminHasNoSlots ? (
+                  <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                    Your interviewer currently has no available slots in the booking window.
+                    Please contact an administrator to reschedule.
+                  </p>
+                ) : (
+                  <>
+                  <SlotPicker
                   availability={availability}
                   selectedDateKey={selectedDateKey}
                   selectedTime={selectedTime}
@@ -240,6 +249,8 @@ export default function ManageBooking({
                   {rescheduling && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Confirm reschedule
                 </button>
+                  </>
+                )}
               </div>
             </div>
           )}

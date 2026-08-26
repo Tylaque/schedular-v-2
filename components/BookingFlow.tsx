@@ -68,6 +68,9 @@ export default function BookingFlow({
   const [email, setEmail] = useState(prefillEmail ?? "");
   const [bookingState, setBookingState] = useState<BookingState>({ status: "idle" });
   const [confirmedAdminName, setConfirmedAdminName] = useState<string | null>(null);
+  const [confirmedMeetingPlatform, setConfirmedMeetingPlatform] = useState<string | null>(null);
+  const [confirmedJoinUrl, setConfirmedJoinUrl] = useState<string | null>(null);
+  const [confirmedFallbackReason, setConfirmedFallbackReason] = useState<string | null>(null);
   const [wlName, setWlName] = useState("");
   const [wlEmail, setWlEmail] = useState("");
   const [wlSubmitted, setWlSubmitted] = useState(false);
@@ -114,6 +117,11 @@ export default function BookingFlow({
     });
     if (result.ok) {
       setConfirmedAdminName(result.adminName);
+      setConfirmedMeetingPlatform(result.meetingPlatform);
+      setConfirmedJoinUrl(
+        result.meetingPlatform === "zoom" ? result.zoomJoinUrl : result.teamsJoinUrl
+      );
+      setConfirmedFallbackReason(result.meetingFallbackReason);
       setStep("confirmed");
       setBookingState({ status: "idle" });
     } else {
@@ -139,6 +147,9 @@ export default function BookingFlow({
     setEmail("");
     setSelectedAdminId(null);
     setConfirmedAdminName(null);
+    setConfirmedMeetingPlatform(null);
+    setConfirmedJoinUrl(null);
+    setConfirmedFallbackReason(null);
     setBookingState({ status: "idle" });
   }
 
@@ -177,12 +188,14 @@ export default function BookingFlow({
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                 <Video className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                Microsoft Teams
+                {project.meetingPlatformPreference === "zoom" ? "Zoom" : project.meetingPlatformPreference === "teams" ? "Microsoft Teams" : "Video call"}
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                <Users className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                {project.admins.length} interviewers rotating
-              </div>
+              {project.defaultSessionType?.name && (
+                <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                  <Users className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                  {project.defaultSessionType.name}
+                </div>
+              )}
               <div className="pt-2">
                 <label className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                   <Globe className="w-3.5 h-3.5" /> Time zone
@@ -462,7 +475,7 @@ export default function BookingFlow({
               <Check className="w-7 h-7 text-emerald-600 dark:text-emerald-300" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-1">You're booked, {name.split(" ")[0]}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">A calendar invite and Teams link are on their way to {email}.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">A calendar invite and meeting link are on their way to {email}.</p>
 
             <div className="w-full max-w-sm rounded-xl border-2 border-dashed border-brand-100 bg-brand-50/50 relative dark:border-brand-700 dark:bg-brand-700/20">
               <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-50 dark:bg-gray-950 border-2 border-dashed border-brand-100 dark:border-brand-700" />
@@ -482,10 +495,17 @@ export default function BookingFlow({
                   <Users className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                   with {confirmedAdminName}
                 </div>
-                <div className="flex items-center gap-2 text-sm text-brand-600 font-medium mt-3 pt-3 border-t border-brand-100 dark:text-brand-300 dark:border-brand-700">
-                  <Video className="w-4 h-4" />
-                  Join Microsoft Teams meeting
-                </div>
+                {confirmedJoinUrl ? (
+                  <div className="flex items-center gap-2 text-sm text-brand-600 font-medium mt-3 pt-3 border-t border-brand-100 dark:text-brand-300 dark:border-brand-700">
+                    <Video className="w-4 h-4" />
+                    Join {confirmedMeetingPlatform === "zoom" ? "Zoom" : "Microsoft Teams"} meeting
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 font-medium mt-3 pt-3 border-t border-amber-100 dark:border-amber-700">
+                    <Video className="w-4 h-4" />
+                    {confirmedFallbackReason ? "Meeting link pending — you'll receive it shortly" : "Meeting link will be sent to your email"}
+                  </div>
+                )}
               </div>
             </div>
 

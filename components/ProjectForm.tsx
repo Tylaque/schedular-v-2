@@ -48,6 +48,7 @@ type FormData = {
   meetingPlatformPreference: "zoom" | "teams" | "auto";
   assignmentMode: "AUTO" | "PARTICIPANT_CHOICE";
   maxBookingsPerParticipant: number | null;
+  lockRescheduleToOriginalAdmin: boolean;
   defaultSessionTypeId: string;
   reminderSchedules: { hoursBefore: number; label: string }[];
 };
@@ -131,6 +132,7 @@ export default function ProjectForm({
         meetingPlatformPreference: initialProject.meetingPlatformPreference ?? "auto",
         assignmentMode: initialProject.assignmentMode ?? "AUTO",
         maxBookingsPerParticipant: initialProject.maxBookingsPerParticipant ?? null,
+        lockRescheduleToOriginalAdmin: initialProject.lockRescheduleToOriginalAdmin,
         defaultSessionTypeId: (initialProject as any).defaultSessionTypeId ?? "",
         reminderSchedules: (initialProject as any).reminderSchedules?.map((s: any) => ({ hoursBefore: s.hoursBefore, label: s.label })) ?? [
           { hoursBefore: 24, label: "24 Hour Reminder" },
@@ -164,6 +166,7 @@ export default function ProjectForm({
       meetingPlatformPreference: "auto",
       assignmentMode: "AUTO",
       maxBookingsPerParticipant: null,
+      lockRescheduleToOriginalAdmin: true,
       defaultSessionTypeId: "",
       reminderSchedules: [
         { hoursBefore: 24, label: "24 Hour Reminder" },
@@ -266,6 +269,7 @@ export default function ProjectForm({
       maxSessionsPerAdminPerDay: data.maxSessionsPerAdminPerDay,
       sessionCapacity: data.sessionCapacity,
       maxBookingsPerParticipant: data.maxBookingsPerParticipant,
+      lockRescheduleToOriginalAdmin: data.lockRescheduleToOriginalAdmin,
       autoCompleteBookings: data.autoCompleteBookings,
       availabilityLockDate: new Date(data.availabilityLockDate + "T00:00:00"),
       branding,
@@ -477,6 +481,31 @@ export default function ProjectForm({
                 {data.autoCompleteBookings
                   ? "Automatically mark sessions as completed once their scheduled time passes."
                   : "Require the assigned associate to manually mark sessions complete."}
+              </p>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Lock reschedule to original interviewer</label>
+            <div className="mt-2 flex items-start gap-3">
+              <button
+                type="button"
+                onClick={() => update("lockRescheduleToOriginalAdmin", !data.lockRescheduleToOriginalAdmin)}
+                className={
+                  "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors " +
+                  (data.lockRescheduleToOriginalAdmin ? "bg-brand-500" : "bg-gray-300 dark:bg-gray-700")
+                }
+                role="switch"
+                aria-checked={data.lockRescheduleToOriginalAdmin}
+              >
+                <span
+                  className="inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform"
+                  style={{ transform: data.lockRescheduleToOriginalAdmin ? "translateX(18px)" : "translateX(2px)" }}
+                />
+              </button>
+              <p className="text-xs text-gray-500 leading-snug dark:text-gray-400">
+                {data.lockRescheduleToOriginalAdmin
+                  ? "When a participant reschedules, only the originally-assigned interviewer's available slots are shown."
+                  : "Participants can reschedule to any available interviewer."}
               </p>
             </div>
           </div>

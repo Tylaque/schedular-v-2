@@ -132,7 +132,7 @@ export async function confirmBookingAction(input: {
   adminId?: string;
   sessionTypeId?: string;
 }): Promise<
-  | { ok: true; adminName: string }
+  | { ok: true; adminName: string; meetingPlatform: string | null; zoomJoinUrl: string | null; teamsJoinUrl: string | null; meetingFallbackReason: string | null }
   | { ok: false; reason: "slot_full" | "no_admin_available" | "rate_limited" | "too_short_notice" | "admin_not_eligible" | "max_bookings_reached" }
 > {
   if (!input.projectId || !input.participantEmail) {
@@ -151,7 +151,18 @@ export async function confirmBookingAction(input: {
       updateParticipantStatus(input.participantId, "booked").catch(() => {});
     }
     revalidatePath(`/book/${input.projectId}`);
-    return { ok: true, adminName: result.admin.name };
+    const booking = await db.booking.findUnique({
+      where: { id: result.booking.id },
+      select: { meetingPlatform: true, zoomJoinUrl: true, teamsJoinUrl: true, meetingFallbackReason: true },
+    });
+    return {
+      ok: true,
+      adminName: result.admin.name,
+      meetingPlatform: booking?.meetingPlatform ?? null,
+      zoomJoinUrl: booking?.zoomJoinUrl ?? null,
+      teamsJoinUrl: booking?.teamsJoinUrl ?? null,
+      meetingFallbackReason: booking?.meetingFallbackReason ?? null,
+    };
   }
   return result;
 }
@@ -182,6 +193,7 @@ export async function updateProjectAction(
     meetingPlatformPreference?: "zoom" | "teams" | "auto";
     assignmentMode?: "AUTO" | "PARTICIPANT_CHOICE";
     maxBookingsPerParticipant?: number | null;
+    lockRescheduleToOriginalAdmin?: boolean;
     reminderSchedules?: ReminderScheduleInput[];
     defaultSessionTypeId?: string | null;
   }

@@ -72,7 +72,7 @@ export async function setAdminAvailabilityBulk(
  */
 export async function getConsolidatedAvailability(
   projectId: string,
-  opts?: { participantEmail?: string },
+  opts?: { participantEmail?: string; lockToAdminId?: string },
 ): Promise<Record<string, string[]>> {
   // Fire-and-forget: expire stale waitlist offers in the background.
   // This is maintenance work — a participant loading the booking page
@@ -101,7 +101,11 @@ export async function getConsolidatedAvailability(
       },
     }),
     db.projectAdmin.findMany({
-      where: { projectId, admin: { isActive: true } },
+      where: {
+        projectId,
+        admin: { isActive: true },
+        ...(opts?.lockToAdminId ? { adminId: opts.lockToAdminId } : {}),
+      },
       select: { adminId: true },
     }),
     db.projectCertificationRequirement.findMany({

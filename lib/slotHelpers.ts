@@ -30,6 +30,7 @@ export type Project = {
   meetingPlatformPreference: "zoom" | "teams" | "auto";
   assignmentMode: "AUTO" | "PARTICIPANT_CHOICE";
   maxBookingsPerParticipant: number | null;
+  lockRescheduleToOriginalAdmin: boolean;
   defaultSessionTypeId?: string | null;
   defaultSessionType?: { id: string; name: string } | null;
   reminderSchedules?: { id: string; hoursBefore: number; label: string }[];

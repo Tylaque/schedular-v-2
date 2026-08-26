@@ -114,8 +114,9 @@ Scheduler &mdash; Multi-project scheduling platform
 <p style="margin:0 0 4px;">{{session_date}} · {{session_time}}</p>
 <p style="margin:0 0 4px;">{{time_zone}}</p>
 {{#unless is_feedback}}<p style="margin:0 0 4px;">Interviewer: {{admin_name}}</p>
-{{/unless is_feedback}}<p style="margin:12px 0 0;"><a href="{{meeting_link}}" style="color:#4338CA;font-weight:600;">Join Microsoft Teams meeting</a></p>
-</div>
+{{/unless is_feedback}}{{#unless has_meeting_link}}<p style="margin:12px 0 0;color:#6b7280;">Your meeting link is pending — you'll receive it shortly.</p>
+{{/unless has_meeting_link}}{{#unless no_meeting_link}}<p style="margin:12px 0 0;"><a href="{{meeting_link}}" style="color:#4338CA;font-weight:600;">Join {{meeting_platform_label}} meeting</a></p>
+{{/unless no_meeting_link}}</div>
 <p style="margin:16px 0;"><a href="{{manage_booking_link}}" style="color:#4338CA;">Manage your booking</a> — reschedule or cancel while the self-service window is open.</p>
 <p>The meeting link will also appear on your calendar invitation shortly.</p>
 <p>Thanks,<br/>{{company_name}}</p>
@@ -228,6 +229,21 @@ Scheduler &mdash; Multi-project scheduling platform
 <p>The participant was confirmed without a meeting link. Please either add a licensed Zoom account to the pool or switch this project to "Automatic" meeting selection.</p>
 <p>Manage this booking: <a href="{{manage_booking_link}}">{{manage_booking_link}}</a></p>
 <p>Best,<br/>Scheduler</p>
+</div>`,
+    },
+    {
+      category: "verification_pin",
+      audience: "participant",
+      subject: "Your verification code: {{pin}}",
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+<p>Hi {{participant_name}},</p>
+<p>Your verification code for <strong>{{project_name}}</strong> is:</p>
+<div style="background:#EEF1FD;border:2px dashed #DCE1FB;border-radius:12px;padding:20px;margin:20px 0;text-align:center;">
+<p style="margin:0;font-size:32px;font-weight:700;letter-spacing:8px;color:#4338CA;">{{pin}}</p>
+</div>
+<p>This code expires in 10 minutes.</p>
+<p>If you did not request this code, you can safely ignore this email.</p>
+<p>Best,<br/>{{company_name}}</p>
 </div>`,
     },
   ];

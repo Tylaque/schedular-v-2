@@ -7,6 +7,12 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { signManageToken } from "@/lib/manage-token";
+import { createVerificationPin, verifyPin } from "@/lib/pin";
+import { getActiveTemplate } from "@/lib/data/templates";
+import { renderTemplate } from "@/lib/template-utils";
+import { Resend } from "resend";
+
+const PIN_FROM = process.env.EMAIL_FROM ?? "Scheduler <onboarding@resend.dev>";
 
 async function getBookingWithProject(bookingId: string) {
   return db.booking.findUnique({
@@ -24,13 +30,66 @@ async function assertSelfServiceWindow(bookingId: string) {
   }
 }
 
-export async function verifyManageEmail(
+export async function requestManagePin(
   bookingId: string,
   email: string
+): Promise<{ sent: true } | { sent: false; error: string }> {
+  const hdrs = await headers();
+  const ip = getClientIp(hdrs);
+  if (!checkRateLimit(`manage-pin-request:${ip}`, 10, 15 * 60 * 1000)) {
+    return { sent: false, error: "Too many attempts. Please try again later." };
+  }
+
+  const booking = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: {
+      participantEmail: true,
+      participantName: true,
+      projectId: true,
+      project: { select: { name: true, company: true } },
+    },
+  });
+  if (!booking) {
+    return { sent: false, error: "Booking not found." };
+  }
+  if (booking.participantEmail.toLowerCase().trim() !== email.toLowerCase().trim()) {
+    return { sent: false, error: "Email does not match our records." };
+  }
+
+  const { pin } = await createVerificationPin(bookingId, booking.participantEmail);
+
+  // Send PIN email
+  const template = await getActiveTemplate("verification_pin", booking.projectId);
+  if (template) {
+    const ctx = {
+      participant_name: booking.participantName,
+      project_name: booking.project.name ?? "",
+      company_name: booking.project.company ?? "",
+      pin,
+    };
+    const rendered = renderTemplate(template, ctx);
+    const resend = new Resend(process.env.RESEND_API_KEY ?? "");
+    await resend.emails.send({
+      from: PIN_FROM,
+      to: booking.participantEmail,
+      subject: rendered.subject,
+      html: rendered.bodyHtml,
+    }).catch((err) => {
+      console.error("[pin] Failed to send PIN email:", err);
+    });
+  }
+
+  return { sent: true };
+}
+
+export async function verifyManagePin(
+  bookingId: string,
+  email: string,
+  pin: string
 ): Promise<{ verified: true; token: string } | { verified: false; error: string }> {
   const hdrs = await headers();
   const ip = getClientIp(hdrs);
-  if (!checkRateLimit(`manage-verify:${ip}`, 10, 15 * 60 * 1000)) {
+  if (!checkRateLimit(`manage-pin-verify:${ip}`, 10, 15 * 60 * 1000)) {
     return { verified: false, error: "Too many attempts. Please try again later." };
   }
 
@@ -44,6 +103,18 @@ export async function verifyManageEmail(
   if (booking.participantEmail.toLowerCase().trim() !== email.toLowerCase().trim()) {
     return { verified: false, error: "Email does not match our records." };
   }
+
+  const result = await verifyPin(bookingId, booking.participantEmail, pin);
+  if (!result.ok) {
+    const errors: Record<string, string> = {
+      not_found: "No verification code found. Please request a new one.",
+      expired: "This code has expired. Please request a new one.",
+      too_many_attempts: "Too many failed attempts. Please request a new code.",
+      wrong_pin: "Incorrect code. Please try again.",
+    };
+    return { verified: false, error: errors[result.reason] };
+  }
+
   return { verified: true, token: signManageToken(bookingId, booking.participantEmail) };
 }
 
@@ -98,7 +169,18 @@ export async function participantRescheduleAction(
   }
 
   await assertSelfServiceWindow(bookingId);
-  const result = await rescheduleBookingTime(bookingId, newDateKey, newTime, { actor: { actorType: "participant", actorLabel: "Self-service" } });
+
+  // Read the project's lockRescheduleToOriginalAdmin setting
+  const booking = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: { project: { select: { lockRescheduleToOriginalAdmin: true } } },
+  });
+  const keepSameAdmin = booking?.project.lockRescheduleToOriginalAdmin ?? true;
+
+  const result = await rescheduleBookingTime(bookingId, newDateKey, newTime, {
+    keepSameAdminIfPossible: keepSameAdmin,
+    actor: { actorType: "participant", actorLabel: "Self-service" },
+  });
   if (result.ok) {
     const newBooking = await db.booking.findUnique({
       where: { id: result.newBooking.id },
