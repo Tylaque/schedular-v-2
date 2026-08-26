@@ -56,11 +56,22 @@ export async function requestManagePin(
     return { sent: false, error: "Email does not match our records." };
   }
 
-  const { pin } = await createVerificationPin(bookingId, booking.participantEmail);
+  let pin: string;
+  try {
+    const result = await createVerificationPin(bookingId, booking.participantEmail);
+    pin = result.pin;
+  } catch (err) {
+    console.error("[pin] Failed to create verification pin:", err);
+    return { sent: false, error: "Failed to generate verification code. Please try again." };
+  }
 
   // Send PIN email
-  const template = await getActiveTemplate("verification_pin", booking.projectId);
-  if (template) {
+  try {
+    const template = await getActiveTemplate("verification_pin", booking.projectId);
+    if (!template) {
+      console.error("[pin] No active verification_pin template found for project:", booking.projectId);
+      return { sent: false, error: "Email template not configured. Please contact support." };
+    }
     const ctx = {
       participant_name: booking.participantName,
       project_name: booking.project.name ?? "",
@@ -69,14 +80,19 @@ export async function requestManagePin(
     };
     const rendered = renderTemplate(template, ctx);
     const resend = new Resend(process.env.RESEND_API_KEY ?? "");
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: PIN_FROM,
       to: booking.participantEmail,
       subject: rendered.subject,
       html: rendered.bodyHtml,
-    }).catch((err) => {
-      console.error("[pin] Failed to send PIN email:", err);
     });
+    if (error) {
+      console.error("[pin] Resend API error:", error);
+      return { sent: false, error: "Failed to send verification email. Please try again." };
+    }
+  } catch (err) {
+    console.error("[pin] Failed to send PIN email:", err);
+    return { sent: false, error: "Failed to send verification email. Please try again." };
   }
 
   return { sent: true };
