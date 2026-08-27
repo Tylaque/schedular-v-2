@@ -27,6 +27,7 @@ export const ALL_CATEGORIES: EmailCategoryTuple[] = [
 
 export const PLACEHOLDER_TOKENS = [
   "participant_name",
+  "participant_email",
   "admin_name",
   "admin_email",
   "project_name",
@@ -44,6 +45,10 @@ export const PLACEHOLDER_TOKENS = [
   "meeting_platform_label",
   "has_meeting_link",
   "no_meeting_link",
+  "zoom_account_label",
+  "zoom_account_email",
+  "has_zoom_account",
+  "no_zoom_account",
 ];
 
 export const MOCK_PREVIEW_CONTEXT: Record<string, string> = {

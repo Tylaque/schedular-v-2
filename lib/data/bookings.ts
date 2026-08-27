@@ -1,7 +1,7 @@
 import { db, isSerializationConflict } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
 import { offerNextWaitlistEntry, rescindOffersForSlot } from "@/lib/data/waitlist";
-import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
+import { getActiveTemplate, getActiveTemplateByAudience, renderTemplate } from "@/lib/data/templates";
 import { logNotification } from "@/lib/data/notifications";
 import { provisionMeeting, removeMeeting, updateMeetingTime } from "@/lib/data/meetings";
 import { isAdminAvailableForSlot } from "@/lib/data/availability-ranges";
@@ -139,21 +139,32 @@ async function sendNotification(
     // Resolve session-type classification for conditional template blocks.
     let isFeedback = false;
     let meetingPlatformLabel = "";
+    let zoomAccountLabel = "";
+    let zoomAccountEmail = "";
+    let hasZoomAccount = false;
     try {
       const bookingRecord = await db.booking.findUnique({
         where: { id: booking.id },
         select: {
           sessionType: { select: { classification: true } },
           meetingPlatform: true,
+          zoomAccountId: true,
+          zoomAccount: { select: { label: true, zoomEmail: true } },
         },
       });
       isFeedback = bookingRecord?.sessionType?.classification === "FEEDBACK";
       const platform = bookingRecord?.meetingPlatform ?? project?.meetingPlatformPreference;
       meetingPlatformLabel = platform === "zoom" ? "Zoom" : platform === "teams" ? "Microsoft Teams" : "Video call";
+      if (bookingRecord?.zoomAccount) {
+        hasZoomAccount = true;
+        zoomAccountLabel = bookingRecord.zoomAccount.label;
+        zoomAccountEmail = bookingRecord.zoomAccount.zoomEmail;
+      }
     } catch {}
 
     const baseCtx: Record<string, string> = {
       participant_name: booking.participantName,
+      participant_email: booking.participantEmail,
       project_name: project.name ?? "",
       company_name: project.company ?? "",
       session_date: booking.dateKey,
@@ -167,6 +178,10 @@ async function sendNotification(
       meeting_platform_label: meetingPlatformLabel,
       has_meeting_link: "",
       no_meeting_link: "true",
+      zoom_account_label: zoomAccountLabel,
+      zoom_account_email: zoomAccountEmail,
+      has_zoom_account: hasZoomAccount ? "true" : "",
+      no_zoom_account: hasZoomAccount ? "" : "true",
       ...extraCtx,
     };
 
@@ -208,7 +223,11 @@ async function sendNotification(
           ctx.manage_booking_link = `${baseUrl}/admin/calendar`;
         }
       }
-      const rendered = renderTemplate(template, ctx);
+      // For booking_confirmation, select template by audience; other categories use the single template.
+      const recipientTemplate = category === "booking_confirmation"
+        ? await getActiveTemplateByAudience(category, recipient.role, booking.projectId)
+        : template;
+      const rendered = renderTemplate(recipientTemplate, ctx);
       console.log(`[notify] SENDING to=${recipient.email} role=${recipient.role}`);
       try {
         const result = await resend.emails.send({

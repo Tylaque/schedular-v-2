@@ -298,6 +298,7 @@ export async function provisionMeeting(projectId: string, bookingId: string): Pr
         company: true,
         timezone: true,
         durationMinutes: true,
+        bufferMinutes: true,
         meetingPlatformPreference: true,
       },
     }),
@@ -332,6 +333,7 @@ export async function provisionMeeting(projectId: string, bookingId: string): Pr
     time: booking.time,
     timezone: project.timezone,
     durationMinutes: project.durationMinutes,
+    bufferMinutes: project.bufferMinutes,
   });
 
   if (claim.ok) {

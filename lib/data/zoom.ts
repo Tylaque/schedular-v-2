@@ -34,7 +34,12 @@ export function bookingToUtcISO(dateKey: string, time: string, timezone: string)
   return bookingToUtcDate(dateKey, time, timezone).toISOString();
 }
 
-export interface ZoomAccountWithUsage extends ZoomAccount {
+export interface ZoomAccountWithUsage {
+  id: string;
+  label: string;
+  zoomUserId: string;
+  zoomEmail: string;
+  isActive: boolean;
   bookingCount: number;
 }
 
@@ -54,6 +59,7 @@ export async function claimZoomAccountForBooking(input: {
   time: string;
   timezone: string;
   durationMinutes: number;
+  bufferMinutes: number;
 }): Promise<
   { ok: true; account: ZoomAccount } | { ok: false; reason: "pool_full" | "error"; detail?: string }
 > {
@@ -81,18 +87,18 @@ export async function claimZoomAccountForBooking(input: {
           zoomAccountId: true,
           dateKey: true,
           time: true,
-          project: { select: { durationMinutes: true, timezone: true } },
+          project: { select: { durationMinutes: true, bufferMinutes: true, timezone: true } },
         },
       });
 
       const startMs = bookingToUtcDate(input.dateKey, input.time, input.timezone).getTime();
-      const endMs = startMs + input.durationMinutes * 60000;
+      const endMs = startMs + (input.durationMinutes + input.bufferMinutes) * 60000;
 
       for (const row of rows) {
         const busy = booked.some((b) => {
           if (b.zoomAccountId !== row.id) return false;
           const bStart = bookingToUtcDate(b.dateKey, b.time, b.project.timezone).getTime();
-          const bEnd = bStart + b.project.durationMinutes * 60000;
+          const bEnd = bStart + (b.project.durationMinutes + b.project.bufferMinutes) * 60000;
           return epochOverlap(startMs, endMs, bStart, bEnd);
         });
         if (!busy) {
@@ -127,11 +133,16 @@ export async function claimZoomAccountForBooking(input: {
 export async function listZoomPoolAccounts(): Promise<ZoomAccountWithUsage[]> {
   const accounts = await db.zoomAccount.findMany({
     orderBy: { label: "asc" },
-    include: {
+    select: {
+      id: true,
+      label: true,
+      zoomUserId: true,
+      zoomEmail: true,
+      isActive: true,
       bookings: { where: { status: "confirmed" }, select: { id: true } },
     },
   });
-  return accounts.map((a) => ({ ...a, bookingCount: a.bookings.length }));
+  return accounts.map(({ bookings, ...rest }) => ({ ...rest, bookingCount: bookings.length }));
 }
 
 export async function createZoomAccount(input: {

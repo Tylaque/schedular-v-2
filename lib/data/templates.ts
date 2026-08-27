@@ -93,6 +93,31 @@ export async function getActiveTemplate(
   return globalTemplate;
 }
 
+export async function getActiveTemplateByAudience(
+  category: EmailCategory,
+  audience: EmailAudience,
+  projectId?: string
+): Promise<Prisma.EmailTemplateGetPayload<{}>> {
+  if (projectId) {
+    const projectTemplate = await db.emailTemplate.findFirst({
+      where: { category, audience, projectId, isActive: true },
+    });
+    if (projectTemplate) return projectTemplate;
+  }
+
+  const globalTemplate = await db.emailTemplate.findFirst({
+    where: { category, audience, projectId: null, isActive: true },
+  });
+
+  if (!globalTemplate) {
+    throw new Error(
+      `No active email template found for category "${category}" audience "${audience}". Ensure seed templates have been run.`
+    );
+  }
+
+  return globalTemplate;
+}
+
 export async function createTemplateVersion(input: {
   category: EmailCategory;
   audience: EmailAudience;

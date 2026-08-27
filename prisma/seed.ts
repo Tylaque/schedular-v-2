@@ -123,6 +123,47 @@ Scheduler &mdash; Multi-project scheduling platform
 </div>`,
     },
     {
+      category: "booking_confirmation",
+      audience: "admin",
+      subject: "New session booked: {{participant_name}} — {{project_name}}",
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+<p>Hi {{admin_name}},</p>
+<p>A new session has been booked for <strong>{{project_name}}</strong>.</p>
+<div style="border:2px dashed #DCE1FB;border-radius:12px;padding:20px;margin:20px 0;background:#EEF1FD;">
+<p style="margin:0 0 8px;"><strong>{{project_name}}</strong></p>
+<p style="margin:0 0 4px;">{{session_date}} · {{session_time}}</p>
+<p style="margin:0 0 4px;">{{time_zone}}</p>
+{{#unless is_feedback}}<p style="margin:0 0 4px;">Interviewer: {{admin_name}}</p>
+{{/unless is_feedback}}<p style="margin:0 0 4px;">Participant: {{participant_name}} ({{participant_email}})</p>
+{{#unless has_meeting_link}}<p style="margin:12px 0 0;color:#6b7280;">Meeting link is pending — you'll receive it shortly.</p>
+{{/unless has_meeting_link}}{{#unless no_meeting_link}}<p style="margin:12px 0 0;"><a href="{{meeting_link}}" style="color:#4338CA;font-weight:600;">Join {{meeting_platform_label}} meeting</a></p>
+{{/unless no_meeting_link}}</div>
+<p style="margin:16px 0;"><a href="{{manage_booking_link}}" style="color:#4338CA;">View or manage this session in your dashboard</a>.</p>
+<p>Best,<br/>{{company_name}}</p>
+</div>`,
+    },
+    {
+      category: "booking_confirmation",
+      audience: "super_admin",
+      subject: "Session booked: {{participant_name}} with {{admin_name}} — {{project_name}}",
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+<p>Hi {{admin_name}},</p>
+<p>A new session has been booked for <strong>{{project_name}}</strong>.</p>
+<div style="border:2px dashed #DCE1FB;border-radius:12px;padding:20px;margin:20px 0;background:#EEF1FD;">
+<p style="margin:0 0 8px;"><strong>{{project_name}}</strong></p>
+<p style="margin:0 0 4px;">{{session_date}} · {{session_time}}</p>
+<p style="margin:0 0 4px;">{{time_zone}}</p>
+{{#unless is_feedback}}<p style="margin:0 0 4px;">Interviewer: {{admin_name}}</p>
+{{/unless is_feedback}}<p style="margin:0 0 4px;">Participant: {{participant_name}} ({{participant_email}})</p>
+{{#unless has_meeting_link}}<p style="margin:12px 0 0;color:#6b7280;">Meeting link is pending — you'll receive it shortly.</p>
+{{/unless has_meeting_link}}{{#unless no_meeting_link}}<p style="margin:12px 0 0;"><a href="{{meeting_link}}" style="color:#4338CA;font-weight:600;">Join {{meeting_platform_label}} meeting</a></p>
+{{/unless no_meeting_link}}{{#unless no_zoom_account}}<p style="margin:8px 0 4px;">Zoom account: {{zoom_account_label}} ({{zoom_account_email}})</p>
+{{/unless no_zoom_account}}</div>
+<p style="margin:16px 0;"><a href="{{manage_booking_link}}" style="color:#4338CA;">View or manage this session in your dashboard</a>.</p>
+<p>Best,<br/>{{company_name}}</p>
+</div>`,
+    },
+    {
       category: "reminder_24h",
       audience: "participant",
       subject: "Reminder: {{project_name}} tomorrow at {{session_time}}",
@@ -250,7 +291,7 @@ Scheduler &mdash; Multi-project scheduling platform
 
   for (const t of TEMPLATES) {
     const existing = await db.emailTemplate.findFirst({
-      where: { category: t.category as any, projectId: null, isActive: true },
+      where: { category: t.category as any, audience: t.audience as any, projectId: null, isActive: true },
     });
     if (existing) {
       await db.emailTemplate.update({

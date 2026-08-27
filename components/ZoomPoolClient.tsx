@@ -41,7 +41,7 @@ export default function ZoomPoolClient({
       }
       setAccounts((prev) => [
         ...prev,
-        { id: res.id, label: label.trim(), zoomUserId: zoomUserId.trim(), zoomEmail: zoomEmail.trim().toLowerCase(), isActive: true, bookingCount: 0, createdAt: new Date(), updatedAt: new Date() },
+        { id: res.id, label: label.trim(), zoomUserId: zoomUserId.trim(), zoomEmail: zoomEmail.trim().toLowerCase(), isActive: true, bookingCount: 0 },
       ]);
       setLabel("");
       setZoomUserId("");
