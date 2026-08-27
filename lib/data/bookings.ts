@@ -153,8 +153,15 @@ async function sendNotification(
         },
       });
       isFeedback = bookingRecord?.sessionType?.classification === "FEEDBACK";
-      const platform = bookingRecord?.meetingPlatform ?? project?.meetingPlatformPreference;
-      meetingPlatformLabel = platform === "zoom" ? "Zoom" : platform === "teams" ? "Microsoft Teams" : "Video call";
+      const platform = bookingRecord?.meetingPlatform
+        ?? (project?.meetingPlatformPreference !== "auto" ? project?.meetingPlatformPreference : null);
+      if (platform === "zoom" || platform === "teams") {
+        meetingPlatformLabel = platform === "zoom" ? "Zoom" : "Microsoft Teams";
+      } else if (bookingRecord?.zoomAccountId) {
+        meetingPlatformLabel = "Zoom";
+      } else {
+        meetingPlatformLabel = "Microsoft Teams";
+      }
       if (bookingRecord?.zoomAccount) {
         hasZoomAccount = true;
         zoomAccountLabel = bookingRecord.zoomAccount.label;
