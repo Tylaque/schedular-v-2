@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { timesOverlap } from "@/lib/timeOverlap";
 import { hoursUntilSession } from "@/lib/slotHelpers";
+import { DEMO_STAFF_IDS } from "@/lib/demo";
 import type { Prisma } from "@prisma/client";
 
 function parseMinutes(t: string): number {
@@ -167,6 +168,8 @@ export async function getTeamAvailability(
   const projectWhere: Prisma.ProjectWhereInput = {};
   if (scopeToOwnerId) {
     projectWhere.ownerId = scopeToOwnerId;
+  } else if (!filters.projectId) {
+    where.id = { notIn: DEMO_STAFF_IDS };
   }
   if (filters.projectId) {
     projectWhere.id = filters.projectId;

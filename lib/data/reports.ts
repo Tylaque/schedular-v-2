@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { bookingDateWindow, countRangeSlots } from "@/lib/data/availability";
+import { DEMO_SLUG, DEMO_STAFF_IDS } from "@/lib/demo";
 import type { Prisma } from "@prisma/client";
 
 export type ReportRow = Record<string, string | number | boolean | null>;
@@ -115,6 +116,8 @@ async function generateBookingsSummary(ownerId?: string): Promise<ReportRow[]> {
   const where: Prisma.BookingWhereInput = { status: "confirmed" };
   if (ownerId) {
     where.project = { ownerId };
+  } else {
+    where.project = { slug: { not: DEMO_SLUG } };
   }
   const rows = await db.booking.findMany({
     where,
@@ -134,7 +137,7 @@ async function generateBookingsSummary(ownerId?: string): Promise<ReportRow[]> {
 }
 
 async function generateAdminUtilization(ownerId?: string): Promise<ReportRow[]> {
-  const projectFilter = ownerId ? { ownerId } : {};
+  const projectFilter = ownerId ? { ownerId } : { slug: { not: DEMO_SLUG } };
   const projects = await db.project.findMany({
     where: projectFilter,
     select: { id: true, name: true, availabilityPeriodDays: true },
@@ -145,7 +148,7 @@ async function generateAdminUtilization(ownerId?: string): Promise<ReportRow[]> 
     const slotCounts = await countRangeSlots({ projectId: project.id, ...window });
     const adminFilter = ownerId
       ? { projectAssignments: { some: { project: { ownerId } } } }
-      : {};
+      : { id: { notIn: DEMO_STAFF_IDS } };
     const admins = await db.admin.findMany({
       where: adminFilter,
       select: { id: true, name: true },
@@ -168,7 +171,7 @@ async function generateAdminUtilization(ownerId?: string): Promise<ReportRow[]> 
 }
 
 async function generateParticipantActivity(ownerId?: string): Promise<ReportRow[]> {
-  const where = ownerId ? { project: { ownerId } } : {};
+  const where = ownerId ? { project: { ownerId } } : { project: { slug: { not: DEMO_SLUG } } };
   const participants = await db.participant.findMany({
     where,
     include: { project: { select: { name: true } } },
@@ -191,7 +194,7 @@ async function generateParticipantActivity(ownerId?: string): Promise<ReportRow[
 }
 
 async function generateProjectProgress(ownerId?: string): Promise<ReportRow[]> {
-  const projectFilter = ownerId ? { ownerId } : {};
+  const projectFilter = ownerId ? { ownerId } : { slug: { not: DEMO_SLUG } };
   const projects = await db.project.findMany({
     where: projectFilter,
     select: { id: true, name: true, status: true, availabilityPeriodDays: true },
@@ -217,7 +220,7 @@ async function generateProjectProgress(ownerId?: string): Promise<ReportRow[]> {
 }
 
 async function generateTemplateUsage(ownerId?: string): Promise<ReportRow[]> {
-  const projectFilter = ownerId ? { ownerId } : {};
+  const projectFilter = ownerId ? { ownerId } : { slug: { not: DEMO_SLUG } };
   const projects = await db.project.findMany({
     where: projectFilter,
     select: { id: true, name: true },
@@ -241,7 +244,9 @@ async function generateTemplateUsage(ownerId?: string): Promise<ReportRow[]> {
 }
 
 async function generateNotificationLog(ownerId?: string): Promise<ReportRow[]> {
-  const where = ownerId ? { project: { ownerId } } : {};
+  const where = ownerId
+    ? { project: { ownerId } }
+    : { NOT: { project: { is: { slug: DEMO_SLUG } } } };
   const logs = await db.notificationLog.findMany({
     where,
     orderBy: { createdAt: "desc" },

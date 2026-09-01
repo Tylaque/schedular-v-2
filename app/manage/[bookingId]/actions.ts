@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { demoRecipientEmail, isDemoProjectId } from "@/lib/demo";
 import { cancelBooking, rescheduleBookingTime } from "@/lib/data/bookings";
 import { hoursUntilSession } from "@/lib/slotHelpers";
 import { revalidatePath } from "next/cache";
@@ -82,7 +83,9 @@ export async function requestManagePin(
     const resend = new Resend(process.env.RESEND_API_KEY ?? "");
     const { error } = await resend.emails.send({
       from: PIN_FROM,
-      to: booking.participantEmail,
+      to: isDemoProjectId(booking.projectId)
+        ? demoRecipientEmail("participant", booking.participantEmail)
+        : booking.participantEmail,
       subject: rendered.subject,
       html: rendered.bodyHtml,
     });

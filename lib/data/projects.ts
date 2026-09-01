@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { recordAudit } from "@/lib/data/audit";
 import { offboardAdminFromProject } from "@/lib/data/offboarding";
+import { DEMO_SLUG } from "@/lib/demo";
 
 export type ProjectWithAdmins = {
   id: string;
@@ -122,7 +123,7 @@ function slugify(text: string): string {
 }
 
 export async function listProjects(ownerId?: string): Promise<ProjectWithAdmins[]> {
-  const where = ownerId ? { ownerId } : {};
+  const where: { ownerId?: string; NOT?: { slug: string } } = ownerId ? { ownerId } : { NOT: { slug: DEMO_SLUG } };
   const rows = await db.project.findMany({
     where,
     include: { admins: { include: { admin: true } }, owner: { select: { name: true } }, defaultSessionType: { select: { id: true, name: true } } },

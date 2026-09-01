@@ -4,6 +4,7 @@ import { stripHtml } from "@/lib/html-to-text";
 import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
 import { logNotification } from "@/lib/data/notifications";
 import { createPasswordToken } from "@/lib/data/password-reset";
+import { DEMO_STAFF_IDS } from "@/lib/demo";
 
 export type AdminRecord = {
   id: string;
@@ -15,8 +16,8 @@ export type AdminRecord = {
 };
 
 export async function listAllAdmins(): Promise<AdminRecord[]> {
-  const rows = await db.admin.findMany({
-    where: { isActive: true },
+const rows = await db.admin.findMany({
+    where: { isActive: true, id: { notIn: DEMO_STAFF_IDS } },
     orderBy: { name: "asc" },
   });
   return rows.map((a) => ({ id: a.id, name: a.name, initials: a.initials, email: a.email, accountType: a.accountType, role: a.role }));

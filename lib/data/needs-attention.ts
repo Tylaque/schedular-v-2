@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { DEMO_SLUG } from "@/lib/demo";
 
 export type FlaggedBooking = {
   id: string;
@@ -25,6 +26,8 @@ export async function listFlaggedBookings(ownerId?: string): Promise<FlaggedBook
 
   if (ownerId) {
     where.project = { ownerId };
+  } else {
+    where.NOT = { project: { is: { slug: DEMO_SLUG } } };
   }
 
   const bookings = await db.booking.findMany({
@@ -66,6 +69,8 @@ export async function countFlaggedBookings(ownerId?: string): Promise<number> {
   };
   if (ownerId) {
     where.project = { ownerId };
+  } else {
+    where.NOT = { project: { is: { slug: DEMO_SLUG } } };
   }
   return db.booking.count({ where });
 }
@@ -103,6 +108,8 @@ export async function listFailedProvisionings(ownerId?: string): Promise<FailedP
 
   if (ownerId) {
     where.project = { ownerId };
+  } else {
+    where.NOT = { project: { is: { slug: DEMO_SLUG } } };
   }
 
   const bookings = await db.booking.findMany({
@@ -154,6 +161,8 @@ export async function countFailedProvisionings(ownerId?: string): Promise<number
   };
   if (ownerId) {
     where.project = { ownerId };
+  } else {
+    where.NOT = { project: { is: { slug: DEMO_SLUG } } };
   }
   return db.booking.count({ where });
 }
