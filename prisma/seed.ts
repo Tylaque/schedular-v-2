@@ -50,31 +50,13 @@ async function main() {
       category: "admin_invitation",
       audience: "admin",
       subject: "You've been added to {{project_name}} at {{company_name}}",
-      bodyHtml: `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-<tr><td style="padding:40px 20px;background-color:#f3f4f6;">
-<table role="presentation" cellpadding="0" cellspacing="0" style="max-width:480px;margin:0 auto;background-color:#ffffff;border-radius:12px;overflow:hidden;">
-<tr><td style="padding:32px 32px 0;">
+      bodyHtml: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
 <h1 style="margin:0;font-size:20px;font-weight:700;color:#111827;">You've been added to {{project_name}}</h1>
-</td></tr>
-<tr><td style="padding:16px 32px;">
-<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#374151;">
-You've been added as an associate on <strong>{{project_name}}</strong> at {{company_name}}.
-</p>
-<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#374151;">
-To access your account, check your inbox for a setup link from your organisation owner. Use that link to create your password and sign in.
-</p>
-<p style="margin:16px 0 0;font-size:14px;line-height:1.6;color:#374151;">
-You don't need a Microsoft account to sign in — just your email and the password you set up.
-</p>
-</td></tr>
-<tr><td style="padding:16px 32px;border-top:1px solid #e5e7eb;">
-<p style="margin:0;font-size:12px;color:#9ca3af;">
-Scheduler &mdash; Multi-project scheduling platform
-</p>
-</td></tr>
-</table>
-</td></tr>
-</table>`,
+<p>You've been added as an associate on <strong>{{project_name}}</strong> at {{company_name}}.</p>
+<p>To access your account, check your inbox for a setup link from your organisation owner. Use that link to create your password and sign in.</p>
+<p style="margin:16px 0 0;">You don't need a Microsoft account to sign in — just your email and the password you set up.</p>
+<p>Scheduler &mdash; Multi-project scheduling platform</p>
+</div>`,
     },
     {
       category: "availability_request",
@@ -257,7 +239,7 @@ Scheduler &mdash; Multi-project scheduling platform
 <p>We couldn't place a Zoom meeting for the <strong>{{project_name}}</strong> session on {{session_date}} at {{session_time}} ({{participant_name}}), so a <strong>Microsoft Teams</strong> meeting was created instead.</p>
 <p>This usually means the Zoom account pool was full or the Zoom API briefly failed. No action is needed unless you want to review your Zoom pool.</p>
 <p>Manage this booking: <a href="{{manage_booking_link}}">{{manage_booking_link}}</a></p>
-<p>Best,<br/>Scheduler</p>
+<p>Best,<br/>{{company_name}}</p>
 </div>`,
     },
     {
@@ -269,7 +251,7 @@ Scheduler &mdash; Multi-project scheduling platform
 <p>The <strong>{{project_name}}</strong> session on {{session_date}} at {{session_time}} ({{participant_name}}) could not receive a Zoom meeting: every licensed Zoom account is busy and this project does not fall back to Teams.</p>
 <p>The participant was confirmed without a meeting link. Please either add a licensed Zoom account to the pool or switch this project to "Automatic" meeting selection.</p>
 <p>Manage this booking: <a href="{{manage_booking_link}}">{{manage_booking_link}}</a></p>
-<p>Best,<br/>Scheduler</p>
+<p>Best,<br/>{{company_name}}</p>
 </div>`,
     },
     {

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveTemplateAction, sendTestAction } from "@/lib/actions";
 import { PLACEHOLDER_TOKENS, renderTemplate, MOCK_PREVIEW_CONTEXT } from "@/lib/template-utils";
+import { parseTemplateHtml, serializeTemplateHtml, type Block } from "@/lib/blocks";
+import BlockEditor from "@/components/block-editor/BlockEditor";
 import type { Prisma } from "@prisma/client";
 import {
   ArrowLeft,
@@ -40,6 +42,9 @@ export default function TemplateEditForm({
   const router = useRouter();
   const [subject, setSubject] = useState(template.subject);
   const [bodyHtml, setBodyHtml] = useState(template.bodyHtml);
+  const initialParse = parseTemplateHtml(template.bodyHtml);
+  const [mode, setMode] = useState<"simple" | "advanced">(initialParse.ok ? "simple" : "advanced");
+  const [blocks, setBlocks] = useState<Block[]>(initialParse.ok ? initialParse.blocks : []);
   const [showPreview, setShowPreview] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -50,6 +55,25 @@ export default function TemplateEditForm({
   const renderedPreview = showPreview
     ? renderTemplate({ subject, bodyHtml }, MOCK_PREVIEW_CONTEXT)
     : null;
+
+  const parseResult = mode === "simple" ? parseTemplateHtml(bodyHtml) : null;
+
+  function switchToSimple() {
+    const p = parseTemplateHtml(bodyHtml);
+    if (p.ok) {
+      setBlocks(p.blocks);
+      setMode("simple");
+    } else {
+      // Can't edit visually; still allow Simple view to show the notice, but
+      // keep blocks untouched so nothing is overwritten.
+      setMode("simple");
+    }
+  }
+
+  function handleBlocksChange(next: Block[]) {
+    setBlocks(next);
+    setBodyHtml(serializeTemplateHtml(next));
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -119,26 +143,71 @@ export default function TemplateEditForm({
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Body (HTML)</label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400 dark:text-gray-500">Insert token:</span>
-                    <select
-                      onChange={(e) => { if (e.target.value) insertToken(e.target.value); e.target.value = ""; }}
-                      className="text-xs border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Body</label>
+                  <div className="flex items-center gap-1 border border-gray-300 rounded-lg p-0.5 dark:border-gray-600">
+                    <button
+                      type="button"
+                      onClick={() => switchToSimple()}
+                      className={`text-xs font-medium rounded-md px-3 py-1 ${mode === "simple" ? "bg-brand-500 text-white" : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"}`}
                     >
-                      <option value="">-- select --</option>
-                      {PLACEHOLDER_TOKENS.map((t) => (
-                        <option key={t} value={t}>{`{{${t}}}`}</option>
-                      ))}
-                    </select>
+                      Simple
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode("advanced")}
+                      className={`text-xs font-medium rounded-md px-3 py-1 ${mode === "advanced" ? "bg-brand-500 text-white" : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"}`}
+                    >
+                      Advanced
+                    </button>
                   </div>
                 </div>
-                <textarea
-                  value={bodyHtml}
-                  onChange={(e) => setBodyHtml(e.target.value)}
-                  rows={16}
-                  className="w-full mt-1 text-sm font-mono border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
-                />
+
+                {mode === "advanced" && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs text-gray-400 dark:text-gray-500">Insert token:</span>
+                      <select
+                        onChange={(e) => { if (e.target.value) insertToken(e.target.value); e.target.value = ""; }}
+                        className="text-xs border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                      >
+                        <option value="">-- select --</option>
+                        {PLACEHOLDER_TOKENS.map((t) => (
+                          <option key={t} value={t}>{`{{${t}}}`}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <textarea
+                      value={bodyHtml}
+                      onChange={(e) => setBodyHtml(e.target.value)}
+                      rows={16}
+                      className="w-full mt-1 text-sm font-mono border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600"
+                    />
+                  </div>
+                )}
+
+                {mode === "simple" && (
+                  <div>
+                    {parseResult?.ok ? (
+                      <div className="mt-1">
+                        <div className="sticky -top-2 z-10 flex items-center justify-between mb-2 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 dark:bg-gray-900 dark:border-gray-700">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            Visual editor — click a field to edit, then use “Insert token” for placeholders. Changes are stored when you save.
+                          </span>
+                        </div>
+                        <BlockEditor blocks={blocks} onChange={handleBlocksChange} />
+                      </div>
+                    ) : (
+                      <div className="mt-1 border border-amber-300 rounded-lg bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/30">
+                        <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                          This template's layout is too custom to edit visually.
+                        </p>
+                        <p className="text-xs text-amber-700 mt-1 dark:text-amber-300">
+                          Switch to <strong>Advanced</strong> mode to edit the raw HTML. Nothing has been changed.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {renderedPreview && (
