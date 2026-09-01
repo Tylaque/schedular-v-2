@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   genId,
   tokenLabel,
@@ -16,17 +16,6 @@ const SPACING_OPTIONS: { key: SpacingOption; label: string }[] = [
   { key: "none", label: "None" },
 ];
 
-const BLOCK_TYPE_LABELS: Record<Block["type"], string> = {
-  heading: "Heading",
-  paragraph: "Paragraph",
-  button: "Button",
-  textlink: "Text link",
-  card: "Details card",
-  pinbox: "PIN box",
-  footer: "Footer",
-  divider: "Divider",
-};
-
 const BLOCK_TYPE_OPTIONS: { type: Block["type"]; label: string }[] = [
   { type: "heading", label: "Heading" },
   { type: "paragraph", label: "Paragraph" },
@@ -38,13 +27,44 @@ const BLOCK_TYPE_OPTIONS: { type: Block["type"]; label: string }[] = [
   { type: "divider", label: "Divider" },
 ];
 
+// A handful of the most-used tokens, shown directly in the top toolbar. The
+// full list is still reachable via the "More tokens…" dropdown.
+const CATEGORY_COMMON_TOKENS: Record<string, string[]> = {
+  admin_invitation: ["project_name", "company_name", "admin_name"],
+  availability_request: ["participant_name", "project_name", "admin_name", "booking_link"],
+  participant_invitation: ["participant_name", "project_name", "company_name", "booking_link"],
+  booking_confirmation: ["admin_name", "project_name", "session_date", "session_time", "participant_name", "manage_booking_link"],
+  reminder_24h: ["participant_name", "project_name", "session_date", "session_time", "manage_booking_link"],
+  reminder_1h: ["participant_name", "project_name", "session_date", "session_time", "manage_booking_link"],
+  reminder: ["participant_name", "project_name", "session_date", "session_time", "manage_booking_link"],
+  reschedule_notice: ["participant_name", "project_name", "session_date", "session_time", "manage_booking_link"],
+  cancellation_notice: ["participant_name", "project_name", "session_date"],
+  waitlist_offer: ["participant_name", "project_name", "company_name", "booking_link"],
+  zoom_fallback_to_teams: ["admin_name", "project_name", "session_date", "session_time", "participant_name", "meeting_platform_label"],
+  zoom_pool_full_no_fallback: ["admin_name", "project_name", "session_date", "session_time", "participant_name"],
+};
+const DEFAULT_COMMON_TOKENS = ["participant_name", "admin_name", "project_name", "session_date", "session_time", "company_name"];
+
 export default function BlockEditor({
   blocks,
   onChange,
+  category,
 }: {
   blocks: Block[];
   onChange: (blocks: Block[]) => void;
+  category?: string;
 }) {
+  // "armed" = a text field has focus, or focus is currently inside the editor's
+  // own toolbar/menus after a field was focused. The top token toolbar needs a
+  // focused field to insert into, so it stays enabled while the user is
+  // "armed" and interacting with the toolbar, and only disables once focus
+  // actually leaves the whole editor.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [armed, setArmed] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  const commonTokens = CATEGORY_COMMON_TOKENS[category ?? ""] ?? DEFAULT_COMMON_TOKENS;
+
   function updateBlock(id: string, patch: Partial<Block>) {
     onChange(blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)));
   }
@@ -71,25 +91,46 @@ export default function BlockEditor({
     onChange([...blocks, block]);
   }
 
+  function onInsert(key: string) {
+    insertIntoActiveTarget(key);
+    setMoreOpen(false);
+  }
+
+  const editorFocusProps = {
+    onFocus: () => setArmed(true),
+    onBlur: (related: Node | null) => {
+      // Keep the toolbar "armed" if focus just moved somewhere inside this
+      // editor (e.g. a toolbar button or the more-tokens menu), so inserting
+      // still targets the last-focused field. Clear it only when leaving the
+      // editor entirely.
+      if (rootRef.current && !rootRef.current.contains(related)) setArmed(false);
+    },
+  };
+
   return (
-    <div className="space-y-4">
+    <div ref={rootRef} className="space-y-4">
+      <InsertToolbar
+        common={commonTokens}
+        armed={armed}
+        moreOpen={moreOpen}
+        onToggleMore={() => setMoreOpen((o) => !o)}
+        onInsert={onInsert}
+      />
+
       {blocks.map((b, i) => (
-        <div key={b.id} className="border border-gray-200 rounded-lg bg-white dark:border-gray-700 dark:bg-gray-900">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 dark:border-gray-800">
-            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
-              {BLOCK_TYPE_LABELS[b.type]}
-            </span>
-            <div className="flex items-center gap-1">
+        <div key={b.id} className="group border border-gray-200 rounded-lg bg-white dark:border-gray-700 dark:bg-gray-900">
+          <div className="flex items-center justify-end px-3 pt-2">
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">
               <button type="button" disabled={i === 0} onClick={() => moveBlock(b.id, -1)}
-                className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-30 dark:hover:text-gray-200 dark:hover:bg-gray-800" title="Move up">↑</button>
+                className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-30 dark:hover:text-gray-200 dark:hover:bg-gray-800" title="Move up" aria-label="Move up">↑</button>
               <button type="button" disabled={i === blocks.length - 1} onClick={() => moveBlock(b.id, 1)}
-                className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-30 dark:hover:text-gray-200 dark:hover:bg-gray-800" title="Move down">↓</button>
+                className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-30 dark:hover:text-gray-200 dark:hover:bg-gray-800" title="Move down" aria-label="Move down">↓</button>
               <button type="button" onClick={() => removeBlock(b.id)}
-                className="p-1 rounded text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30" title="Remove block">✕</button>
+                className="p-1 rounded text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30" title="Remove block" aria-label="Remove block">✕</button>
             </div>
           </div>
-          <div className="p-3">
-            <BlockBody block={b} onChange={(patch) => updateBlock(b.id, patch)} />
+          <div className="px-3 pb-3">
+            <BlockBody block={b} onChange={(patch) => updateBlock(b.id, patch)} {...editorFocusProps} />
           </div>
         </div>
       ))}
@@ -99,12 +140,77 @@ export default function BlockEditor({
   );
 }
 
+function InsertToolbar({
+  common,
+  armed,
+  moreOpen,
+  onToggleMore,
+  onInsert,
+}: {
+  common: string[];
+  armed: boolean;
+  moreOpen: boolean;
+  onToggleMore: () => void;
+  onInsert: (key: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 dark:border-gray-700 dark:bg-gray-900">
+      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mr-1">Insert token:</span>
+      {common.map((t) => (
+        <button
+          key={t}
+          type="button"
+          disabled={!armed}
+          onClick={() => onInsert(t)}
+          title={`Insert ${tokenLabel(t)} — {{${t}}}`}
+          className={`px-2 py-1 rounded border text-[11px] font-medium dark:border-gray-600 ${
+            armed
+              ? "border-gray-300 text-gray-700 hover:bg-brand-500 hover:text-white dark:text-gray-200 dark:hover:bg-brand-600"
+              : "border-gray-200 text-gray-300 cursor-not-allowed dark:border-gray-800 dark:text-gray-600"
+          }`}
+        >
+          {tokenLabel(t)}
+        </button>
+      ))}
+      <div className="relative">
+        <button
+          type="button"
+          disabled={!armed}
+          onClick={onToggleMore}
+          title="More tokens"
+          className={`px-2 py-1 rounded border text-[11px] font-medium dark:border-gray-600 ${
+            armed
+              ? "border-gray-300 text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-800"
+              : "border-gray-200 text-gray-300 cursor-not-allowed dark:border-gray-800 dark:text-gray-600"
+          }`}
+        >
+          More tokens… ▾
+        </button>
+        {moreOpen && (
+          <div className="absolute z-30 mt-1 left-0 w-64 max-h-72 overflow-y-auto border border-gray-200 rounded-lg bg-white shadow-lg p-1 dark:border-gray-700 dark:bg-gray-900">
+            <TokenMenu onPick={onInsert} />
+          </div>
+        )}
+      </div>
+      {!armed && (
+        <span className="text-[11px] text-gray-400 dark:text-gray-500 ml-1">
+          Click a line, then insert.
+        </span>
+      )}
+    </div>
+  );
+}
+
 function BlockBody({
   block,
   onChange,
+  onFocus,
+  onBlur,
 }: {
   block: Block;
   onChange: (patch: Partial<Block>) => void;
+  onFocus: () => void;
+  onBlur: (related: Node | null) => void;
 }) {
   switch (block.type) {
     case "heading":
@@ -112,6 +218,7 @@ function BlockBody({
         <label className="block text-sm">
           <span className="text-xs text-gray-500 dark:text-gray-400">Heading text</span>
           <TokenEditor value={block.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="Heading"
+            onFocus={onFocus} onBlur={onBlur}
             className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-2 text-base font-semibold dark:border-gray-600" />
         </label>
       );
@@ -121,6 +228,7 @@ function BlockBody({
         <div>
           <span className="text-xs text-gray-500 dark:text-gray-400">Paragraph text</span>
           <TokenEditor value={block.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="Paragraph"
+            onFocus={onFocus} onBlur={onBlur}
             className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600" />
           <div className="mt-2 flex items-center gap-2">
             <span className="text-xs text-gray-500 dark:text-gray-400">Spacing:</span>
@@ -144,6 +252,7 @@ function BlockBody({
           <label className="block text-sm">
             <span className="text-xs text-gray-500 dark:text-gray-400">Label</span>
             <TokenEditor value={block.label ?? ""} onChange={(v) => onChange({ label: v })} placeholder="Label"
+              onFocus={onFocus} onBlur={onBlur}
               className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600" />
           </label>
           <label className="block text-sm">
@@ -154,12 +263,13 @@ function BlockBody({
         </div>
       );
     case "card":
-      return <CardEditor block={block} onChange={onChange} />;
+      return <CardEditor block={block} onChange={onChange} onFocus={onFocus} onBlur={onBlur} />;
     case "pinbox":
       return (
         <label className="block text-sm">
           <span className="text-xs text-gray-500 dark:text-gray-400">PIN content</span>
           <TokenEditor value={block.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="{{pin}}"
+            onFocus={onFocus} onBlur={onBlur}
             className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-2 text-center text-2xl font-bold tracking-widest dark:border-gray-600" />
         </label>
       );
@@ -168,6 +278,7 @@ function BlockBody({
         <label className="block text-sm">
           <span className="text-xs text-gray-500 dark:text-gray-400">Footer text</span>
           <TokenEditor value={block.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="Best,<br/>{{company_name}}"
+            onFocus={onFocus} onBlur={onBlur}
             className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600" />
         </label>
       );
@@ -185,9 +296,13 @@ function BlockBody({
 function CardEditor({
   block,
   onChange,
+  onFocus,
+  onBlur,
 }: {
   block: Block;
   onChange: (patch: Partial<Block>) => void;
+  onFocus: () => void;
+  onBlur: (related: Node | null) => void;
 }) {
   const rows = block.rows ?? [];
   const interviewer = rows.find((r) => r.type === "interviewer");
@@ -222,6 +337,7 @@ function CardEditor({
         <div className="mb-2">
           <div className="text-xs text-gray-500 dark:text-gray-400">Title (bold)</div>
           <TokenEditor value={title?.text ?? ""} onChange={setTitleText} placeholder="Project name"
+            onFocus={onFocus} onBlur={onBlur}
             className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold dark:border-gray-600" />
         </div>
 
@@ -231,6 +347,7 @@ function CardEditor({
           return (
             <div key={i} className="mb-1.5 flex items-center gap-1.5">
               <TokenEditor value={d.text ?? ""} onChange={(v) => setDetail(rowsIdx, v)} placeholder="Detail row"
+                onFocus={onFocus} onBlur={onBlur}
                 className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600" />
             </div>
           );
@@ -274,7 +391,6 @@ function CardEditor({
 
 function AddBlockRow({ onAdd }: { onAdd: (type: Block["type"]) => void }) {
   const [open, setOpen] = useState(false);
-  const [tokenOpen, setTokenOpen] = useState(false);
   return (
     <div className="flex flex-wrap items-center gap-2">
       <button type="button"
@@ -292,18 +408,6 @@ function AddBlockRow({ onAdd }: { onAdd: (type: Block["type"]) => void }) {
           ))}
         </div>
       )}
-      <div className="relative">
-        <button type="button"
-          onClick={() => setTokenOpen(!tokenOpen)}
-          className="border border-gray-300 text-gray-700 hover:bg-gray-100 rounded-lg px-3 py-2 text-sm font-medium dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800">
-          Insert token
-        </button>
-        {tokenOpen && (
-          <div className="absolute z-20 mt-1 right-0 w-64 max-h-72 overflow-y-auto border border-gray-200 rounded-lg bg-white shadow-lg p-1 dark:border-gray-700 dark:bg-gray-900">
-            <TokenMenu onPick={(key) => { insertIntoActiveTarget(key); setTokenOpen(false); }} />
-          </div>
-        )}
-      </div>
     </div>
   );
 }

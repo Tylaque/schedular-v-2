@@ -20,6 +20,11 @@ type TokenEditorHandle = {
 
 let handles = new Map<string, TokenEditorHandle>();
 let activeTargetId: string | null = null;
+// Last-known caret offset (in serialized chars) per editor. The live
+// window.getSelection() is destroyed the moment the user clicks the toolbar or
+// the more-tokens menu autofocuses its search box, so each field remembers its
+// caret position (captured while it had focus) and inserts use that as fallback.
+let carets = new Map<string, number>();
 
 function registerHandle(h: TokenEditorHandle) {
   handles.set(h.id, h);
@@ -53,12 +58,16 @@ export default function TokenEditor({
   placeholder,
   className,
   singleLine,
+  onFocus,
+  onBlur,
 }: {
   value: string;
   onChange: (next: string) => void;
   placeholder?: string;
   className?: string;
   singleLine?: boolean;
+  onFocus?: () => void;
+  onBlur?: (relatedTarget: Node | null) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const idRef = useRef<string | null>(null);
@@ -87,14 +96,64 @@ export default function TokenEditor({
 
   function insertAtCaret(key: string) {
     const el = ref.current;
-    if (!el) return;
-    render(el, insertSegmentIntoString(el, key));
+    if (!el || !idRef.current) return;
+    const text = serialize(el);
+    const segs = splitSegments(text);
+    // Prefer the live selection; fall back to the saved caret (the live one is
+    // gone once focus moved to the toolbar/menu), else append.
+    let offset = selectionOffset(el);
+    if (offset == null) offset = carets.get(idRef.current) ?? text.length;
+    // Find the segment containing the caret offset and insert there, splitting
+    // a text segment at the caret. (Offsets use segment `value` lengths, which
+    // match the DOM-text offsets computed by selectionOffset.)
+    let i = segs.length;
+    let acc = 0;
+    for (let k = 0; k < segs.length; k++) {
+      if (offset < acc + segs[k].value.length) {
+        i = k;
+        break;
+      }
+      acc += segs[k].value.length;
+    }
+    const inner = offset - acc; // chars into segment i
+    if (i < segs.length && inner > 0 && segs[i].kind === "text") {
+      const before = segs[i].value.slice(0, inner);
+      const after = segs[i].value.slice(inner);
+      segs.splice(i, 1, { kind: "text", value: before }, { kind: "token", value: key } satisfies TextSegment, { kind: "text", value: after });
+    } else {
+      segs.splice(i, 0, { kind: "token", value: key } satisfies TextSegment);
+    }
+    const next = segsToText(segs);
+    render(el, next);
     onChangeRef.current(serialize(el));
+    // Keep the saved caret just after the freshly inserted chip so consecutive
+    // insertions stack in the same spot. (Segments use key-length values; the
+    // caret bookkeeping uses the same metric, so stacking stays consistent.)
+    carets.set(idRef.current, acc + inner + key.length);
     el.focus();
+  }
+
+  function captureCaret() {
+    const el = ref.current;
+    if (!el || !idRef.current) return;
+    const off = selectionOffset(el);
+    if (off != null) carets.set(idRef.current, off);
   }
 
   function handleFocus() {
     if (idRef.current) focusTokenEditor(idRef.current);
+    captureCaret();
+    onFocus?.();
+  }
+
+  function handleBlur(e: React.FocusEvent<HTMLElement>) {
+    // Capture the caret while the live selection still belongs to this field —
+    // Chrome keeps it here until focus/selection moves away.
+    captureCaret();
+    // e.relatedTarget (not document.activeElement, which is stale during the
+    // blur dispatch) is the element about to receive focus — needed so the
+    // toolbar keeps "armed" when the user clicks a toolbar/menu button.
+    onBlur?.((e.relatedTarget as Node) ?? null);
   }
 
   function handleInput() {
@@ -110,8 +169,10 @@ export default function TokenEditor({
       suppressContentEditableWarning
       onInput={handleInput}
       onFocus={handleFocus}
+      onBlur={handleBlur}
       onMouseUp={handleFocus}
       onClick={handleFocus}
+      onKeyUp={captureCaret}
       spellCheck={false}
       data-placeholder={placeholder}
       className={`${className ?? ""} ${singleLine ? "whitespace-nowrap" : ""} min-h-[2.5rem]`}
@@ -160,29 +221,16 @@ function serialize(el: HTMLElement): string {
   return out;
 }
 
-function insertSegmentIntoString(el: HTMLDivElement, key: string): string {
-  const text = serialize(el);
-  const segs = splitSegments(text);
+function selectionOffset(el: HTMLElement): number | null {
   const sel = window.getSelection();
-  const anchor = sel?.anchorNode as Node | null;
-  let insertIndex = segs.length;
-  if (el.contains(anchor) && sel && sel.rangeCount > 0) {
-    const range = sel.getRangeAt(0).cloneRange();
-    const before = document.createRange();
-    before.selectNodeContents(el);
-    before.setEnd(range.startContainer, range.startOffset);
-    const offsetChars = before.toString().length;
-    let acc = 0;
-    for (let i = 0; i < segs.length; i++) {
-      acc += segs[i].value.length;
-      if (offsetChars < acc) {
-        insertIndex = i;
-        break;
-      }
-    }
-  }
-  segs.splice(insertIndex, 0, { kind: "token", value: key } satisfies TextSegment);
-  return segsToText(segs);
+  if (!sel || sel.rangeCount === 0) return null;
+  const anchor = sel.anchorNode as Node | null;
+  if (!anchor || !el.contains(anchor)) return null;
+  const range = sel.getRangeAt(0).cloneRange();
+  const before = document.createRange();
+  before.selectNodeContents(el);
+  before.setEnd(range.startContainer, range.startOffset);
+  return before.toString().length;
 }
 
 function segsToText(segs: TextSegment[]): string {

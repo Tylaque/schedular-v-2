@@ -194,7 +194,7 @@ export default function TemplateEditForm({
                             Visual editor — click a field to edit, then use “Insert token” for placeholders. Changes are stored when you save.
                           </span>
                         </div>
-                        <BlockEditor blocks={blocks} onChange={handleBlocksChange} />
+                        <BlockEditor blocks={blocks} onChange={handleBlocksChange} category={template.category} />
                       </div>
                     ) : (
                       <div className="mt-1 border border-amber-300 rounded-lg bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/30">
