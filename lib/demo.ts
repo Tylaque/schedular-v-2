@@ -17,7 +17,7 @@ const PROJECT_SHAPE = {
   name: "FidLaque Solutions — Product Demo",
   company: "FidLaque Solutions",
   description:
-    "A live, public demo of Scheduler. Pick a slot with one of our demo hosts, submit your details, and get a real booking confirmation — no account required.",
+    "A live, public demo of Eureka. Pick a slot with one of our demo hosts, submit your details, and get a real booking confirmation — no account required.",
   durationMinutes: 45,
   availabilityPeriodDays: 14,
   dailyStart: "09:00",
