@@ -39,7 +39,7 @@ async function main() {
   // Seed global default email templates for all 11 categories. These are
   // production configuration (not demo data) — the app needs them to send any
   // email at all. Branding is placeholder-driven ({{company_name}}), with a
-  // neutral "Scheduler" footer.
+  // neutral "Eureka" footer.
   const TEMPLATES: {
     category: string;
     audience: string;
@@ -55,7 +55,7 @@ async function main() {
 <p>You've been added as an associate on <strong>{{project_name}}</strong> at {{company_name}}.</p>
 <p>To access your account, check your inbox for a setup link from your organisation owner. Use that link to create your password and sign in.</p>
 <p style="margin:16px 0 0;">You don't need a Microsoft account to sign in — just your email and the password you set up.</p>
-<p>Scheduler &mdash; Multi-project scheduling platform</p>
+<p>Eureka &mdash; multi-project scheduling platform</p>
 </div>`,
     },
     {
