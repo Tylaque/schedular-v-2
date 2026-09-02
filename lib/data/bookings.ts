@@ -9,6 +9,7 @@ import { isAdminCertifiedForProject } from "@/lib/data/certifications";
 import { timesOverlap } from "@/lib/timeOverlap";
 import { hoursUntilSession } from "@/lib/slotHelpers";
 import { signManageAdminToken } from "@/lib/manage-token";
+import { demoRecipientEmail, isDemoProjectId } from "@/lib/demo";
 import { Resend } from "resend";
 import { stripHtml } from "@/lib/html-to-text";
 import type { EmailAudience, Prisma } from "@prisma/client";
@@ -121,7 +122,7 @@ async function sendNotification(
     const [project, admin] = await Promise.all([
       db.project.findUnique({
         where: { id: booking.projectId },
-        select: { name: true, company: true, timezone: true, ownerId: true, meetingPlatformPreference: true },
+        select: { id: true, slug: true, name: true, company: true, timezone: true, ownerId: true, meetingPlatformPreference: true },
       }),
       db.admin.findUnique({
         where: { id: booking.adminId },
@@ -169,6 +170,8 @@ async function sendNotification(
       }
     } catch {}
 
+    const isDemo = isDemoProjectId(project.id);
+
     const baseCtx: Record<string, string> = {
       participant_name: booking.participantName,
       participant_email: booking.participantEmail,
@@ -179,7 +182,9 @@ async function sendNotification(
       admin_name: admin?.name ?? "",
       time_zone: project.timezone ?? "",
       meeting_link: `${baseUrl}/manage/${booking.id}`,
-      booking_link: `${baseUrl}/book/${booking.projectId}`,
+      booking_link: isDemo
+        ? `${baseUrl}/book/${project.slug}`
+        : `${baseUrl}/book/${booking.projectId}`,
       company_logo: "",
       is_feedback: isFeedback ? "true" : "",
       meeting_platform_label: meetingPlatformLabel,
@@ -199,7 +204,9 @@ async function sendNotification(
     }
 
     type Recipient = { email: string; role: EmailAudience; adminLink?: boolean };
-    const recipients: Recipient[] = [{ email: booking.participantEmail, role: "participant" }];
+    const recipients: Recipient[] = [
+      { email: isDemo ? demoRecipientEmail("participant", booking.participantEmail) : booking.participantEmail, role: "participant" },
+    ];
 
     if (admin?.email) {
       recipients.push({ email: admin.email, role: recipientRoleFor(admin), adminLink: true });

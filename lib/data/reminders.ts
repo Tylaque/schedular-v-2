@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { demoRecipientEmail, isDemoProjectId } from "@/lib/demo";
 import { logNotification } from "@/lib/data/notifications";
 import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
 import { hoursUntilSession } from "@/lib/slotHelpers";
@@ -63,6 +64,9 @@ export async function sendReminders(): Promise<ReminderResult> {
 
   for (const booking of bookings) {
     const tz = booking.project.timezone || "Africa/Nairobi";
+    const recipientEmail = isDemoProjectId(booking.projectId)
+      ? demoRecipientEmail("participant", booking.participantEmail)
+      : booking.participantEmail;
     const hours = hoursUntilSession(booking.dateKey, booking.time, tz);
 
     if (!scheduleCache.has(booking.projectId)) {
@@ -86,7 +90,7 @@ export async function sendReminders(): Promise<ReminderResult> {
         where: {
           category,
           projectId: booking.projectId,
-          recipientEmail: booking.participantEmail,
+          recipientEmail,
           hoursBefore: schedule.hoursBefore,
           createdAt: { gte: new Date(today + "T00:00:00Z") },
         },
@@ -116,7 +120,7 @@ export async function sendReminders(): Promise<ReminderResult> {
 
         const sendResult = await resend.emails.send({
           from: NOTIFICATION_FROM,
-          to: booking.participantEmail,
+          to: recipientEmail,
           subject: rendered.subject,
           html: rendered.bodyHtml,
           text: stripHtml(rendered.bodyHtml),
@@ -128,7 +132,7 @@ export async function sendReminders(): Promise<ReminderResult> {
           templateId: template.id,
           category,
           projectId: booking.projectId,
-          recipientEmail: booking.participantEmail,
+          recipientEmail,
           recipientRole: "participant",
           subject: rendered.subject,
           renderedBody: rendered.bodyHtml,

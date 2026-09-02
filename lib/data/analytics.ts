@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { getAdminUtilization } from "@/lib/data/dashboard";
 import { bookingDateWindow, countRangeSlots } from "@/lib/data/availability";
+import { DEMO_SLUG } from "@/lib/demo";
 import type { Prisma, ProjectStatus } from "@prisma/client";
 
 export type VolumeGranularity = "week" | "month";
@@ -94,6 +95,7 @@ export async function getBookingVolumeTrend(opts: {
   };
   if (projectId) where.projectId = projectId;
   if (ownerId) where.project = { ownerId };
+  else where.project = { slug: { not: DEMO_SLUG } };
 
   const bookings = await db.booking.findMany({
     where,
@@ -199,6 +201,7 @@ export async function getProjectHealthMetrics(opts: {
   const projectFilter: Prisma.ProjectWhereInput = {};
   if (ownerId) projectFilter.ownerId = ownerId;
   if (projectId) projectFilter.id = projectId;
+  else if (!ownerId) projectFilter.slug = { not: DEMO_SLUG };
 
   const projects = await db.project.findMany({
     where: projectFilter,

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { DEMO_SLUG } from "@/lib/demo";
 import type { AuditAction } from "@prisma/client";
 
 export async function recordAudit(input: {
@@ -51,6 +52,8 @@ export async function listAuditLogs(filters: {
   }
   if (filters.ownerId) {
     where.project = { ownerId: filters.ownerId };
+  } else if (!filters.projectId) {
+    where.NOT = { project: { is: { slug: DEMO_SLUG } } };
   }
 
   return db.auditLog.findMany({

@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { isSessionInPast } from "@/lib/slotHelpers";
 import { completePastConfirmedBookings, getBookingDisplayStatus } from "@/lib/data/booking-completion";
 import { bookingDateWindow, countRangeSlots } from "@/lib/data/availability";
+import { DEMO_SLUG, DEMO_STAFF_IDS } from "@/lib/demo";
 import type { ProjectStatus, Prisma } from "@prisma/client";
 
 /**
@@ -39,7 +40,7 @@ export async function countTodaySessions(opts: { ownerId?: string; adminId?: str
     where: {
       status: "confirmed",
       ...(adminId ? { adminId } : {}),
-      ...(ownerId ? { project: { ownerId } } : {}),
+      ...(ownerId ? { project: { ownerId } } : { project: { slug: { not: DEMO_SLUG } } }),
     },
     select: { dateKey: true, project: { select: { timezone: true } } },
   });
@@ -52,7 +53,7 @@ export async function countTodaySessions(opts: { ownerId?: string; adminId?: str
 }
 
 export async function getSuperAdminStats(ownerId?: string) {
-  const projectFilter = ownerId ? { ownerId } : {};
+  const projectFilter = ownerId ? { ownerId } : { slug: { not: DEMO_SLUG } };
   const projects = await db.project.findMany({
     where: projectFilter,
     select: { status: true, timezone: true },
@@ -67,21 +68,25 @@ export async function getSuperAdminStats(ownerId?: string) {
     projectsByStatus[p.status] = (projectsByStatus[p.status] ?? 0) + 1;
   }
 
+  const scopeFilter = ownerId
+    ? { project: { ownerId } }
+    : { project: { slug: { not: DEMO_SLUG } } };
+
   const totalParticipants = await db.participant.count({
-    where: ownerId ? { project: { ownerId } } : {},
+    where: scopeFilter,
   });
 
   const confirmedBookings = await db.booking.findMany({
-    where: { status: "confirmed", ...(ownerId ? { project: { ownerId } } : {}) },
+    where: { status: "confirmed", ...scopeFilter },
     select: { dateKey: true, time: true, project: { select: { timezone: true } } },
   });
 
   const cancelledSessions = await db.booking.count({
-    where: { status: "cancelled", ...(ownerId ? { project: { ownerId } } : {}) },
+    where: { status: "cancelled", ...scopeFilter },
   });
 
   const completedSessions = await db.booking.count({
-    where: { status: "completed", ...(ownerId ? { project: { ownerId } } : {}) },
+    where: { status: "completed", ...scopeFilter },
   });
 
   let upcomingSessions = 0;
@@ -107,7 +112,7 @@ export async function getAdminUtilization(ownerId?: string) {
   // When scoped, only include admins assigned to the owner's projects
   const adminFilter = ownerId
     ? { projectAssignments: { some: { project: { ownerId } } } }
-    : {};
+    : { id: { notIn: DEMO_STAFF_IDS } };
   const admins = await db.admin.findMany({
     where: adminFilter,
     select: { id: true, name: true },
@@ -121,7 +126,7 @@ export async function getAdminUtilization(ownerId?: string) {
   }[] = [];
 
   const scopedProjects = await db.project.findMany({
-    where: ownerId ? { ownerId } : {},
+    where: ownerId ? { ownerId } : { slug: { not: DEMO_SLUG } },
     select: { id: true, availabilityPeriodDays: true },
   });
   const slotCountsByProject = await Promise.all(
@@ -130,7 +135,7 @@ export async function getAdminUtilization(ownerId?: string) {
 
   const bookingCounts = await db.booking.groupBy({
     by: ["adminId"],
-    where: { status: "confirmed", ...(ownerId ? { project: { ownerId } } : {}) },
+    where: { status: "confirmed", ...(ownerId ? { project: { ownerId } } : { project: { slug: { not: DEMO_SLUG } } }) },
     _count: { id: true },
   });
   const bookingMap = new Map(bookingCounts.map((b) => [b.adminId, b._count.id]));
@@ -164,7 +169,7 @@ export type ProjectProgressItem = {
 };
 
 export async function getProjectProgress(ownerId?: string): Promise<ProjectProgressItem[]> {
-  const projectFilter = ownerId ? { ownerId } : {};
+  const projectFilter = ownerId ? { ownerId } : { slug: { not: DEMO_SLUG } };
   const projects = await db.project.findMany({
     where: projectFilter,
     select: {
@@ -358,6 +363,8 @@ export async function getCalendarEvents(filters: CalendarFilters) {
   if (filters.adminId) where.adminId = filters.adminId;
   if (filters.ownerId) {
     where.project = { ownerId: filters.ownerId };
+  } else {
+    where.project = { slug: { not: DEMO_SLUG } };
   }
 
   if (filters.participantSearch) {

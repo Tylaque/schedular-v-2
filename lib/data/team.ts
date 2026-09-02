@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { offboardAdminFromProject } from "@/lib/data/offboarding";
 import { recordAudit } from "@/lib/data/audit";
+import { DEMO_STAFF_IDS } from "@/lib/demo";
 
 export type TeamMember = {
   id: string;
@@ -17,6 +18,7 @@ export type TeamMember = {
 
 export async function listTeamMembers(): Promise<TeamMember[]> {
   const admins = await db.admin.findMany({
+    where: { id: { notIn: DEMO_STAFF_IDS } },
     orderBy: { name: "asc" },
     include: {
       ownedProjects: { select: { name: true } },
