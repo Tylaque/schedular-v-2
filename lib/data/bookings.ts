@@ -221,13 +221,30 @@ async function sendNotification(
       }
     }
 
-    console.log(`[notify] recipients=${JSON.stringify(recipients.map(r => ({ email: r.email, role: r.role, adminLink: !!r.adminLink })))}`);
+    // Dedupe by email: when multiple roles resolve to the same address,
+    // keep the highest-privilege role (super_admin > admin > participant)
+    // to avoid firing multiple Resend calls to the same inbox in rapid
+    // succession, which can cause silent drops by the email provider.
+    const ROLE_PRIORITY: Record<EmailAudience, number> = { super_admin: 3, admin: 2, participant: 1 };
+    const seenByemail = new Map<string, Recipient>();
+    for (const r of recipients) {
+      const key = r.email.toLowerCase();
+      const existing = seenByemail.get(key);
+      if (!existing || ROLE_PRIORITY[r.role] > ROLE_PRIORITY[existing.role]) {
+        seenByemail.set(key, { ...r, adminLink: r.adminLink || existing?.adminLink });
+      } else if (existing) {
+        existing.adminLink = existing.adminLink || r.adminLink;
+      }
+    }
+    const dedupedRecipients = [...seenByemail.values()];
+
+    console.log(`[notify] recipients=${JSON.stringify(dedupedRecipients.map(r => ({ email: r.email, role: r.role, adminLink: !!r.adminLink })))}`);
 
     const resendApiKey = process.env.RESEND_API_KEY ?? "";
     console.log(`[notify] RESEND_API_KEY present=${resendApiKey.length > 0} length=${resendApiKey.length}`);
     const resend = new Resend(resendApiKey);
 
-    for (const recipient of recipients) {
+    for (const recipient of dedupedRecipients) {
       const ctx = { ...baseCtx };
       if (recipient.adminLink) {
         if (recipient.role === "admin" || recipient.role === "super_admin") {
@@ -238,12 +255,15 @@ async function sendNotification(
         }
       }
       // For booking_confirmation, select template by audience; other categories use the single template.
-      const recipientTemplate = category === "booking_confirmation"
-        ? await getActiveTemplateByAudience(category, recipient.role, booking.projectId)
-        : template;
-      const rendered = renderTemplate(recipientTemplate, ctx);
+      // Template lookup is inside the per-recipient try/catch so one recipient's
+      // missing template doesn't abort sends to the remaining recipients.
+      let rendered: { subject: string; bodyHtml: string } | null = null;
       console.log(`[notify] SENDING to=${recipient.email} role=${recipient.role}`);
       try {
+        const recipientTemplate = category === "booking_confirmation"
+          ? await getActiveTemplateByAudience(category, recipient.role, booking.projectId)
+          : template;
+        rendered = renderTemplate(recipientTemplate, ctx);
         const result = await resend.emails.send({
           from: NOTIFICATION_FROM,
           to: recipient.email,
@@ -274,8 +294,8 @@ async function sendNotification(
           projectId: booking.projectId,
           recipientEmail: recipient.email,
           recipientRole: recipient.role,
-          subject: rendered.subject,
-          renderedBody: rendered.bodyHtml,
+          subject: rendered?.subject ?? `Notification (${category})`,
+          renderedBody: rendered?.bodyHtml ?? `<p>Notification delivery failed</p>`,
           status: "failed",
         }).catch((logErr) => console.error(`[notify] LOG_FAILED to=${recipient.email}:`, logErr));
       }
@@ -680,7 +700,7 @@ export async function createBooking(input: {
       }, {
         meeting_link: "No meeting link available yet — details will follow",
         manage_booking_link: `${baseUrl}/manage/${result.booking.id}`,
-      }).catch(() => {});
+      }).catch((err) => console.error(`[notify] Immediate booking_confirmation send failed for booking ${result.booking.id}:`, err));
 
       // 2. Provision, then send a follow-up either way.
       try {
@@ -708,7 +728,7 @@ export async function createBooking(input: {
         }, {
           meeting_link: joinUrl ?? "Meeting link not available",
           manage_booking_link: `${baseUrl}/manage/${result.booking.id}`,
-        }).catch(() => {});
+        }).catch((err) => console.error(`[notify] Follow-up booking_confirmation send failed for booking ${result.booking.id}:`, err));
       } catch (err) {
         await sendNotification("booking_confirmation", {
           id: result.booking.id,
@@ -720,7 +740,7 @@ export async function createBooking(input: {
           adminId: result.booking.adminId,
         }, {
           manage_booking_link: `${baseUrl}/manage/${result.booking.id}`,
-        }).catch(() => {});
+        }).catch((err) => console.error(`[notify] Provision-failure booking_confirmation send failed for booking ${result.booking.id}:`, err));
         console.error("Failed to provision meeting:", err);
       }
     }
