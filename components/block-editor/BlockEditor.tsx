@@ -216,7 +216,7 @@ function BlockBody({
     case "heading":
       return (
         <label className="block text-sm">
-          <span className="text-xs text-gray-500 dark:text-gray-400">Heading text</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">Heading text</span>
           <TokenEditor value={block.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="Heading"
             onFocus={onFocus} onBlur={onBlur}
             className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-2 text-base font-semibold dark:border-gray-600" />
@@ -226,12 +226,12 @@ function BlockBody({
       const spacing = SPACING_OPTIONS.find((s) => s.key === (block.spacing ?? "none")) ?? SPACING_OPTIONS[2];
       return (
         <div>
-          <span className="text-xs text-gray-500 dark:text-gray-400">Paragraph text</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">Paragraph text</span>
           <TokenEditor value={block.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="Paragraph"
             onFocus={onFocus} onBlur={onBlur}
             className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600" />
           <div className="mt-2 flex items-center gap-2">
-            <span className="text-xs text-gray-500 dark:text-gray-400">Spacing:</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">Spacing:</span>
             <select
               value={spacing.key}
               onChange={(e) => onChange({ spacing: e.target.value as SpacingOption })}
@@ -250,13 +250,13 @@ function BlockBody({
       return (
         <div className="space-y-2">
           <label className="block text-sm">
-            <span className="text-xs text-gray-500 dark:text-gray-400">Label</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">Label</span>
             <TokenEditor value={block.label ?? ""} onChange={(v) => onChange({ label: v })} placeholder="Label"
               onFocus={onFocus} onBlur={onBlur}
               className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600" />
           </label>
           <label className="block text-sm">
-            <span className="text-xs text-gray-500 dark:text-gray-400">Link / token</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">Link / token</span>
             <input value={block.href ?? ""} onChange={(e) => onChange({ href: e.target.value })}
               placeholder="{{booking_link}}" className="w-full mt-1 text-sm border border-gray-300 rounded-lg px-3 py-2 dark:border-gray-600" />
           </label>
@@ -267,7 +267,7 @@ function BlockBody({
     case "pinbox":
       return (
         <label className="block text-sm">
-          <span className="text-xs text-gray-500 dark:text-gray-400">PIN content</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">PIN content</span>
           <TokenEditor value={block.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="{{pin}}"
             onFocus={onFocus} onBlur={onBlur}
             className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-2 text-center text-2xl font-bold tracking-widest dark:border-gray-600" />
@@ -276,7 +276,7 @@ function BlockBody({
     case "footer":
       return (
         <label className="block text-sm">
-          <span className="text-xs text-gray-500 dark:text-gray-400">Footer text</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">Footer text</span>
           <TokenEditor value={block.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="Best,<br/>{{company_name}}"
             onFocus={onFocus} onBlur={onBlur}
             className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600" />
@@ -284,7 +284,7 @@ function BlockBody({
       );
     case "divider":
       return (
-        <div className="text-xs text-gray-400 dark:text-gray-500">
+        <div className="text-xs text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">
           Horizontal divider — no settings needed.
         </div>
       );
@@ -331,11 +331,11 @@ function CardEditor({
   return (
     <div className="space-y-3">
       <div className="rounded-lg border-2 border-dashed border-indigo-200 bg-indigo-50/50 p-3 dark:border-indigo-800 dark:bg-indigo-950/30">
-        <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-300 mb-2">Details card</div>
+        <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-300 mb-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">Details card</div>
 
         {/* Title */}
         <div className="mb-2">
-          <div className="text-xs text-gray-500 dark:text-gray-400">Title (bold)</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">Title (bold)</div>
           <TokenEditor value={title?.text ?? ""} onChange={setTitleText} placeholder="Project name"
             onFocus={onFocus} onBlur={onBlur}
             className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold dark:border-gray-600" />
@@ -361,7 +361,7 @@ function CardEditor({
             Show interviewer line
           </label>
           <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-            <span className="w-40 shrink-0 text-xs text-gray-500 dark:text-gray-400">Meeting link:</span>
+            <span className="w-40 shrink-0 text-xs text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">Meeting link:</span>
             <select
               value={meeting?.meetingMode ?? "auto"}
               onChange={(e) => upsertRow({ type: "meeting", meetingMode: e.target.value as any })}
@@ -381,7 +381,7 @@ function CardEditor({
       </div>
 
       {rows.length === 0 && (
-        <p className="text-xs text-gray-400 dark:text-gray-500">
+        <p className="text-xs text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">
           This card is empty — add a title or detail rows by switching this block to a paragraph, or handle it in Advanced mode.
         </p>
       )}
