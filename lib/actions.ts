@@ -137,6 +137,19 @@ export async function confirmBookingAction(input: {
   if (!input.projectId || !input.participantEmail) {
     return { ok: false, reason: "slot_full" };
   }
+  if (input.participantId) {
+    const participant = await db.participant.findUnique({
+      where: { id: input.participantId },
+      select: { projectId: true, email: true },
+    });
+    if (
+      !participant ||
+      participant.projectId !== input.projectId ||
+      participant.email.trim().toLowerCase() !== input.participantEmail.trim().toLowerCase()
+    ) {
+      return { ok: false, reason: "slot_full" };
+    }
+  }
 
   const hdrs = await headers();
   const ip = getClientIp(hdrs);
