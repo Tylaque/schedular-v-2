@@ -5,7 +5,9 @@ const { NextRequest } = require("next/server");
 // Replace the request session source before loading server entrypoints. The
 // guard itself still performs its normal database re-read when a session id
 // exists; this case verifies the no-session edge across all private exports.
-require("../auth.ts").auth = async () => null;
+const authPath = require.resolve("../auth.ts");
+require(authPath);
+require.cache[authPath].exports = { auth: async () => null };
 require("next/headers").headers = async () => new Headers();
 
 const actions = require("../lib/actions.ts");

@@ -142,12 +142,14 @@ test("matrix registry covers every use-server export and every route handler", (
   }));
   assert.ok([...classes.values()].every((value) => ["STAFF", "ROLE-RESTRICTED", "PROJECT-SCOPED", "PUBLIC", "TOKEN-GUARDED"].includes(value)));
   assert.equal(classes.size, 70);
+  const counts = Object.fromEntries(["STAFF", "ROLE-RESTRICTED", "PROJECT-SCOPED", "PUBLIC", "TOKEN-GUARDED"].map((kind) => [kind, [...classes.values()].filter((value) => value === kind).length]));
   console.log("RAW coverage inventory:", JSON.stringify({
     actionFiles: Object.keys(actionFiles).length,
     actions: foundActions.length,
     routeHandlers: foundRoutes.length,
     routeFiles: walk(path.join(root, "app")).filter((file) => file.endsWith(`${path.sep}route.ts`)).length,
     registered: registered.size,
+    classes: counts,
   }));
 });
 

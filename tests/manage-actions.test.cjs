@@ -4,6 +4,9 @@ const { test } = require("node:test");
 
 let currentIp = "127.0.0.1";
 require("next/headers").headers = async () => new Headers({ "x-forwarded-for": currentIp });
+const authPath = require.resolve("../auth.ts");
+require(authPath);
+require.cache[authPath].exports = { auth: async () => null };
 
 const { db } = require("../lib/db.ts");
 const { setAdminRangesForDate } = require("../lib/data/availability-ranges.ts");
