@@ -39,11 +39,11 @@ async function main() {
   console.log("org_owner ready");
 
   const extraAdmins = [
-    ["test-admin-priya", "Priya Nair", "priya@northwind.com", "admin"],
-    ["test-admin-marcus", "Marcus Webb", "marcus@northwind.com", "admin"],
-    ["test-admin-jo", "Jo Ellery", "jo@northwind.com", "admin"],
-    ["test-admin-sam", "Sam Torres", "sam@northwind.com", "admin"],
-    ["test-admin-kate", "Kate Brooks", "kate@northwind.com", "super_admin"],
+    ["test-admin-priya", "Priya Nair", "priya@example.test", "admin"],
+    ["test-admin-marcus", "Marcus Webb", "marcus@example.test", "admin"],
+    ["test-admin-jo", "Jo Ellery", "jo@example.test", "admin"],
+    ["test-admin-sam", "Sam Torres", "sam@example.test", "admin"],
+    ["test-admin-kate", "Kate Brooks", "kate@example.test", "super_admin"],
   ] as const;
   for (const [id, name, email, role] of extraAdmins) {
     await db.admin.upsert({

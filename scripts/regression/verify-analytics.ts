@@ -10,7 +10,7 @@ const { db } = require("../../lib/db");
 
 const BASE_URL = process.env.AUTH_URL || "http://localhost:3002";
 const OWNER_EMAIL = "owner@test.example.com";
-const SUPER_ADMIN_EMAIL = "kate@northwind.com";
+const SUPER_ADMIN_EMAIL = "kate@example.test";
 const PASSWORD = "test1234";
 const SHOT_DIR = join(__dirname, "../../test-screenshots/analytics");
 

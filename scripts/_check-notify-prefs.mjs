@@ -1,4 +1,4 @@
-// READ-ONLY. Prints notifyOnBooking for Laque and Carl on safe-test.
+// READ-ONLY. Prints notifyOnBooking for the test admins on safe-test.
 // Usage: $env:DATABASE_URL="<prod>"; node scripts/_check-notify-prefs.mjs
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -11,7 +11,7 @@ const db = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 try {
   const admins = await db.admin.findMany({
-    where: { email: { in: ["calebmwebi@gmail.com", "caleb@careerconnectionsltd.com"] } },
+    where: { email: { in: ["participant-dedup@example.test", "admin-dedup@example.test"] } },
     select: { name: true, email: true, notifyOnBooking: true },
   });
   for (const a of admins) {

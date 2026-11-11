@@ -16,8 +16,8 @@ const TEST_DATE = "2026-09-15";
 
 async function main() {
   console.log("=== TEST B: DISTINCT-ADDRESS REGRESSION ===");
-  console.log("participant: calebmwebi@gmail.com (distinct)");
-  console.log("admin: caleb@careerconnectionsltd.com (distinct, super_admin)");
+  console.log("participant: participant-dedup@example.test (distinct)");
+  console.log("admin: admin-dedup@example.test (distinct, super_admin)");
   console.log("owner: owner@example.test (distinct, org_owner -> super_admin)");
   console.log();
 
@@ -36,7 +36,7 @@ async function main() {
     dateKey: TEST_DATE,
     time: "11:00",
     participantName: "Distinct-Address Regression Test",
-    participantEmail: "calebmwebi@gmail.com",
+    participantEmail: "participant-dedup@example.test",
     adminId: ADMIN_B_ID,
   });
 

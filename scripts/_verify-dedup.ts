@@ -18,8 +18,8 @@ const ADMIN_B_ID = "cmswyu0tp000031h7z8yrzg17";
 const TEST_DATE = "2026-09-15";
 
 const ownerEmail = "owner@example.test";
-const adminBEmail = "caleb@careerconnectionsltd.com";
-const participantDistinctEmail = "calebmwebi@gmail.com";
+const adminBEmail = "admin-dedup@example.test";
+const participantDistinctEmail = "participant-dedup@example.test";
 
 async function main() {
   console.log("=== SCRATCH DEDUP VERIFICATION ===");
