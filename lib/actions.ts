@@ -11,7 +11,7 @@ import {
   getProjectBySlug,
   updateProject as dataUpdateProject,
 } from "@/lib/data/projects";
-import { canManageProject } from "@/lib/authz";
+import { canManageProject, requireActiveSession, requireRole, requireProjectAccess, requireBookingAccess, type AuthorizationActor } from "@/lib/authz";
 import { setAdminAvailabilityBulk } from "@/lib/data/availability";
 import { createBooking, cancelBooking } from "@/lib/data/bookings";
 import { isSessionInPast } from "@/lib/slotHelpers";
@@ -29,7 +29,6 @@ import {
   softDeleteSessionType as dataSoftDeleteSessionType,
   reactivateSessionType as dataReactivateSessionType,
   ensureSeedSessionTypes,
-  type ActorInfo,
 } from "@/lib/data/session-types";
 import { sendInvitationsOnActivation } from "@/lib/data/participants";
 import { updateParticipantStatus } from "@/lib/data/participants";
@@ -48,6 +47,13 @@ import { createZoomAccount, setZoomAccountActive, deleteZoomAccount, syncZoomAcc
 import { listZoomPoolUsers, zoomPoolConfigured, getZoomPoolCredentials } from "@/lib/zoom/client";
 import { upsertReminderSchedules, getReminderSchedules } from "@/lib/data/reminder-schedules";
 import type { ReminderScheduleInput } from "@/lib/data/reminder-schedules";
+
+async function activeActorForRoles(roles: readonly AuthorizationActor["role"][]): Promise<AuthorizationActor | null> {
+  const active = await requireActiveSession(() => null);
+  if (!active || !("id" in active)) return null;
+  const roleChecked = requireRole(active, roles, () => null);
+  return roleChecked && "id" in roleChecked ? roleChecked : null;
+}
 
 export async function saveAvailabilityAction(
   projectId: string,
@@ -254,10 +260,9 @@ export async function saveTemplateAction(formData: {
   subject: string;
   bodyHtml: string;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  const actor = await requireActiveSession();
+  if (formData.projectId) await requireProjectAccess(actor, formData.projectId);
+  else requireRole(actor, ["org_owner"]);
   await createTemplateVersion(formData);
   revalidatePath("/admin/templates");
   if (formData.projectId) {
@@ -432,10 +437,10 @@ export async function commitDateShiftAction(projectId: string, fromDate: string,
 }
 
 export async function sendTestAction(templateId: string, recipientEmail: string) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  const actor = await requireActiveSession();
+  const template = await db.emailTemplate.findUnique({ where: { id: templateId }, select: { projectId: true } });
+  if (template?.projectId) await requireProjectAccess(actor, template.projectId);
+  else requireRole(actor, ["org_owner"]);
   await sendTestEmail(templateId, recipientEmail);
   revalidatePath(`/admin/templates/${templateId}/edit`);
 }
@@ -491,11 +496,13 @@ export async function changeAdminRoleAction(
         | "cannot_change_org_owner_role";
     }
 > {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const authResult = await requireActiveSession((reason) => ({ ok: false as const, reason: reason === "unauthorized" ? "not_allowed" as const : "not_allowed" as const }));
+  if (!("id" in authResult)) {
     return { ok: false, reason: "not_allowed" };
   }
-  const result = await changeAdminRole(session.user.id, targetAdminId, newRole);
+  const roleResult = requireRole(authResult, ["org_owner", "super_admin"], () => ({ ok: false as const, reason: "not_allowed" as const }));
+  if (!("id" in roleResult)) return roleResult;
+  const result = await changeAdminRole(roleResult.id, targetAdminId, newRole);
   if (result.ok) {
     revalidatePath("/admin/team");
   }
@@ -516,12 +523,14 @@ export async function promoteToOrgOwnerAction(
         | "confirmation_mismatch";
     }
 > {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const authResult = await requireActiveSession(() => ({ ok: false as const, reason: "not_org_owner" as const }));
+  if (!("id" in authResult)) {
     return { ok: false, reason: "not_org_owner" };
   }
+  const roleResult = requireRole(authResult, ["org_owner"], () => ({ ok: false as const, reason: "not_org_owner" as const }));
+  if (!("id" in roleResult)) return roleResult;
   const result = await promoteToOrgOwner(
-    session.user.id,
+    roleResult.id,
     targetAdminId,
     confirmationPhrase
   );
@@ -548,11 +557,13 @@ export async function deactivateAdminAction(
         | "cannot_deactivate_sole_org_owner";
     }
 > {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const authResult = await requireActiveSession(() => ({ ok: false as const, reason: "not_authorized" as const }));
+  if (!("id" in authResult)) {
     return { ok: false, reason: "not_authorized" };
   }
-  const result = await deactivateAdmin(session.user.id, targetAdminId);
+  const roleResult = requireRole(authResult, ["org_owner", "super_admin"], () => ({ ok: false as const, reason: "not_authorized" as const }));
+  if (!("id" in roleResult)) return roleResult;
+  const result = await deactivateAdmin(roleResult.id, targetAdminId);
   if (result.ok) {
     revalidatePath("/admin/team");
     return {
@@ -570,11 +581,13 @@ export async function deactivateAdminAction(
 export async function reactivateAdminAction(
   targetAdminId: string
 ): Promise<{ ok: true } | { ok: false; reason: "not_authorized" | "target_not_found" }> {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const authResult = await requireActiveSession(() => ({ ok: false as const, reason: "not_authorized" as const }));
+  if (!("id" in authResult)) {
     return { ok: false, reason: "not_authorized" };
   }
-  const result = await reactivateAdmin(session.user.id, targetAdminId);
+  const roleResult = requireRole(authResult, ["org_owner", "super_admin"], () => ({ ok: false as const, reason: "not_authorized" as const }));
+  if (!("id" in roleResult)) return roleResult;
+  const result = await reactivateAdmin(roleResult.id, targetAdminId);
   if (result.ok) {
     revalidatePath("/admin/team");
   }
@@ -733,19 +746,17 @@ export async function createCertificationAction(
   name: string,
   description?: string
 ): Promise<{ ok: true; certification: CertificationRecord } | { ok: false; reason: string }> {
+  const roleResult = await activeActorForRoles(["org_owner"]);
+  if (!roleResult) return { ok: false, reason: "unauthorized" };
   const session = await auth();
-  const role = (session?.user as any)?.role;
-  if (!session?.user?.id || !isOrgOwner(role)) {
-    return { ok: false, reason: "unauthorized" };
-  }
   const trimmed = name.trim();
   if (!trimmed) return { ok: false, reason: "Certification name is required." };
   try {
     const certification = await createCertification({
       name: trimmed,
       description,
-      actorId: session.user.id,
-      actorLabel: certificationActorLabel(session.user),
+      actorId: roleResult.id,
+      actorLabel: certificationActorLabel(session?.user ?? {}),
     });
     revalidatePath("/admin/certifications");
     revalidatePath("/admin/team");
@@ -763,19 +774,17 @@ export async function updateCertificationAction(
   name: string,
   description?: string
 ): Promise<{ ok: true; certification: CertificationRecord } | { ok: false; reason: string }> {
+  const roleResult = await activeActorForRoles(["org_owner"]);
+  if (!roleResult) return { ok: false, reason: "unauthorized" };
   const session = await auth();
-  const role = (session?.user as any)?.role;
-  if (!session?.user?.id || !isOrgOwner(role)) {
-    return { ok: false, reason: "unauthorized" };
-  }
   const trimmed = name.trim();
   if (!trimmed) return { ok: false, reason: "Certification name is required." };
   try {
     const certification = await updateCertification(id, {
       name: trimmed,
       description,
-      actorId: session.user.id,
-      actorLabel: certificationActorLabel(session.user),
+      actorId: roleResult.id,
+      actorLabel: certificationActorLabel(session?.user ?? {}),
     });
     if (!certification) return { ok: false, reason: "not_found" };
     revalidatePath("/admin/certifications");
@@ -792,14 +801,12 @@ export async function updateCertificationAction(
 export async function deleteCertificationAction(
   id: string
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const roleResult = await activeActorForRoles(["org_owner"]);
+  if (!roleResult) return { ok: false, reason: "unauthorized" };
   const session = await auth();
-  const role = (session?.user as any)?.role;
-  if (!session?.user?.id || !isOrgOwner(role)) {
-    return { ok: false, reason: "unauthorized" };
-  }
   const deleted = await deleteCertification(id, {
-    actorId: session.user.id,
-    actorLabel: certificationActorLabel(session.user),
+    actorId: roleResult.id,
+    actorLabel: certificationActorLabel(session?.user ?? {}),
   });
   if (!deleted) return { ok: false, reason: "not_found" };
   revalidatePath("/admin/certifications");
@@ -816,15 +823,12 @@ export async function setAdminCertificationsAction(
   adminId: string,
   certificationIds: string[]
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const session = await auth();
-  if (!session?.user?.id) return { ok: false, reason: "unauthorized" };
-
-  const role = (session?.user as any)?.role;
   // org_owner and super_admin can assign certifications to ANY associate
   // system-wide (super_admin via the Team page is a deliberate exception
   // to normal project-ownership scoping).
-  const allowed = isOrgOwner(role) || isSuperAdmin(role);
-  if (!allowed) return { ok: false, reason: "unauthorized" };
+  const roleResult = await activeActorForRoles(["org_owner", "super_admin"]);
+  if (!roleResult) return { ok: false, reason: "unauthorized" };
+  const session = await auth();
 
   const uniqueIds = [...new Set(certificationIds)];
   const valid = await db.certification.findMany({
@@ -839,8 +843,8 @@ export async function setAdminCertificationsAction(
     adminId,
     certificationIds: uniqueIds,
     actor: {
-      actorId: session.user.id,
-      actorLabel: certificationActorLabel(session.user),
+      actorId: roleResult.id,
+      actorLabel: certificationActorLabel(session?.user ?? {}),
     },
   });
   revalidatePath("/admin/team");
@@ -856,18 +860,17 @@ export async function setProjectCertificationRequirementsAction(
   projectId: string,
   certificationIds: string[]
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const session = await auth();
-  if (!session?.user?.id) return { ok: false, reason: "unauthorized" };
-
-  const role = (session?.user as any)?.role;
-  const user = { id: session.user.id, role: role as "admin" | "super_admin" | "org_owner" };
+  const authResult = await requireActiveSession(() => null);
+  if (!authResult || !("id" in authResult)) return { ok: false, reason: "unauthorized" };
+  const user = authResult;
   const project = await db.project.findUnique({
     where: { id: projectId },
     select: { id: true, ownerId: true, slug: true },
   });
-  if (!project || !canManageProject(user, project)) {
+  if (!project || !(await requireProjectAccess(user, projectId, () => null))) {
     return { ok: false, reason: "unauthorized" };
   }
+  const session = await auth();
 
   const uniqueIds = [...new Set(certificationIds)];
   const valid = await db.certification.findMany({
@@ -882,8 +885,8 @@ export async function setProjectCertificationRequirementsAction(
     projectId,
     certificationIds: uniqueIds,
     actor: {
-      actorId: session.user.id,
-      actorLabel: certificationActorLabel(session.user),
+      actorId: user.id,
+      actorLabel: certificationActorLabel(session?.user ?? {}),
     },
   });
   revalidatePath("/admin/projects");
@@ -895,13 +898,6 @@ export async function setProjectCertificationRequirementsAction(
 // Session Types — org_owner only
 // ---------------------------------------------------------------------------
 
-function sessionTypeActor(session: { user: { name?: string | null; email?: string | null; id: string } }): ActorInfo {
-  return {
-    actorId: session.user.id,
-    actorLabel: session.user.name || session.user.email || "Unknown",
-  };
-}
-
 export async function createSessionTypeAction(
   name: string,
   description?: string,
@@ -910,11 +906,10 @@ export async function createSessionTypeAction(
   | { ok: true; id: string; name: string; description: string; classification: string; isActive: boolean }
   | { ok: false; reason: string }
 > {
+  const actor = await activeActorForRoles(["org_owner"]);
+  if (!actor) return { ok: false, reason: "unauthorized" };
   const session = await auth();
-  const role = (session?.user as any)?.role;
-  if (!session?.user?.id || !isOrgOwner(role)) {
-    return { ok: false, reason: "unauthorized" };
-  }
+  const auditActor = { actorId: actor.id, actorLabel: session?.user?.name || session?.user?.email || "Unknown" };
   if (!name?.trim()) {
     return { ok: false, reason: "Name is required." };
   }
@@ -923,7 +918,7 @@ export async function createSessionTypeAction(
       name,
       description,
       classification,
-      ...sessionTypeActor(session as any),
+      ...auditActor,
     });
     revalidatePath("/admin/session-types");
     return { ok: true, ...record };
@@ -944,11 +939,10 @@ export async function updateSessionTypeAction(
   | { ok: true; id: string; name: string; description: string; classification: string; isActive: boolean }
   | { ok: false; reason: string }
 > {
+  const actor = await activeActorForRoles(["org_owner"]);
+  if (!actor) return { ok: false, reason: "unauthorized" };
   const session = await auth();
-  const role = (session?.user as any)?.role;
-  if (!session?.user?.id || !isOrgOwner(role)) {
-    return { ok: false, reason: "unauthorized" };
-  }
+  const auditActor = { actorId: actor.id, actorLabel: session?.user?.name || session?.user?.email || "Unknown" };
   if (!name?.trim()) {
     return { ok: false, reason: "Name is required." };
   }
@@ -956,7 +950,7 @@ export async function updateSessionTypeAction(
     name,
     description,
     classification,
-    ...sessionTypeActor(session as any),
+    ...auditActor,
   });
   if (!updated) {
     return { ok: false, reason: "Session type not found." };
@@ -968,12 +962,10 @@ export async function updateSessionTypeAction(
 export async function deleteSessionTypeAction(
   id: string
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const actor = await activeActorForRoles(["org_owner"]);
+  if (!actor) return { ok: false, reason: "unauthorized" };
   const session = await auth();
-  const role = (session?.user as any)?.role;
-  if (!session?.user?.id || !isOrgOwner(role)) {
-    return { ok: false, reason: "unauthorized" };
-  }
-  const deleted = await dataSoftDeleteSessionType(id, sessionTypeActor(session as any));
+  const deleted = await dataSoftDeleteSessionType(id, { actorId: actor.id, actorLabel: session?.user?.name || session?.user?.email || "Unknown" });
   if (!deleted) {
     return { ok: false, reason: "Session type not found or already deactivated." };
   }
@@ -984,12 +976,10 @@ export async function deleteSessionTypeAction(
 export async function reactivateSessionTypeAction(
   id: string
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const actor = await activeActorForRoles(["org_owner"]);
+  if (!actor) return { ok: false, reason: "unauthorized" };
   const session = await auth();
-  const role = (session?.user as any)?.role;
-  if (!session?.user?.id || !isOrgOwner(role)) {
-    return { ok: false, reason: "unauthorized" };
-  }
-  const reactivated = await dataReactivateSessionType(id, sessionTypeActor(session as any));
+  const reactivated = await dataReactivateSessionType(id, { actorId: actor.id, actorLabel: session?.user?.name || session?.user?.email || "Unknown" });
   if (!reactivated) {
     return { ok: false, reason: "Session type not found or already active." };
   }
@@ -1001,20 +991,13 @@ export async function reactivateSessionTypeAction(
 // Zoom account pool — super_admin / org_owner only
 // ---------------------------------------------------------------------------
 
-function canManageZoomPool(role: string): boolean {
-  return isOrgOwner(role) || isSuperAdmin(role);
-}
-
 export async function createZoomAccountAction(input: {
   label: string;
   zoomUserId: string;
   zoomEmail: string;
 }): Promise<{ ok: true; id: string } | { ok: false; reason: string }> {
-  const session = await auth();
-  const role = (session?.user as any)?.role;
-  if (!session?.user?.id || !canManageZoomPool(role)) {
-    return { ok: false, reason: "unauthorized" };
-  }
+  const actor = await activeActorForRoles(["org_owner", "super_admin"]);
+  if (!actor) return { ok: false, reason: "unauthorized" };
   if (!input.label?.trim() || !input.zoomUserId?.trim() || !input.zoomEmail?.trim()) {
     return { ok: false, reason: "All fields are required." };
   }
@@ -1038,11 +1021,8 @@ export async function setZoomAccountActiveAction(
   id: string,
   isActive: boolean
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const session = await auth();
-  const role = (session?.user as any)?.role;
-  if (!session?.user?.id || !canManageZoomPool(role)) {
-    return { ok: false, reason: "unauthorized" };
-  }
+  const actor = await activeActorForRoles(["org_owner", "super_admin"]);
+  if (!actor) return { ok: false, reason: "unauthorized" };
   try {
     await setZoomAccountActive(id, isActive);
     revalidatePath("/admin/zoom-pool");
@@ -1055,11 +1035,8 @@ export async function setZoomAccountActiveAction(
 export async function deleteZoomAccountAction(
   id: string
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const session = await auth();
-  const role = (session?.user as any)?.role;
-  if (!session?.user?.id || !canManageZoomPool(role)) {
-    return { ok: false, reason: "unauthorized" };
-  }
+  const actor = await activeActorForRoles(["org_owner", "super_admin"]);
+  if (!actor) return { ok: false, reason: "unauthorized" };
   const bookings = await db.booking.count({ where: { zoomAccountId: id } });
   if (bookings > 0) {
     return { ok: false, reason: "This account has booking history — disable it instead of deleting." };
@@ -1076,11 +1053,8 @@ export async function deleteZoomAccountAction(
 export async function syncZoomPoolAction(): Promise<
   { ok: true; synced: number } | { ok: false; reason: string }
 > {
-  const session = await auth();
-  const role = (session?.user as any)?.role;
-  if (!session?.user?.id || !canManageZoomPool(role)) {
-    return { ok: false, reason: "unauthorized" };
-  }
+  const actor = await activeActorForRoles(["org_owner", "super_admin"]);
+  if (!actor) return { ok: false, reason: "unauthorized" };
   if (!zoomPoolConfigured()) {
     return { ok: false, reason: "Zoom Server-to-Server app is not configured (missing ZOOM_ACCOUNT_ID / ZOOM_CLIENT_ID / ZOOM_CLIENT_SECRET)." };
   }
@@ -1099,6 +1073,8 @@ export async function getZoomPoolStatusAction(): Promise<{
   accountCount: number;
   activeCount: number;
 }> {
+  const actor = await activeActorForRoles(["org_owner", "super_admin"]);
+  if (!actor) throw new Error("Unauthorized");
   const accounts = await listZoomPoolAccounts();
   return {
     configured: zoomPoolConfigured(),
