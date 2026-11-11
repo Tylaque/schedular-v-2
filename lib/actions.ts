@@ -47,6 +47,7 @@ import { createZoomAccount, setZoomAccountActive, deleteZoomAccount, syncZoomAcc
 import { listZoomPoolUsers, zoomPoolConfigured, getZoomPoolCredentials } from "@/lib/zoom/client";
 import { upsertReminderSchedules, getReminderSchedules } from "@/lib/data/reminder-schedules";
 import type { ReminderScheduleInput } from "@/lib/data/reminder-schedules";
+import { verifyWaitlistClaimToken } from "@/lib/waitlist-claim-token";
 
 async function activeActorForRoles(roles: readonly AuthorizationActor["role"][]): Promise<AuthorizationActor | null> {
   const active = await requireActiveSession(() => null);
@@ -365,12 +366,12 @@ export async function joinWaitlistAction(input: {
   revalidatePath(`/book/${input.projectId}`);
 }
 
-export async function claimWaitlistOfferAction(entryId: string) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
+export async function claimWaitlistOfferAction(entryId: string, token: string) {
+  const verified = verifyWaitlistClaimToken(token, entryId);
+  if (!verified) {
+    return { ok: false as const, reason: "offer_expired" as const };
   }
-  const result = await claimWaitlistOffer(entryId);
+  const result = await claimWaitlistOffer(entryId, verified.expiresAtMs);
   if (result.ok) {
     revalidatePath("/admin/waitlist");
   }
