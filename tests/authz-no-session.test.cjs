@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { NextRequest } = require("next/server");
+process.env.AZURE_AD_TENANT_ID ??= "9f6e83db-7a61-4c31-a5d8-1df830f649bf";
 
 // Replace the request session source before loading server entrypoints. The
 // guard itself still performs its normal database re-read when a session id

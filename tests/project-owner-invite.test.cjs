@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const { randomUUID } = require("node:crypto");
 const { test } = require("node:test");
+process.env.AZURE_AD_TENANT_ID ??= "9f6e83db-7a61-4c31-a5d8-1df830f649bf";
 
 let actorId;
 const authPath = require.resolve("../auth.ts");

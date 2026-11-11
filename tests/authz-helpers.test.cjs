@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
+process.env.AZURE_AD_TENANT_ID ??= "9f6e83db-7a61-4c31-a5d8-1df830f649bf";
 const { createAuthorizationHelpers } = require("../lib/authz.ts");
 
 function setup({ session, admins = {}, projects = {}, bookings = {} } = {}) {
