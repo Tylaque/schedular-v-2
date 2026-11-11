@@ -68,3 +68,44 @@ test("requireBookingAccess permits org owner, project owner, or assigned admin",
   await assert.rejects(helpers.requireBookingAccess(outsider, "assigned"), /Forbidden/);
   await assert.rejects(helpers.requireBookingAccess(assigned, "missing"), /Forbidden/);
 });
+
+test("five-case authorization matrix rejects absent, wrong-role, wrong-project, and inactive actors", async () => {
+  const cases = [];
+  const absent = setup();
+  cases.push(["no session", async () => await absent.requireActiveSession(), false]);
+
+  const admin = setup({
+    session: { user: { id: "admin" } },
+    admins: { admin: { id: "admin", role: "admin", isActive: true } },
+  });
+  const adminActor = await admin.requireActiveSession();
+  cases.push(["admin role", async () => admin.requireRole(adminActor, ["org_owner"], () => null), false]);
+
+  const differentProject = setup({ projects: { p1: { ownerId: "someone-else" } } });
+  cases.push(["super_admin of another project", async () => differentProject.requireProjectAccess({ id: "super", role: "super_admin" }, "p1", () => null), false]);
+
+  const inactive = setup({ session: { user: { id: "inactive" } }, admins: { inactive: { id: "inactive", role: "org_owner", isActive: false } } });
+  cases.push(["deactivated correct role", async () => await inactive.requireActiveSession(() => null), false]);
+
+  const correct = setup({
+    session: { user: { id: "owner", role: "admin" } },
+    admins: { owner: { id: "owner", role: "super_admin", isActive: true } },
+    projects: { own: { ownerId: "owner" } },
+  });
+  const correctActor = await correct.requireActiveSession();
+  cases.push(["correct project owner", async () => await correct.requireProjectAccess(correctActor, "own"), true]);
+
+  const raw = [];
+  for (const [label, run, expected] of cases) {
+    let allowed = true;
+    try {
+      const value = await run();
+      if (value === null) allowed = false;
+    } catch {
+      allowed = false;
+    }
+    raw.push({ label, allowed });
+    assert.equal(allowed, expected, label);
+  }
+  console.log("RAW five-case authorization matrix:", JSON.stringify(raw));
+});
