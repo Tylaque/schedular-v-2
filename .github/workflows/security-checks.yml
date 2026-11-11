@@ -1,0 +1,52 @@
+name: Security and CI
+
+on:
+  push:
+    branches: [master, security/pr-b-deps]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: scheduler
+          POSTGRES_PASSWORD: scheduler
+          POSTGRES_DB: scheduler_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scheduler -d scheduler_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://scheduler:scheduler@localhost:5432/scheduler_test?schema=public
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply schema migrations
+        run: npx prisma migrate deploy
+      - name: Type check
+        run: npx tsc --noEmit
+      - name: Build
+        run: npm run build
+        env:
+          AZURE_AD_TENANT_ID: 00000000-0000-0000-0000-000000000000
+      - name: Configure guarded test database
+        run: printf 'DATABASE_URL=%s\n' "$DATABASE_URL" > .env.test
+      - name: Test
+        run: npm test
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
