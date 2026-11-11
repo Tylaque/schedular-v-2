@@ -60,13 +60,9 @@ export async function saveAvailabilityAction(
   adminId: string,
   entries: { dateKey: string; time: string; selected: boolean }[]
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  const actor = await requireActiveSession();
   // Only allow setting your own availability, or if you're a super_admin/org_owner
-  const role = (session?.user as any)?.role;
-  if (session.user.id !== adminId && !isOrgOwner(role) && !isSuperAdmin(role)) {
+  if (actor.id !== adminId && actor.role !== "org_owner" && actor.role !== "super_admin") {
     throw new Error("Unauthorized");
   }
   await setAdminAvailabilityBulk(projectId, adminId, entries);
@@ -100,24 +96,21 @@ export async function createProjectAction(formData: {
   reminderSchedules?: ReminderScheduleInput[];
   defaultSessionTypeId?: string | null;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) return;
-
-  const role = (session?.user as any)?.role;
-  if (!isOrgOwner(role) && !isSuperAdmin(role)) return;
+  const actor = await activeActorForRoles(["org_owner", "super_admin"]);
+  if (!actor) return;
 
   if (formData.durationMinutes < 5 || formData.durationMinutes > 480) return;
   if (formData.availabilityPeriodDays < 1 || formData.availabilityPeriodDays > 365) return;
 
-  const effectiveOwnerId = formData.ownerId ?? session?.user?.id;
+  const effectiveOwnerId = actor.role === "org_owner" ? formData.ownerId ?? actor.id : actor.id;
   const created = await dataCreateProject({ ...formData, ownerId: effectiveOwnerId });
   if (formData.certificationIds && formData.certificationIds.length > 0) {
     await setProjectCertificationRequirements({
       projectId: created.id,
       certificationIds: [...new Set(formData.certificationIds)],
       actor: {
-        actorId: session.user.id,
-        actorLabel: certificationActorLabel(session.user),
+        actorId: actor.id,
+        actorLabel: actor.id,
       },
     });
   }
@@ -209,14 +202,11 @@ export async function updateProjectAction(
   flagged: number;
   flaggedBookings: { bookingId: string; reason: string }[];
 } | { ok: false; reason: string }> {
-  const session = await auth();
-  if (!session?.user?.id) return { ok: false, reason: "unauthorized" };
-
-  const role = (session?.user as any)?.role;
-  const user = { id: session.user.id, role: role as "admin" | "super_admin" | "org_owner" };
+  const actor = await requireActiveSession(() => null);
+  if (!actor || !("id" in actor)) return { ok: false, reason: "unauthorized" };
 
   const project = await getProjectBySlug(slug);
-  if (!project || !canManageProject(user, project)) {
+  if (!project || !(await requireProjectAccess(actor, project.id, () => null))) {
     return { ok: false, reason: "unauthorized" };
   }
 
@@ -227,7 +217,7 @@ export async function updateProjectAction(
     return { ok: false, reason: "Availability period must be 1–365 days." };
   }
 
-  const effectiveOwnerId = role === "org_owner" ? formData.ownerId : session.user.id;
+  const effectiveOwnerId = actor.role === "org_owner" ? formData.ownerId : actor.id;
   const wasActive = project.status === "active";
   const result = await dataUpdateProject(slug, { ...formData, ownerId: effectiveOwnerId });
   if (formData.reminderSchedules) {
@@ -271,10 +261,8 @@ export async function saveTemplateAction(formData: {
 }
 
 export async function cancelBookingAction(bookingId: string, projectId?: string) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  const actor = await requireActiveSession();
+  await requireBookingAccess(actor, bookingId);
   await cancelBooking(bookingId);
   revalidatePath("/admin/calendar");
   revalidatePath("/admin/dashboard");
@@ -295,8 +283,8 @@ export async function cancelBookingAction(bookingId: string, projectId?: string)
 export async function markBookingCompletedAction(
   bookingId: string
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const session = await auth();
-  if (!session?.user?.id) return { ok: false, reason: "unauthorized" };
+  const authResult = await requireActiveSession(() => null);
+  if (!authResult || !("id" in authResult)) return { ok: false, reason: "unauthorized" };
 
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
@@ -312,7 +300,9 @@ export async function markBookingCompletedAction(
     },
   });
   if (!booking) return { ok: false, reason: "not_found" };
-  if (booking.adminId !== session.user.id) return { ok: false, reason: "not_assigned" };
+  const bookingAccess = await requireBookingAccess(authResult, bookingId, () => ({ ok: false as const, reason: "not_assigned" as const }));
+  if (!("id" in bookingAccess)) return bookingAccess;
+  if (booking.adminId !== authResult.id) return { ok: false, reason: "not_assigned" };
   if (booking.status !== "confirmed") return { ok: false, reason: "not_awaiting" };
   if (booking.project.autoCompleteBookings) return { ok: false, reason: "auto_completed" };
   if (!isSessionInPast(booking.dateKey, booking.time, booking.project.timezone)) {
@@ -327,8 +317,8 @@ export async function markBookingCompletedAction(
   recordAudit({
     action: "booking_completed",
     actorType: "admin",
-    actorId: session.user.id,
-    actorLabel: certificationActorLabel(session.user),
+    actorId: authResult.id,
+    actorLabel: authResult.id,
     entityType: "Booking",
     entityId: bookingId,
     projectId: booking.projectId,
@@ -375,14 +365,10 @@ export async function claimWaitlistOfferAction(entryId: string) {
 }
 
 export async function previewAdminUnavailableAction(adminId: string, fromDate: string, toDate: string) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
-  const role = (session.user as any)?.role;
-  if (!isOrgOwner(role) && !isSuperAdmin(role)) {
+  const actor = await requireActiveSession();
+  if (actor.role !== "org_owner" && actor.role !== "super_admin") {
     const inScope = await db.projectAdmin.findFirst({
-      where: { adminId, project: { ownerId: session.user.id } },
+      where: { adminId, project: { ownerId: actor.id } },
       select: { id: true },
     });
     if (!inScope) throw new Error("Forbidden");
@@ -391,14 +377,10 @@ export async function previewAdminUnavailableAction(adminId: string, fromDate: s
 }
 
 export async function commitAdminUnavailableAction(adminId: string, fromDate: string, toDate: string) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
-  const role = (session.user as any)?.role;
-  if (!isOrgOwner(role) && !isSuperAdmin(role)) {
+  const actor = await requireActiveSession();
+  if (actor.role !== "org_owner" && actor.role !== "super_admin") {
     const inScope = await db.projectAdmin.findFirst({
-      where: { adminId, project: { ownerId: session.user.id } },
+      where: { adminId, project: { ownerId: actor.id } },
       select: { id: true },
     });
     if (!inScope) throw new Error("Forbidden");
@@ -410,26 +392,14 @@ export async function commitAdminUnavailableAction(adminId: string, fromDate: st
 }
 
 export async function previewDateShiftAction(projectId: string, fromDate: string, toDate: string, offsetDays: number) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
-  const project = await db.project.findUnique({ where: { id: projectId }, select: { ownerId: true } });
-  if (!project) throw new Error("Forbidden");
-  const user = { id: session.user.id, role: (session.user as any)?.role as "admin" | "super_admin" | "org_owner" };
-  if (!canManageProject(user, project)) throw new Error("Forbidden");
+  const actor = await requireActiveSession();
+  await requireProjectAccess(actor, projectId);
   return previewDateShift(projectId, fromDate, toDate, offsetDays);
 }
 
 export async function commitDateShiftAction(projectId: string, fromDate: string, toDate: string, offsetDays: number) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
-  const project = await db.project.findUnique({ where: { id: projectId }, select: { ownerId: true } });
-  if (!project) throw new Error("Forbidden");
-  const user = { id: session.user.id, role: (session.user as any)?.role as "admin" | "super_admin" | "org_owner" };
-  if (!canManageProject(user, project)) throw new Error("Forbidden");
+  const actor = await requireActiveSession();
+  await requireProjectAccess(actor, projectId);
   const result = await commitDateShift(projectId, fromDate, toDate, offsetDays);
   revalidatePath("/admin/calendar");
   revalidatePath("/admin/bulk-reschedule");
@@ -451,20 +421,20 @@ export async function inviteAssociateAction(input: {
   projectId?: string;
   role?: "admin" | "super_admin";
 }): Promise<{ id: string; name: string; initials: string; email: string; accountType: string | null; role: string }> {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const actor = await requireActiveSession(() => null);
+  if (!actor || !("id" in actor)) {
     redirect("/auth/signin");
   }
 
-  const role = (session?.user as any)?.role;
-  if (!isOrgOwner(role) && !isSuperAdmin(role)) {
+  if (actor.role !== "org_owner" && actor.role !== "super_admin") {
     redirect("/admin/my-area");
   }
+  if (input.projectId) await requireProjectAccess(actor, input.projectId);
 
   // Only the org_owner may invite someone directly as a super_admin; a
   // super_admin inviting may only ever invite regular associates.
   const requestedRole = input.role ?? "admin";
-  if (requestedRole === "super_admin" && !isOrgOwner(role)) {
+  if (requestedRole === "super_admin" && actor.role !== "org_owner") {
     throw new Error("Only the organisation owner can invite a Super Admin.");
   }
 
@@ -598,11 +568,9 @@ export async function saveAvailabilityRangesAction(
   dateKey: string,
   ranges: { startTime: string; endTime: string }[]
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { ok: false, reason: "unauthorized" };
-  }
-  const result = await setAdminRangesForDate(session.user.id, dateKey, ranges);
+  const actor = await requireActiveSession(() => null);
+  if (!actor || !("id" in actor)) return { ok: false, reason: "unauthorized" };
+  const result = await setAdminRangesForDate(actor.id, dateKey, ranges);
   if (result.ok) {
     revalidatePath("/admin/my-availability");
   }
@@ -617,14 +585,14 @@ export async function addParticipantAction(
   | { ok: true; emailSent: boolean }
   | { ok: false; reason: string }
 > {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { ok: false, reason: "unauthorized" };
-  }
+  const actor = await requireActiveSession(() => null);
+  if (!actor || !("id" in actor)) return { ok: false, reason: "unauthorized" };
   const project = await db.project.findUnique({ where: { id: projectId }, select: { slug: true } });
   if (!project) {
     return { ok: false, reason: "project_not_found" };
   }
+  const access = await requireProjectAccess(actor, projectId, () => null);
+  if (!access || !("id" in access)) return { ok: false, reason: "unauthorized" };
   try {
     const { emailSent } = await addParticipant(projectId, name, email);
     revalidatePath(`/admin/projects/${project.slug}/participants`);
@@ -642,10 +610,10 @@ export async function sendInvitesNowAction(
   | { ok: true; sent: number; failed: number }
   | { ok: false; reason: string }
 > {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { ok: false, reason: "unauthorized" };
-  }
+  const actor = await requireActiveSession(() => null);
+  if (!actor || !("id" in actor)) return { ok: false, reason: "unauthorized" };
+  const access = await requireProjectAccess(actor, projectId, () => null);
+  if (!access || !("id" in access)) return { ok: false, reason: "unauthorized" };
   try {
     const result = await sendParticipantInvitationsForProject(projectId, participantIds);
     const project = await db.project.findUnique({ where: { id: projectId }, select: { slug: true } });
@@ -661,11 +629,13 @@ export async function sendInvitesNowAction(
 export async function removeParticipantAction(
   participantId: string
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { ok: false, reason: "unauthorized" };
-  }
+  const actor = await requireActiveSession(() => null);
+  if (!actor || !("id" in actor)) return { ok: false, reason: "unauthorized" };
   try {
+    const participant = await db.participant.findUnique({ where: { id: participantId }, select: { projectId: true } });
+    if (!participant) return { ok: false, reason: "Participant not found" };
+    const access = await requireProjectAccess(actor, participant.projectId, () => null);
+    if (!access || !("id" in access)) return { ok: false, reason: "unauthorized" };
     await removeParticipant(participantId);
     revalidatePath("/admin/projects");
     return { ok: true };
@@ -678,17 +648,18 @@ export async function manuallyResolveFlaggedBookingAction(
   bookingId: string,
   newAdminId: string
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const actor = await requireActiveSession(() => null);
+  if (!actor || !("id" in actor)) return { ok: false, reason: "unauthorized" };
+
+  const bookingAccess = await requireBookingAccess(actor, bookingId, () => null);
+  if (!bookingAccess || !("id" in bookingAccess)) return { ok: false, reason: "unauthorized" };
   const session = await auth();
-  if (!session?.user?.id) {
-    return { ok: false, reason: "unauthorized" };
-  }
-
-  const user = session.user as { name?: string | null; email?: string | null };
-  const actorLabel = user.name
+  const user = session?.user as { name?: string | null; email?: string | null } | undefined;
+  const actorLabel = user?.name
     ? `${user.name} <${user.email ?? ""}>`
-    : user.email ?? session.user.id;
+    : user?.email ?? actor.id;
 
-  const result = await reassignBookingAdmin(bookingId, newAdminId, session.user.id, actorLabel, true);
+  const result = await reassignBookingAdmin(bookingId, newAdminId, actor.id, actorLabel, true);
   if (!result.ok) {
     return { ok: false, reason: result.reason };
   }
@@ -717,7 +688,7 @@ export async function manuallyResolveFlaggedBookingAction(
   await recordAudit({
     action: "booking_rescheduled",
     actorType: "admin",
-    actorId: session.user.id,
+    actorId: actor.id,
     actorLabel: `Manual reassignment: ${actorLabel}`,
     entityType: "Booking",
     entityId: bookingId,
@@ -1084,11 +1055,11 @@ export async function getZoomPoolStatusAction(): Promise<{
 }
 
 export async function updateNotificationPreferencesAction(enabled: boolean): Promise<{ ok: boolean; reason?: string }> {
-  const session = await auth();
-  if (!session?.user?.id) return { ok: false, reason: "unauthorized" };
+  const actor = await requireActiveSession(() => null);
+  if (!actor || !("id" in actor)) return { ok: false, reason: "unauthorized" };
   try {
     await db.admin.update({
-      where: { id: session.user.id },
+      where: { id: actor.id },
       data: { notifyOnBooking: enabled },
     });
     revalidatePath("/admin/settings");
@@ -1109,8 +1080,8 @@ export async function getFilteredAvailabilityAction(
 export async function getManageLinkAction(
   bookingId: string,
 ): Promise<{ ok: true; url: string } | { ok: false; reason: string }> {
-  const session = await auth();
-  if (!session?.user?.id) return { ok: false, reason: "unauthorized" };
+  const actor = await requireActiveSession(() => null);
+  if (!actor || !("id" in actor)) return { ok: false, reason: "unauthorized" };
 
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
@@ -1121,17 +1092,21 @@ export async function getManageLinkAction(
     },
   });
   if (!booking) return { ok: false, reason: "not_found" };
+  const access = await requireBookingAccess(actor, bookingId, () => null);
+  if (!access || !("id" in access)) return { ok: false, reason: "unauthorized" };
 
-  const isAdmin = await db.projectAdmin.findFirst({
-    where: {
-      projectId: booking.projectId,
-      admin: { email: session.user.email!, isActive: true },
-    },
+  const assignedAdmin = await db.projectAdmin.findFirst({
+    where: { projectId: booking.projectId, adminId: actor.id, admin: { isActive: true } },
+    select: { id: true },
   });
-  if (!isAdmin) return { ok: false, reason: "unauthorized" };
+  if (!assignedAdmin) return { ok: false, reason: "unauthorized" };
+
+  const session = await auth();
+  const email = session?.user?.email;
+  if (!email) return { ok: false, reason: "unauthorized" };
 
   const { signManageAdminToken } = await import("@/lib/manage-token");
-  const token = signManageAdminToken(bookingId, session.user.email!);
+  const token = signManageAdminToken(bookingId, email);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   return { ok: true, url: `${baseUrl}/manage/${bookingId}?token=${encodeURIComponent(token)}` };
 }
