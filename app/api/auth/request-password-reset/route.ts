@@ -6,8 +6,10 @@ import { createPasswordToken } from "@/lib/data/password-reset";
 import { logNotification } from "@/lib/data/notifications";
 import { checkRateLimit, checkRateLimitForAccount, getClientIp } from "@/lib/rate-limit";
 import { escapeHtml } from "@/lib/template-utils";
+import { getEmailFrom, getEmailReplyTo } from "@/lib/email-config";
 
 export async function POST(request: Request) {
+  let pendingEmailFailure: { email: string; subject: string; body: string } | null = null;
   try {
     const ip = getClientIp(request.headers);
     if (!checkRateLimit(`password-reset:${ip}`, 5, 15 * 60 * 1000)) {
@@ -71,13 +73,16 @@ Scheduler &mdash; Multi-project scheduling platform
 </table>`;
 
         const resend = new Resend(process.env.RESEND_API_KEY ?? "");
-        await resend.emails.send({
-          from: process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>",
+        pendingEmailFailure = { email, subject: "Reset your Scheduler password", body: html };
+        const { error } = await resend.emails.send({
+          from: getEmailFrom(),
+          replyTo: getEmailReplyTo(),
           to: email,
           subject: "Reset your Scheduler password",
           html,
           text: stripHtml(html),
         });
+        if (error) throw new Error(error.message ?? "Resend returned an error");
 
         await logNotification({
           category: "admin_invitation",
@@ -87,6 +92,7 @@ Scheduler &mdash; Multi-project scheduling platform
           renderedBody: html,
           status: "sent",
         });
+        pendingEmailFailure = null;
       } else {
         // No password yet — send guidance to check invite
         const safeAdminName = escapeHtml(admin.name);
@@ -115,13 +121,16 @@ Scheduler &mdash; Multi-project scheduling platform
 </table>`;
 
         const resend = new Resend(process.env.RESEND_API_KEY ?? "");
-        await resend.emails.send({
-          from: process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>",
+        pendingEmailFailure = { email, subject: "Activate your Scheduler account", body: html };
+        const { error } = await resend.emails.send({
+          from: getEmailFrom(),
+          replyTo: getEmailReplyTo(),
           to: email,
           subject: "Activate your Scheduler account",
           html,
           text: stripHtml(html),
         });
+        if (error) throw new Error(error.message ?? "Resend returned an error");
 
         await logNotification({
           category: "admin_invitation",
@@ -131,6 +140,7 @@ Scheduler &mdash; Multi-project scheduling platform
           renderedBody: html,
           status: "sent",
         });
+        pendingEmailFailure = null;
       }
     }
 
@@ -138,6 +148,16 @@ Scheduler &mdash; Multi-project scheduling platform
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Request password reset error:", error);
+    if (pendingEmailFailure) {
+      await logNotification({
+        category: "admin_invitation",
+        recipientEmail: pendingEmailFailure.email,
+        recipientRole: "admin",
+        subject: pendingEmailFailure.subject,
+        renderedBody: `Failed to send: ${error instanceof Error ? error.message : String(error)}`,
+        status: "failed",
+      }).catch((logError) => console.error("Request password reset failure log error:", logError));
+    }
     return NextResponse.json({ error: "Failed to process request." }, { status: 500 });
   }
 }

@@ -9,9 +9,14 @@ if (!DATABASE_URL) {
 }
 
 const BASE = "http://localhost:3100";
-const ALIAS_PARTICIPANT = "notifications+participant@eureka-ent.org";
+const DEMO_ADMIN_DOMAIN = process.env.DEMO_ADMIN_DOMAIN;
+if (!DEMO_ADMIN_DOMAIN) {
+  console.error("Set DEMO_ADMIN_DOMAIN to the configured demo alias domain.");
+  process.exit(1);
+}
+const ALIAS_PARTICIPANT = `notifications+participant@${DEMO_ADMIN_DOMAIN}`;
 const DEMO_SLUG = "senior-pm-interview";
-const TEST_EMAIL = `demo.e2e.${Date.now()}@eureka-ent.org`;
+const TEST_EMAIL = `demo.e2e.${Date.now()}@${DEMO_ADMIN_DOMAIN}`;
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 const q = (text, params) => pool.query(text, params);

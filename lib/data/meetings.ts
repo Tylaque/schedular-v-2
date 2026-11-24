@@ -20,6 +20,7 @@ import { recordAudit } from "@/lib/data/audit";
 import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
 import { logNotification } from "@/lib/data/notifications";
 import { stripHtml } from "@/lib/html-to-text";
+import { getEmailFrom, getEmailReplyTo } from "@/lib/email-config";
 import { createMeetingEvent, deleteMeetingEvent, updateMeetingEventTime } from "@/lib/graph/client";
 import { createZoomMeeting, deleteZoomMeeting, updateZoomMeetingTime, zoomPoolConfigured } from "@/lib/zoom/client";
 import { claimZoomAccountForBooking, bookingToUtcISO } from "@/lib/data/zoom";
@@ -28,7 +29,6 @@ import { sendIntegrationFailureAlert } from "@/lib/data/monitoring-alerts";
 import { signManageToken } from "@/lib/manage-token";
 import type { ZoomAccount } from "@prisma/client";
 
-const NOTIFICATION_FROM = process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>";
 
 export type ZoomFallbackReason = "zoom_pool_full_no_fallback" | "zoom_provision_failed";
 
@@ -127,7 +127,8 @@ async function notifyOwnerAndAudit(input: {
     const resend = new Resend(resendApiKey);
     try {
       const result = await resend.emails.send({
-        from: NOTIFICATION_FROM,
+        from: getEmailFrom(),
+        replyTo: getEmailReplyTo(),
         to: owner.email,
         subject: rendered.subject,
         html: rendered.bodyHtml,

@@ -9,8 +9,7 @@ import { log } from "@/lib/log";
 import { sendIntegrationFailureAlert } from "@/lib/data/monitoring-alerts";
 import type { Prisma } from "@prisma/client";
 import { signWaitlistClaimToken } from "@/lib/waitlist-claim-token";
-
-const NOTIFICATION_FROM = process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>";
+import { getEmailFrom, getEmailReplyTo } from "@/lib/email-config";
 
 export async function joinWaitlist(input: {
   projectId: string;
@@ -184,7 +183,8 @@ export async function offerNextWaitlistEntry(
     const resend = new Resend(resendApiKey);
     try {
       const result = await resend.emails.send({
-        from: NOTIFICATION_FROM,
+        from: getEmailFrom(),
+        replyTo: getEmailReplyTo(),
         to: entry.email,
         subject: rendered.subject,
         html: rendered.bodyHtml,
