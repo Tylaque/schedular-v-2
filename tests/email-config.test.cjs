@@ -62,7 +62,7 @@ test("configured From and reply-to are used in mocked sends for every email cate
     const sends = [];
     const mockedSend = async (payload) => { sends.push(payload); return { id: `mock-${sends.length}` }; };
     for (const category of categories) {
-      const fields = config.getEmailSendOptions();
+      const fields = { from: config.getEmailFrom(), replyTo: config.getEmailReplyTo() };
       await mockedSend({ category, ...fields });
     }
     for (const send of sends) {
