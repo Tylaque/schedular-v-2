@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Resend } from "resend";
+import { getEmailFrom, getEmailReplyTo } from "@/lib/email-config";
 
 const MAX_FIRST_RUN_ROWS = 50_000;
 
@@ -63,6 +64,7 @@ async function sendWithRetry(
   resend: Resend,
   options: {
     from: string;
+    replyTo: string;
     to: string;
     subject: string;
     html: string;
@@ -173,9 +175,13 @@ export async function purgeAuditAndNotificationLogs(): Promise<PurgeResult> {
         emailSkippedReason = "RESEND_API_KEY not set";
       } else {
         const resend = new Resend(resendApiKey);
-        const from = process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>";
-        const emailResult = await sendWithRetry(resend, {
+        const from = getEmailFrom();
+        const replyTo = getEmailReplyTo();
+        let emailResult: { ok: boolean; error?: string };
+        try {
+          emailResult = await sendWithRetry(resend, {
           from,
+          replyTo,
           to: owner.email,
           subject: `Audit Log Export — ${dateStamp} (${auditRows.length} rows)`,
           html: `<p>Attached is the audit log export generated on ${dateStamp}.</p>
@@ -184,7 +190,12 @@ Retention threshold: ${auditRetentionDays} days<br>
 Cutoff date: ${auditCutoff.toISOString().slice(0, 10)}${capped ? `<br><strong>Note:</strong> This was a first-run capped export (${MAX_FIRST_RUN_ROWS} rows max). Remaining rows will be exported in subsequent runs.` : ""}</p>`,
           text: `Audit Log Export — ${dateStamp}\n\nRows exported: ${auditRows.length}\nRetention threshold: ${auditRetentionDays} days\nCutoff date: ${auditCutoff.toISOString().slice(0, 10)}${capped ? `\n\nNote: This was a first-run capped export (${MAX_FIRST_RUN_ROWS} rows max). Remaining rows will be exported in subsequent runs.` : ""}`,
           attachments: [{ filename, content: csvBase64, content_type: "text/csv" }],
-        });
+          });
+        } catch (err) {
+          const error = err instanceof Error ? err.message : String(err);
+          console.error(`[audit-retention] audit: email configuration failed: ${error}`);
+          emailResult = { ok: false, error };
+        }
         emailSent = emailResult.ok;
         if (!emailResult.ok) {
           console.error(

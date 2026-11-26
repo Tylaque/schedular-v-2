@@ -12,6 +12,7 @@ import { signManageAdminToken } from "@/lib/manage-token";
 import { demoRecipientEmail, isDemoProjectId } from "@/lib/demo";
 import { Resend } from "resend";
 import { stripHtml } from "@/lib/html-to-text";
+import { getEmailFrom, getEmailReplyTo } from "@/lib/email-config";
 import type { EmailAudience, Prisma } from "@prisma/client";
 
 const LOCK_ATTEMPTS = 20;
@@ -83,7 +84,6 @@ export async function hasSchedulingConflict(
 
 type AdminInfo = { id: string; name: string; initials: string };
 
-const NOTIFICATION_FROM = process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>";
 
 type BookingNotificationInput = {
   id: string;
@@ -265,7 +265,8 @@ async function sendNotification(
           : template;
         rendered = renderTemplate(recipientTemplate, ctx);
         const result = await resend.emails.send({
-          from: NOTIFICATION_FROM,
+          from: getEmailFrom(),
+          replyTo: getEmailReplyTo(),
           to: recipient.email,
           subject: rendered.subject,
           html: rendered.bodyHtml,

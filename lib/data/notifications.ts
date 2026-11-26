@@ -75,8 +75,9 @@ export async function sendTestEmail(
     status: "test",
   });
 
-  // Audit: non-blocking, best-effort
-  recordAudit({
+  // Wait for the best-effort audit write before returning so callers can
+  // reliably inspect the notification and its audit record together.
+  await recordAudit({
     action: "notification_sent",
     actorType: "admin",
     actorId: actor?.id,
@@ -85,7 +86,7 @@ export async function sendTestEmail(
     entityId: log.id,
     projectId: template.projectId ?? undefined,
     afterState: { category: template.category, recipientEmail, subject: rendered.subject },
-  }).catch(() => {});
+  });
 
   return log;
 }

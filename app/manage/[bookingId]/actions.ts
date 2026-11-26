@@ -15,8 +15,8 @@ import { Resend } from "resend";
 import { auth } from "@/auth";
 import { requireActiveSession, requireBookingAccess } from "@/lib/authz";
 import { verifyManageToken } from "@/lib/manage-token";
-
-const PIN_FROM = process.env.EMAIL_FROM ?? "Scheduler <onboarding@resend.dev>";
+import { getEmailFrom, getEmailReplyTo } from "@/lib/email-config";
+import { logNotification } from "@/lib/data/notifications";
 
 async function getBookingWithProject(bookingId: string) {
   return db.booking.findUnique({
@@ -99,6 +99,8 @@ export async function requestManagePin(
   }
 
   // Send PIN email
+  let pinTemplateId: string | undefined;
+  let pinSubject = "Verification code";
   try {
     const template = await getActiveTemplate("verification_pin", booking.projectId);
     if (!template) {
@@ -112,9 +114,12 @@ export async function requestManagePin(
       pin,
     };
     const rendered = renderTemplate(template, ctx);
+    pinTemplateId = template.id;
+    pinSubject = rendered.subject;
     const resend = new Resend(process.env.RESEND_API_KEY ?? "");
     const { error } = await resend.emails.send({
-      from: PIN_FROM,
+      from: getEmailFrom(),
+      replyTo: getEmailReplyTo(),
       to: isDemoProjectId(booking.projectId)
         ? demoRecipientEmail("participant", booking.participantEmail)
         : booking.participantEmail,
@@ -123,10 +128,30 @@ export async function requestManagePin(
     });
     if (error) {
       console.error("[pin] Resend API error:", error);
+      await logNotification({
+        templateId: pinTemplateId,
+        category: "verification_pin",
+        projectId: booking.projectId,
+        recipientEmail: booking.participantEmail,
+        recipientRole: "participant",
+        subject: pinSubject,
+        renderedBody: `Failed to send: ${error.message ?? "Resend returned an error"}`,
+        status: "failed",
+      }).catch((logError) => console.error("[pin] Failed to log notification failure:", logError));
       return { sent: false, error: "Failed to send verification email. Please try again." };
     }
   } catch (err) {
     console.error("[pin] Failed to send PIN email:", err);
+    await logNotification({
+      templateId: pinTemplateId,
+      category: "verification_pin",
+      projectId: booking.projectId,
+      recipientEmail: booking.participantEmail,
+      recipientRole: "participant",
+      subject: pinSubject,
+      renderedBody: `Failed to send: ${err instanceof Error ? err.message : String(err)}`,
+      status: "failed",
+    }).catch((logError) => console.error("[pin] Failed to log notification failure:", logError));
     return { sent: false, error: "Failed to send verification email. Please try again." };
   }
 

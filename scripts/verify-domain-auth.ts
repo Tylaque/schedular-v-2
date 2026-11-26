@@ -11,13 +11,12 @@ import * as dns from "node:dns/promises";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// Resolve the sending domain from the process environment, matching the
-// pattern used everywhere in the codebase: EMAIL_FROM = "Scheduler <domain>"
+// Resolve the sending domain from the configured EMAIL_FROM value.
 function extractSendingDomain(): string | null {
   const envFrom = process.env.EMAIL_FROM;
   if (!envFrom) return null;
-  // Format: "Scheduler <domain>" or "Name <email>"
-  const match = envFrom.match(/<(.+)>/);
+  // Accept "Display Name <sender@verified-domain>" and a bare email address.
+  const match = envFrom.match(/<[^<>@\s]+@([^<>\s]+)>/) ?? envFrom.match(/^[^<>@\s]+@([^<>\s]+)$/);
   return match ? match[1].trim() : null;
 }
 
@@ -57,7 +56,7 @@ async function main() {
   if (!domain) {
     console.error(
       "ERROR: Could not extract a sending domain from EMAIL_FROM.\n" +
-        "Expected format: \"Scheduler <domain>\" (e.g. \"Scheduler <notifications@eureka-ent.org>\")\n" +
+        "Expected format: \"Scheduler <sender@verified-domain>\".\n" +
         "Set EMAIL_FROM in your environment and re-run."
     );
     process.exit(1);
@@ -107,7 +106,7 @@ async function main() {
     console.log("4. Add those records to your DNS provider/registrar");
     console.log("5. Optionally add a DMARC TXT record at _dmarc.<yourdomain> with p=none first");
     console.log("6. Update .env EMAIL_FROM to match the verified domain, e.g.:");
-    console.log('   EMAIL_FROM="Scheduler <notifications@mail.eureka-ent.org>"');
+    console.log('   EMAIL_FROM="Scheduler <notifications@your-verified-domain>"');
     process.exit(1);
   }
 }

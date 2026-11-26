@@ -2,8 +2,7 @@ import { Resend } from "resend";
 import { db } from "@/lib/db";
 import { logNotification } from "@/lib/data/notifications";
 import { log } from "@/lib/log";
-
-const NOTIFICATION_FROM = process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>";
+import { getEmailFrom, getEmailReplyTo } from "@/lib/email-config";
 const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 type FailureType =
@@ -111,7 +110,8 @@ export async function sendIntegrationFailureAlert(input: {
 
   try {
     const result = await resend.emails.send({
-      from: NOTIFICATION_FROM,
+      from: getEmailFrom(),
+      replyTo: getEmailReplyTo(),
       to: owner.email,
       subject,
       html,

@@ -6,9 +6,7 @@ import { hoursUntilSession } from "@/lib/slotHelpers";
 import { getReminderSchedules } from "@/lib/data/reminder-schedules";
 import { Resend } from "resend";
 import { stripHtml } from "@/lib/html-to-text";
-
-const NOTIFICATION_FROM =
-  process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>";
+import { getEmailFrom, getEmailReplyTo } from "@/lib/email-config";
 
 type ReminderResult = Record<string, number> & { errors: number };
 
@@ -119,7 +117,8 @@ export async function sendReminders(): Promise<ReminderResult> {
         const rendered = renderTemplate(template, ctx);
 
         const sendResult = await resend.emails.send({
-          from: NOTIFICATION_FROM,
+          from: getEmailFrom(),
+          replyTo: getEmailReplyTo(),
           to: recipientEmail,
           subject: rendered.subject,
           html: rendered.bodyHtml,

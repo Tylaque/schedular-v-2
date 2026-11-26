@@ -4,6 +4,7 @@ import { stripHtml } from "@/lib/html-to-text";
 import { getActiveTemplate, renderTemplate } from "@/lib/data/templates";
 import { logNotification } from "@/lib/data/notifications";
 import type { ParticipantStatus, Prisma } from "@prisma/client";
+import { getEmailFrom, getEmailReplyTo } from "@/lib/email-config";
 
 export type ParticipantRecord = Prisma.ParticipantGetPayload<{ include: { project: { select: { id: true; name: true; slug: true } } } }>;
 
@@ -156,7 +157,8 @@ export async function sendParticipantInvitation(participantId: string): Promise<
 
   const resend = new Resend(process.env.RESEND_API_KEY ?? "");
   const result = await resend.emails.send({
-    from: process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>",
+    from: getEmailFrom(),
+    replyTo: getEmailReplyTo(),
     to: participant.email,
     subject: rendered.subject,
     html: rendered.bodyHtml,

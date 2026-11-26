@@ -1,14 +1,15 @@
 import { AssignmentMode, MeetingPlatformPreference } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
+import { getDemoAliasDomain } from "@/lib/email-config";
 
 export const DEMO_SLUG = "senior-pm-interview";
 export const DEMO_PROJECT_ID = "demo-project-fidlaque";
-export const DEMO_ADMIN_DOMAIN = "eureka-ent.org";
+export const DEMO_ADMIN_DOMAIN = getDemoAliasDomain();
 
 const DEMO_STAFF = [
-  { id: "demo-staff-1", name: "Demo Host One", initials: "DH", email: "notifications+staff1@eureka-ent.org" },
-  { id: "demo-staff-2", name: "Demo Host Two", initials: "DT", email: "notifications+staff2@eureka-ent.org" },
-  { id: "demo-staff-3", name: "Demo Host Three", initials: "TH", email: "notifications+staff3@eureka-ent.org" },
+  { id: "demo-staff-1", name: "Demo Host One", initials: "DH", email: `notifications+staff1@${DEMO_ADMIN_DOMAIN}` },
+  { id: "demo-staff-2", name: "Demo Host Two", initials: "DT", email: `notifications+staff2@${DEMO_ADMIN_DOMAIN}` },
+  { id: "demo-staff-3", name: "Demo Host Three", initials: "TH", email: `notifications+staff3@${DEMO_ADMIN_DOMAIN}` },
 ];
 export const DEMO_STAFF_IDS = DEMO_STAFF.map((s) => s.id);
 export const DEMO_STAFF_EMAILS = DEMO_STAFF.map((s) => s.email);

@@ -6,6 +6,7 @@ import { logNotification } from "@/lib/data/notifications";
 import { createPasswordToken } from "@/lib/data/password-reset";
 import { DEMO_STAFF_IDS } from "@/lib/demo";
 import { escapeHtml } from "@/lib/template-utils";
+import { getEmailFrom, getEmailReplyTo } from "@/lib/email-config";
 
 export type AdminRecord = {
   id: string;
@@ -140,7 +141,8 @@ Scheduler &mdash; Multi-project scheduling platform
       const subject = `You've been invited as a Super Admin on ${projectLabel}`;
 
       const result = await resend.emails.send({
-        from: process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>",
+        from: getEmailFrom(),
+        replyTo: getEmailReplyTo(),
         to: email,
         subject,
         html,
@@ -171,7 +173,8 @@ Scheduler &mdash; Multi-project scheduling platform
       };
       const rendered = renderTemplate(template, ctx);
       const result = await resend.emails.send({
-        from: process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>",
+        from: getEmailFrom(),
+        replyTo: getEmailReplyTo(),
         to: email,
         subject: rendered.subject,
         html: rendered.bodyHtml,
@@ -232,7 +235,8 @@ Scheduler &mdash; Multi-project scheduling platform
       const subject = `You've been invited to ${projectLabel}`;
 
       const result = await resend.emails.send({
-        from: process.env.EMAIL_FROM ?? "Scheduler <notifications@eureka-ent.org>",
+        from: getEmailFrom(),
+        replyTo: getEmailReplyTo(),
         to: email,
         subject,
         html,
